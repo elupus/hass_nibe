@@ -13,20 +13,25 @@ DOMAIN       = 'nibe'
 _LOGGER      = logging.getLogger(__name__)
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
-    add_devices([NibeSensor(hass.data[DOMAIN])])
+    add_devices([
+        NibeSensor(hass.data[DOMAIN], 36563, 'outdoor_temperature'),
+        NibeSensor(hass.data[DOMAIN], 36563, 'hot_water_temperature')
+        ])
 
 class NibeSensor(Entity):
-    def __init__(self, uplink):
+    def __init__(self, uplink, system, parameter):
         """Initialize the Nibe sensor."""
         self._state     = 0
-        self._system    = 36563
-        self._parameter = 1
+        self._system    = system
+        self._parameter = parameter
         self._uplink    = uplink
+        self._name      = parameter
+        self._unit      = None
 
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'Example Temperature'
+        return self._name
 
     @property
     def state(self):
@@ -36,7 +41,7 @@ class NibeSensor(Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
-        return TEMP_CELSIUS
+        return self._unit
 
     def update(self):
         """Fetch new state data for the sensor.
@@ -47,5 +52,12 @@ class NibeSensor(Entity):
         data = self._uplink.get('systems/%d/parameters' % self._system, { 'parameterIds': self._parameter } )
         _LOGGER.info(data)
 
-        self._state = 23
 
+        self._name  = data[0]['title']
+
+        if (data[0]['unit'] == '°C'):
+            self._unit  = TEMP_CELSIUS
+            self._state = data[0]['rawValue'] / 10
+        else:
+            self._unit  = None
+            self._state = data[0]['displayValue']
