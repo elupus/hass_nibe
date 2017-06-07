@@ -50,14 +50,15 @@ class NibeSensor(Entity):
         """
 
         data = self._uplink.get('systems/%d/parameters' % self._system, { 'parameterIds': self._parameter } )
-        _LOGGER.info(data)
+        _LOGGER.debug(data)
+        if data:
 
+            self._name  = data[0]['title']
 
-        self._name  = data[0]['title']
+            if (data[0]['unit'] == '°C'):
+                self._unit  = TEMP_CELSIUS
+                self._state = data[0]['rawValue'] / 10
+            else:
+                self._unit  = None
+                self._state = data[0]['displayValue']
 
-        if (data[0]['unit'] == '°C'):
-            self._unit  = TEMP_CELSIUS
-            self._state = data[0]['rawValue'] / 10
-        else:
-            self._unit  = None
-            self._state = data[0]['displayValue']
