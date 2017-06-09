@@ -9,6 +9,9 @@ import requests
 import sys
 import pickle
 
+import os
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.configurator import (request_config, notify_errors, request_done)
 
@@ -17,7 +20,6 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP)
 
 from requests_oauthlib import OAuth2Session
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,12 +55,13 @@ class NibeUplink(object):
         self.store      = hass.config.path('nibe.pickle')
         self.credential = None
         self.systems    = None
+        self.redirect   = config[DOMAIN].get(CONF_REDIRECT_URI)
 
         token = self.token_read()
 
         self.session = OAuth2Session(
                 client_id        = config[DOMAIN].get(CONF_CLIENT_ID),
-                redirect_uri     = config[DOMAIN].get(CONF_REDIRECT_URI),
+                redirect_uri     = self.redirect,
                 auto_refresh_url = TOKEN_URL,
                 scope            = SCOPE,
                 token            = token,
@@ -90,7 +93,7 @@ class NibeUplink(object):
 
             config_request = request_config(hass, "Nibe Uplink Code",
                             callback    = config_callback,
-                            description = "Navigate to provided authorization link, this will redirect you to your configured redirect url. This must match what was setup in Nibe Uplink. Enter the complete url you where redirected too here.",
+                            description = "Navigate to provided authorization link, this will redirect you to your configured redirect url ('%s') . This must match what was setup in Nibe Uplink. Enter the complete url you where redirected too here." % self.redirect,
                             link_name   = "Authorize",
                             link_url    = auth_uri,
                             fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}]
