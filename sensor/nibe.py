@@ -12,10 +12,13 @@ DEPENDENCIES = ['nibe']
 DOMAIN       = 'nibe'
 _LOGGER      = logging.getLogger(__name__)
 
+
+CONF_SYSTEM    = 'system'
+CONF_PARAMETER = 'parameter'
+
 def setup_platform(hass, config, add_devices, discovery_info=None):
     add_devices([
-        NibeSensor(hass.data[DOMAIN], 36563, 'outdoor_temperature'),
-        NibeSensor(hass.data[DOMAIN], 36563, 'hot_water_temperature')
+        NibeSensor(hass.data[DOMAIN], config.get(CONF_SYSTEM), config.get(CONF_PARAMETER)),
         ])
 
 class NibeSensor(Entity):
