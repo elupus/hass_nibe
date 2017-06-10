@@ -53,7 +53,6 @@ class NibeUplink(object):
         """Initialize the system."""
         self.hass       = hass
         self.store      = hass.config.path('nibe.pickle')
-        self.credential = None
         self.systems    = None
         self.redirect   = config[DOMAIN].get(CONF_REDIRECT_URI)
 
