@@ -15,6 +15,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.configurator import (request_config, notify_errors, request_done)
+import homeassistant.loader as loader
 
 from homeassistant.const import (
     CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD,
@@ -112,6 +113,9 @@ class NibeUplink(object):
 
     def update(self):
         if self.systems == None:
+
+            group = loader.get_component('group')
+
             _LOGGER.info("Requesting systems")
             self.systems = self.get('systems')
 
@@ -125,6 +129,9 @@ class NibeUplink(object):
                         self.hass,
                         'sensor',
                         DOMAIN, data)
+
+                entity_ids = [ 'sensor.{}_{}'.format(system['systemId'], parameter['parameterId']) for parameter in parameters ]
+                group.Group.create_group(self.hass, system['productName'], entity_ids)
 
 
     def get(self, uri, params = {}):

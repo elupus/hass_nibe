@@ -38,12 +38,14 @@ class NibeSensor(Entity):
         self._state     = 0
         self._system    = system
         self._parameter = parameter
-        self._name      = "{}.{}".format(system, parameter)
+        self._name      = "{}_{}".format(system, parameter)
         self._unit      = None
         self.entity_id  = generate_entity_id(
                                 ENTITY_ID_FORMAT,
                                 self._name,
                                 hass=hass)
+
+        _LOGGER.debug(self.entity_id)
 
     @property
     def name(self):
@@ -67,7 +69,6 @@ class NibeSensor(Entity):
         """
 
         data = self.hass.data[DOMAIN].get_parameter(self._system, self._parameter)
-        _LOGGER.debug(data)
         if data:
 
             self._name  = data['title']
