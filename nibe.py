@@ -12,6 +12,7 @@ import pickle
 import os
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
+from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.configurator import (request_config, notify_errors, request_done)
 
@@ -58,16 +59,25 @@ class NibeUplink(object):
 
         token = self.token_read()
 
+        client_id     = config[DOMAIN].get(CONF_CLIENT_ID)
+        client_secret = config[DOMAIN].get(CONF_CLIENT_SECRET)
+
+        extra = {
+            'client_id'    : client_id,
+            'client_secret': client_secret,
+        }
+
         self.session = OAuth2Session(
-                client_id        = config[DOMAIN].get(CONF_CLIENT_ID),
-                redirect_uri     = self.redirect,
-                auto_refresh_url = TOKEN_URL,
-                scope            = SCOPE,
-                token            = token,
-                token_updater    = self.token_write
+                client_id            = client_id,
+                redirect_uri         = self.redirect,
+                auto_refresh_url     = TOKEN_URL,
+                auto_refresh_kwargs  = extra,
+                scope                = SCOPE,
+                token                = token,
+                token_updater        = self.token_write
         )
 
-        if not self.session.authorized:
+        if not token:
             auth_uri, state = self.session.authorization_url(AUTH_URL)
 
             config_request = None
@@ -76,7 +86,7 @@ class NibeUplink(object):
                 try:
                     token = self.session.fetch_token(
                                 TOKEN_URL,
-                                client_secret          = config[DOMAIN].get(CONF_CLIENT_SECRET),
+                                client_secret          = client_secret,
                                 authorization_response = data['url']
                     )
 
@@ -104,7 +114,18 @@ class NibeUplink(object):
         if self.systems == None:
             _LOGGER.info("Requesting systems")
             self.systems = self.get('systems')
-            _LOGGER.info(self.systems)
+
+            for system in self.systems['objects']:
+                parameters = self.get_category(system['systemId'], 'STATUS')
+                data = [ { 'systemId'   : system['systemId'],
+                           'parameterId': parameter['parameterId'] } for parameter in parameters
+                ]
+
+                discovery.load_platform(
+                        self.hass,
+                        'sensor',
+                        DOMAIN, data)
+
 
     def get(self, uri, params = {}):
         if not self.session.authorized:
@@ -112,7 +133,19 @@ class NibeUplink(object):
 
         headers = {}
         url = '%s/api/v1/%s' % (BASE, uri)
-        return self.session.get(url, params=params, headers=headers).json()
+        data = self.session.get(url, params=params, headers=headers).json()
+        _LOGGER.debug(data)
+        return data
+
+    def get_category(self, system, category):
+        return self.get('systems/%s/serviceinfo/categories/%s' % (system, category))
+
+    def get_parameter(self, system, parameter):
+        data = self.get('systems/%s/parameters' % system, { 'parameterIds': parameter } )
+        if data:
+            return data[0]
+        else:
+            return None
 
     def token_read(self):
         try:
