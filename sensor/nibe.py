@@ -66,10 +66,6 @@ class NibeSensor(Entity):
         """Return the state attributes."""
         return self._attributes
 
-            return {
-                ATTR_BATTERY_LEVEL: self._battery,
-            }
-
     def update(self):
         """Fetch new state data for the sensor.
 
@@ -91,7 +87,5 @@ class NibeSensor(Entity):
                 self._unit  = None
                 self._state = data['displayValue']
 
-            self.attributes = {
-                'designation': data['desgination']
-            }
+            self._attributes = data
 
