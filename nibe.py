@@ -8,12 +8,15 @@ import json
 import requests
 import sys
 import pickle
+from datetime import timedelta
+from itertools import islice
 
 import os
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
+from homeassistant.util import Throttle
 from homeassistant.components.configurator import (request_config, notify_errors, request_done)
 import homeassistant.loader as loader
 
@@ -34,6 +37,7 @@ REQUIREMENTS = ['requests', 'requests_oauthlib']
 CONF_CLIENT_ID     = 'client_id'
 CONF_CLIENT_SECRET = 'client_secret'
 CONF_REDIRECT_URI  = 'redirect_uri'
+CONF_CATEGORIES    = 'categories'
 
 BASE       = 'https://api.nibeuplink.com'
 SCOPE      = [ 'READSYSTEM' ]
@@ -41,6 +45,13 @@ SCOPE      = [ 'READSYSTEM' ]
 TOKEN_URL  = '%s/oauth/token' % BASE
 AUTH_URL   = '%s/oauth/authorize' % BASE
 
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
+
+
+def chunks(data, SIZE):
+    it = iter(data)
+    for i in range(0, len(data), SIZE):
+        yield {k:data[k] for k in islice(it, SIZE)}
 
 def setup(hass, config):
     """Setup nibe uplink component"""
@@ -57,6 +68,8 @@ class NibeUplink(object):
         self.store      = hass.config.path('nibe.pickle')
         self.systems    = None
         self.redirect   = config[DOMAIN].get(CONF_REDIRECT_URI)
+        self.categories = config[DOMAIN].get(CONF_CATEGORIES, ['STATUS'])
+        self.parameters = {}
 
         token = self.token_read()
 
@@ -97,7 +110,7 @@ class NibeUplink(object):
                     return
 
                 self.token_write(token)
-                hass.add_job(self.update)
+                hass.add_job(self.update_systems)
 
 
 
@@ -109,30 +122,59 @@ class NibeUplink(object):
                             fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}]
                         )
         else:
-            hass.add_job(self.update)
+            hass.add_job(self.update_systems)
 
-    def update(self):
-        if self.systems == None:
+    def update_systems(self):
 
-            group = loader.get_component('group')
+        group = loader.get_component('group')
 
-            _LOGGER.info("Requesting systems")
-            self.systems = self.get('systems')
+        _LOGGER.info("Requesting systems")
+        self.systems = self.get('systems')
 
-            for system in self.systems['objects']:
-                parameters = self.get_category(system['systemId'], 'STATUS')
-                data = [ { 'systemId'   : system['systemId'],
-                           'parameterId': parameter['parameterId'] } for parameter in parameters
-                ]
+        sensors = []
 
-                discovery.load_platform(
+        for system in self.systems['objects']:
+            self.parameters[system['systemId']] = {}
+            for category in self.categories:
+                _LOGGER.info("Requesting category: {}".format(category))
+                parameters = self.get_category(system['systemId'], category)
+
+                for parameter in parameters:
+                    self.parameters[system['systemId']][parameter['parameterId']] = parameter
+
+                data = ([ { 'systemId'   : system['systemId'],
+                            'parameterId': parameter['parameterId']
+                          } for parameter in parameters
+                        ])
+
+                entity_ids = [ 'sensor.{}_{}'.format(system['systemId'],
+                                                     parameter['parameterId'])
+                                for parameter in parameters
+                             ]
+
+                group.Group.create_group(
                         self.hass,
-                        'sensor',
-                        DOMAIN, data)
+                        "{} - {}".format(system['productName'], category),
+                        entity_ids)
 
-                entity_ids = [ 'sensor.{}_{}'.format(system['systemId'], parameter['parameterId']) for parameter in parameters ]
-                group.Group.create_group(self.hass, system['productName'], entity_ids)
+                sensors.extend(data)
 
+        discovery.load_platform(
+            self.hass,
+            'sensor',
+            DOMAIN,
+            sensors)
+
+
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    def update_parameters(self):
+        _LOGGER.info("Requesting parameters")
+        for system, parameters in self.parameters.items():
+            for p in chunks(parameters, 15):
+                datas = self.get('systems/%s/parameters' % system, { 'parameterIds' : p.keys() } )
+
+                for data in datas:
+                    parameters[data['parameterId']] = data
 
     def get(self, uri, params = {}):
         if not self.session.authorized:
@@ -148,11 +190,15 @@ class NibeUplink(object):
         return self.get('systems/%s/serviceinfo/categories/%s' % (system, category))
 
     def get_parameter(self, system, parameter):
-        data = self.get('systems/%s/parameters' % system, { 'parameterIds': parameter } )
-        if data:
-            return data[0]
-        else:
-            return None
+        if not system in self.parameters:
+            self.parameters[system] = {}
+
+        if not parameter in self.parameters[system]:
+            self.parameters[system][parameter] = None
+
+        self.update_parameters()
+
+        return self.parameters[system][parameter] 
 
     def token_read(self):
         try:
