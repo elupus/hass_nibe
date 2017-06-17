@@ -4,7 +4,6 @@ import json
 import requests
 
 from homeassistant.helpers.entity import (Entity, generate_entity_id)
-from oauth2client.client import OAuth2WebServerFlow
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
