@@ -2,51 +2,58 @@
 Support for nibe uplink.
 """
 
-import logging
-import time
-import json
-import requests
-import sys
-import pickle
+
 from datetime import timedelta
 from itertools import islice
-
+import json
+import logging
 import os
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+import pickle
+import requests
+import sys
+import time
 
+from homeassistant.components.configurator import (request_config, notify_errors, request_done)
+from homeassistant.const import (CONF_ACCESS_TOKEN,
+                                 CONF_EMAIL,
+                                 CONF_PASSWORD,
+                                 EVENT_HOMEASSISTANT_START,
+                                 EVENT_HOMEASSISTANT_STOP)
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
-from homeassistant.components.configurator import (request_config, notify_errors, request_done)
 import homeassistant.loader as loader
-
-from homeassistant.const import (
-    CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD,
-    EVENT_HOMEASSISTANT_START, EVENT_HOMEASSISTANT_STOP)
 
 from requests_oauthlib import OAuth2Session
 
+
 _LOGGER = logging.getLogger(__name__)
 
-CHANNELS = []
+DOMAIN              = 'nibe'
 
-DOMAIN = 'nibe'
+REQUIREMENTS        = ['requests', 'requests_oauthlib']
 
-REQUIREMENTS = ['requests', 'requests_oauthlib']
+CONF_CLIENT_ID      = 'client_id'
+CONF_CLIENT_SECRET  = 'client_secret'
+CONF_REDIRECT_URI   = 'redirect_uri'
+CONF_CATEGORIES     = 'categories'
 
-CONF_CLIENT_ID     = 'client_id'
-CONF_CLIENT_SECRET = 'client_secret'
-CONF_REDIRECT_URI  = 'redirect_uri'
-CONF_CATEGORIES    = 'categories'
+BASE                = 'https://api.nibeuplink.com'
+SCOPE               = [ 'READSYSTEM' ]
 
-BASE       = 'https://api.nibeuplink.com'
-SCOPE      = [ 'READSYSTEM' ]
+TOKEN_URL           = '%s/oauth/token' % BASE
+AUTH_URL            = '%s/oauth/authorize' % BASE
 
-TOKEN_URL  = '%s/oauth/token' % BASE
-AUTH_URL   = '%s/oauth/authorize' % BASE
+AUTH_STR            = ("Navigate to provided authorization link, this"
+                       " will redirect you to your configured redirect"
+                       " url ('{}'). This must match what was setup in"
+                       " Nibe Uplink. Enter the complete url you where"
+                       " redirected too here.")
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
 
+#Allow insecure transport for OAuth callback url.
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 def chunks(data, SIZE):
     it = iter(data)
@@ -102,7 +109,7 @@ class NibeUplink(object):
                                 TOKEN_URL,
                                 client_secret          = client_secret,
                                 authorization_response = data['url']
-                    )
+                            )
 
                     request_done(config_request)
                 except:
@@ -114,13 +121,16 @@ class NibeUplink(object):
 
 
 
-            config_request = request_config(hass, "Nibe Uplink Code",
-                            callback    = config_callback,
-                            description = "Navigate to provided authorization link, this will redirect you to your configured redirect url ('%s') . This must match what was setup in Nibe Uplink. Enter the complete url you where redirected too here." % self.redirect,
-                            link_name   = "Authorize",
-                            link_url    = auth_uri,
-                            fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}]
-                        )
+            config_request = request_config(
+                                hass,
+                                "Nibe Uplink Code",
+                                callback    = config_callback,
+                                description = AUTH_STR.format(self.redirect),
+                                link_name   = "Authorize",
+                                link_url    = auth_uri,
+                                fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}]
+                             )
+
         else:
             hass.add_job(self.update_systems)
 
