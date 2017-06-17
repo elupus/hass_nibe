@@ -183,8 +183,19 @@ class NibeSystem(object):
         self.system     = system
         self.uplink     = uplink
         self.prefix     = "{}_".format(system['systemId'])
+        self.groups     = []
+
+        group = loader.get_component('group')
 
         self.update_categories()
+
+        self.group = group.Group.create_group(
+                        self.hass,
+                        self.system['productName'],
+                        user_defined = False,
+                        view = True,
+                        entity_ids = [g.entity_id for g in self.groups]
+                     )
 
     def create_group(self, parameters, category):
         group = loader.get_component('group')
@@ -195,11 +206,12 @@ class NibeSystem(object):
                         for parameter in parameters
                      ]
 
-        group.Group.create_group(
+        g = group.Group.create_group(
                 self.hass,
                 "{} - {}".format(self.system['name'],
                                  category['name']),
-                entity_ids)
+                entity_ids = entity_ids)
+        self.groups.append(g)
 
     def get(self, uri, params = {}):
         return self.uplink.get('systems/{}/{}'.format(self.system['systemId'],
