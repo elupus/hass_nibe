@@ -66,6 +66,14 @@ class NibeSensor(Entity):
         """Return the state attributes."""
         return self._attributes
 
+    @property
+    def available(self):
+        """Return True if entity is available."""
+        if self._state == None:
+            return False
+        else:
+            return True
+
     def update(self):
         """Fetch new state data for the sensor.
 
