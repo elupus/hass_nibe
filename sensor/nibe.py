@@ -19,9 +19,11 @@ CONF_PARAMETER = 'parameter'
 CONF_CATEGORY  = 'category'
 
 SCALE = {
-        '°C' : { 'scale' : 10, 'unit': TEMP_CELSIUS },
-        'A'  : { 'scale' : 10, 'unit': 'A'          },
-        'DM' : { 'scale' : 10, 'unit': 'DM'         },
+        '°C' : { 'scale' : 10,  'unit': TEMP_CELSIUS },
+        'A'  : { 'scale' : 10,  'unit': 'A'          },
+        'DM' : { 'scale' : 10,  'unit': 'DM'         },
+        'kW' : { 'scale' : 100, 'unit': 'kW'         },
+        'h'  : { 'scale' : 10 , 'unit': 'h'          },
 }
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -40,7 +42,7 @@ class NibeSensor(Entity):
         self._parameter  = parameter
         self._name       = "{}_{}".format(system, parameter)
         self._unit       = None
-        self._attributes = None
+        self._data       = None
         self.entity_id  = generate_entity_id(
                                 ENTITY_ID_FORMAT,
                                 self._name,
@@ -64,7 +66,13 @@ class NibeSensor(Entity):
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        return {
+            'designation'  : self._data['designation'],
+            'parameter id' : self._data['parameterId'],
+            'display value': self._data['displayValue'],
+            'raw value'    : self._data['rawValue'],
+            'display unit' : self._data['unit'],
+        }
 
     @property
     def available(self):
@@ -95,5 +103,9 @@ class NibeSensor(Entity):
                 self._unit  = None
                 self._state = data['displayValue']
 
-            self._attributes = data
+            self._data = data
+
+        else:
+            self._state = None
+
 
