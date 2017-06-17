@@ -18,12 +18,16 @@ CONF_PARAMETER = 'parameter'
 CONF_CATEGORY  = 'category'
 
 SCALE = {
-        '°C' : { 'scale' : 10,  'unit': TEMP_CELSIUS },
-        'A'  : { 'scale' : 10,  'unit': 'A'          },
-        'DM' : { 'scale' : 10,  'unit': 'DM'         },
-        'kW' : { 'scale' : 100, 'unit': 'kW'         },
-        'h'  : { 'scale' : 10 , 'unit': 'h'          },
+        '°C' : { 'scale' : 10,  'unit': TEMP_CELSIUS, 'icon': None },
+        'A'  : { 'scale' : 10,  'unit': 'A'         , 'icon': None },
+        'DM' : { 'scale' : 10,  'unit': 'DM'        , 'icon': None },
+        'kW' : { 'scale' : 100, 'unit': 'kW'        , 'icon': None },
+        'Hz' : { 'scale' : 1  , 'unit': 'Hz'        , 'icon': 'mdi:update' },
+        'h'  : { 'scale' : 10 , 'unit': 'h'         , 'icon': 'mdi:clock' },
 }
+
+SCALE_DEFAULT = { 'scale': None, 'unit': None, 'icon': None }
+
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     if (discovery_info):
@@ -42,6 +46,7 @@ class NibeSensor(Entity):
         self._name       = "{}_{}".format(system, parameter)
         self._unit       = None
         self._data       = None
+        self._icon       = None
         self.entity_id  = generate_entity_id(
                                 ENTITY_ID_FORMAT,
                                 self._name,
@@ -61,6 +66,10 @@ class NibeSensor(Entity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return self._unit
+
+    @property
+    def icon(self):
+        return self._icon
 
     @property
     def device_state_attributes(self):
@@ -92,14 +101,14 @@ class NibeSensor(Entity):
 
             self._name  = data['title']
 
-            if (data['unit'] in SCALE):
-                self._unit  = SCALE[data['unit']]['unit']
-                if data['displayValue'] == '--':
-                    self._state = None
-                else:
-                    self._state = data['rawValue'] / SCALE[data['unit']]['scale']
+            scale = SCALE.get(data['unit'], SCALE_DEFAULT)
+            self._icon  = scale['icon']
+            self._unit  = scale['unit']
+            if data['displayValue'] == '--':
+                self._state = None
+            elif scale['scale']:
+                self._state = data['rawValue'] / scale['scale']
             else:
-                self._unit  = None
                 self._state = data['displayValue']
 
             self._data = data
