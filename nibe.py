@@ -208,7 +208,7 @@ class NibeSystem(object):
 
         g = group.Group.create_group(
                 self.hass,
-                "{} - {}".format(self.system['name'],
+                "{} - {}".format(self.system['productName'],
                                  category['name']),
                 entity_ids = entity_ids)
         self.groups.append(g)
