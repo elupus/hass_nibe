@@ -51,6 +51,7 @@ AUTH_STR            = ("Navigate to provided authorization link, this"
                        " redirected too here.")
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
+MAX_REQUEST_PARAMETERS   = 15
 
 #Allow insecure transport for OAuth callback url.
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -73,9 +74,9 @@ class NibeUplink(object):
         """Initialize the system."""
         self.hass       = hass
         self.store      = hass.config.path('nibe.pickle')
-        self.systems    = None
+        self.systems    = {}
         self.redirect   = config[DOMAIN].get(CONF_REDIRECT_URI)
-        self.categories = config[DOMAIN].get(CONF_CATEGORIES, ['STATUS'])
+        self.config     = config[DOMAIN] 
         self.parameters = {}
 
         token = self.token_read()
@@ -136,55 +137,13 @@ class NibeUplink(object):
 
     def update_systems(self):
 
-        group = loader.get_component('group')
 
         _LOGGER.info("Requesting systems")
-        self.systems = self.get('systems')
+        systems = self.get('systems')
 
-        sensors = []
-
-        for system in self.systems['objects']:
-            self.parameters[system['systemId']] = {}
-            for category in self.categories:
-                _LOGGER.info("Requesting category: {}".format(category))
-                parameters = self.get_category(system['systemId'], category)
-
-                for parameter in parameters:
-                    self.parameters[system['systemId']][parameter['parameterId']] = parameter
-
-                data = ([ { 'systemId'   : system['systemId'],
-                            'parameterId': parameter['parameterId']
-                          } for parameter in parameters
-                        ])
-
-                entity_ids = [ 'sensor.{}_{}'.format(system['systemId'],
-                                                     parameter['parameterId'])
-                                for parameter in parameters
-                             ]
-
-                group.Group.create_group(
-                        self.hass,
-                        "{} - {}".format(system['productName'], category),
-                        entity_ids)
-
-                sensors.extend(data)
-
-        discovery.load_platform(
-            self.hass,
-            'sensor',
-            DOMAIN,
-            sensors)
-
-
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update_parameters(self):
-        _LOGGER.info("Requesting parameters")
-        for system, parameters in self.parameters.items():
-            for p in chunks(parameters, 15):
-                datas = self.get('systems/%s/parameters' % system, { 'parameterIds' : p.keys() } )
-
-                for data in datas:
-                    parameters[data['parameterId']] = data
+        self.systems = {
+                system['systemId'] : NibeSystem(self.hass, self, system, self.config) for system in systems['objects']
+        }
 
     def get(self, uri, params = {}):
         if not self.session.authorized:
@@ -196,19 +155,10 @@ class NibeUplink(object):
         _LOGGER.debug(data)
         return data
 
-    def get_category(self, system, category):
-        return self.get('systems/%s/serviceinfo/categories/%s' % (system, category))
-
     def get_parameter(self, system, parameter):
-        if not system in self.parameters:
-            self.parameters[system] = {}
-
-        if not parameter in self.parameters[system]:
-            self.parameters[system][parameter] = None
-
-        self.update_parameters()
-
-        return self.parameters[system][parameter] 
+        if system not in self.systems:
+            return None
+        return self.systems[system].get_parameter(parameter)
 
     def token_read(self):
         try:
@@ -223,4 +173,93 @@ class NibeUplink(object):
     def token_write(self, token):
         with open(self.store, 'wb') as myfile:
             pickle.dump(token, myfile)
+
+class NibeSystem(object):
+    def __init__(self, hass, uplink, system, config):
+        self.hass       = hass
+        self.parameters = {}
+        self.categories = {}
+        self.config     = config
+        self.system     = system
+        self.uplink     = uplink
+        self.prefix     = "{}_".format(system['systemId'])
+
+        self.update_categories()
+
+    def create_group(self, parameters, category):
+        group = loader.get_component('group')
+
+        entity_ids = [ 'sensor.{}{}'.format(self.prefix,
+                                            parameter['parameterId'])
+
+                        for parameter in parameters
+                     ]
+
+        group.Group.create_group(
+                self.hass,
+                "{} - {}".format(self.system['name'],
+                                 category['name']),
+                entity_ids)
+
+    def get(self, uri, params = {}):
+        return self.uplink.get('systems/{}/{}'.format(self.system['systemId'],
+                                                      uri),
+                               params = params)
+
+    def update_categories(self):
+        sensors = set()
+
+        categories = self.get('serviceinfo/categories')
+
+        for category in categories:
+
+            self.categories[category['categoryId']] = category
+
+            _LOGGER.info("Requesting parameters for category: {} on system {}".format(
+                                category['categoryId'],
+                                self.system['systemId'])
+                        )
+
+            parameters = self.get('serviceinfo/categories/{}'.format(category['categoryId']))
+
+            for parameter in parameters:
+                self.parameters[parameter['parameterId']] = parameter
+                sensors.add(parameter['parameterId'])
+
+            self.create_group(parameters, category)
+
+
+        discovery_info = [ { 'systemId'   : self.system['systemId'],
+                             'parameterId': sensor
+                           } for sensor in sensors
+                         ]
+
+        discovery.load_platform(
+            self.hass,
+            'sensor',
+            DOMAIN,
+            discovery_info)
+
+
+    @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    def update_parameters(self):
+        _LOGGER.info("Requesting parameters for system {}".format(self.system['systemId']))
+        for p in chunks(self.parameters, MAX_REQUEST_PARAMETERS):
+            parameters = self.uplink.get(
+                            'systems/{}/parameters'.format(self.system['systemId']),
+                            { 'parameterIds' : p.keys() }
+                       )
+
+            for parameter in parameters:
+                self.parameters[parameter['parameterId']] = parameter
+
+
+    def get_parameter(self, parameter):
+        self.update_parameters()
+
+        if not parameter in self.parameters:
+            self.parameters[parameter] = None
+
+        return self.parameters[parameter]
+
 
