@@ -23,6 +23,7 @@ SCALE = {
         'DM' : { 'scale' : 10,  'unit': 'DM'        , 'icon': None },
         'kW' : { 'scale' : 100, 'unit': 'kW'        , 'icon': None },
         'Hz' : { 'scale' : 1  , 'unit': 'Hz'        , 'icon': 'mdi:update' },
+        '%'  : { 'scale' : 10 , 'unit': '%'         , 'icon': None },
         'h'  : { 'scale' : 10 , 'unit': 'h'         , 'icon': 'mdi:clock' },
 }
 
