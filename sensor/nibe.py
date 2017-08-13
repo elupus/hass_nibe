@@ -46,7 +46,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 class NibeSensor(Entity):
     def __init__(self, hass, system, parameter):
         """Initialize the Nibe sensor."""
-        self._state      = 0
+        self._state      = None
         self._system     = system
         self._parameter  = parameter
         self._name       = "{}_{}".format(system, parameter)
