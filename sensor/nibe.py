@@ -1,7 +1,5 @@
 import logging
 import time
-import json
-import requests
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
@@ -18,7 +16,6 @@ _LOGGER      = logging.getLogger(__name__)
 
 CONF_SYSTEM    = 'system'
 CONF_PARAMETER = 'parameter'
-CONF_CATEGORY  = 'category'
 
 PLATFORM_SCHEMA = vol.Schema({
         vol.Required(CONF_SYSTEM): cv.string,
