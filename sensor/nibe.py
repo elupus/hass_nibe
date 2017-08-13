@@ -3,6 +3,9 @@ import time
 import json
 import requests
 
+import voluptuous as vol
+import homeassistant.helpers.config_validation as cv
+
 from homeassistant.helpers.entity import (Entity, generate_entity_id)
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import TEMP_CELSIUS
@@ -16,6 +19,11 @@ _LOGGER      = logging.getLogger(__name__)
 CONF_SYSTEM    = 'system'
 CONF_PARAMETER = 'parameter'
 CONF_CATEGORY  = 'category'
+
+PLATFORM_SCHEMA = vol.Schema({
+        vol.Required(CONF_SYSTEM): cv.string,
+        vol.Required(CONF_PARAMETER): cv.string,
+    }, extra=vol.ALLOW_EXTRA)
 
 SCALE = {
         '°C' : { 'scale' : 10,  'unit': TEMP_CELSIUS, 'icon': None },

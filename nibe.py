@@ -13,6 +13,9 @@ import requests
 import sys
 import time
 
+import voluptuous as vol
+import homeassistant.helpers.config_validation as cv
+
 from homeassistant.components.configurator import (request_config, notify_errors, request_done)
 from homeassistant.const import (CONF_ACCESS_TOKEN,
                                  CONF_EMAIL,
@@ -52,6 +55,17 @@ AUTH_STR            = ("Navigate to provided authorization link, this"
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
 MAX_REQUEST_PARAMETERS   = 15
+
+
+CONFIG_SCHEMA = vol.Schema({
+        DOMAIN: vol.Schema({
+            vol.Required(CONF_REDIRECT_URI): cv.string,
+            vol.Required(CONF_CLIENT_ID): cv.string,
+            vol.Required(CONF_CLIENT_SECRET): cv.string,
+            vol.Optional(CONF_CATEGORIES, default=[]): vol.All(cv.ensure_list, [cv.string])
+        }),
+    }, extra=vol.ALLOW_EXTRA)
+
 
 #Allow insecure transport for OAuth callback url.
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
