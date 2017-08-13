@@ -235,6 +235,8 @@ class NibeSystem(object):
     def update_categories(self):
         sensors = set()
 
+        _LOGGER.info("Requesting categories on system {}".format(self.system['systemId']))
+
         categories = self.get('serviceinfo/categories')
 
         for category in categories:
