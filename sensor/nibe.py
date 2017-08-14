@@ -24,7 +24,7 @@ PLATFORM_SCHEMA = vol.Schema({
 
 SCALE = {
         '°C' : { 'scale' : 10,  'unit': TEMP_CELSIUS, 'icon': None },
-        'A'  : { 'scale' : 10,  'unit': 'A'         , 'icon': None },
+        'A'  : { 'scale' : 10,  'unit': 'A'         , 'icon': 'mdi:power-plug' },
         'DM' : { 'scale' : 10,  'unit': 'DM'        , 'icon': None },
         'kW' : { 'scale' : 100, 'unit': 'kW'        , 'icon': None },
         'Hz' : { 'scale' : 1  , 'unit': 'Hz'        , 'icon': 'mdi:update' },
