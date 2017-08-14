@@ -40,6 +40,8 @@ CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
 CONF_REDIRECT_URI   = 'redirect_uri'
 CONF_CATEGORIES     = 'categories'
+CONF_SYSTEMS        = 'systems'
+CONF_SYSTEM         = 'system'
 
 BASE                = 'https://api.nibeuplink.com'
 SCOPE               = [ 'READSYSTEM' ]
@@ -57,13 +59,20 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=30)
 MAX_REQUEST_PARAMETERS   = 15
 
 
-CONFIG_SCHEMA = vol.Schema({
-        DOMAIN: vol.Schema({
+SYSTEM_SCHEMA = vol.Schema({
+        vol.Required(CONF_SYSTEM): cv.string,
+        vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string])
+    })
+
+NIBE_SCHEMA = vol.Schema({
             vol.Required(CONF_REDIRECT_URI): cv.string,
             vol.Required(CONF_CLIENT_ID): cv.string,
             vol.Required(CONF_CLIENT_SECRET): cv.string,
-            vol.Optional(CONF_CATEGORIES, default=[]): vol.All(cv.ensure_list, [cv.string])
-        }),
+            vol.Optional(CONF_SYSTEMS): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
+    })
+
+CONFIG_SCHEMA = vol.Schema({
+        DOMAIN: NIBE_SCHEMA
     }, extra=vol.ALLOW_EXTRA)
 
 
@@ -89,8 +98,7 @@ class NibeUplink(object):
         self.hass       = hass
         self.store      = hass.config.path('nibe.pickle')
         self.systems    = {}
-        self.redirect   = config[DOMAIN].get(CONF_REDIRECT_URI)
-        self.config     = config[DOMAIN] 
+        self.config     = config[DOMAIN]
         self.parameters = {}
 
         token = self.token_read()
@@ -105,7 +113,7 @@ class NibeUplink(object):
 
         self.session = OAuth2Session(
                 client_id            = client_id,
-                redirect_uri         = self.redirect,
+                redirect_uri         = self.config.get(CONF_REDIRECT_URI),
                 auto_refresh_url     = TOKEN_URL,
                 auto_refresh_kwargs  = extra,
                 scope                = SCOPE,
@@ -140,7 +148,7 @@ class NibeUplink(object):
                                 hass,
                                 "Nibe Uplink Code",
                                 callback    = config_callback,
-                                description = AUTH_STR.format(self.redirect),
+                                description = AUTH_STR.format(self.config.get(CONF_REDIRECT_URI)),
                                 link_name   = "Authorize",
                                 link_url    = auth_uri,
                                 fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}]
@@ -155,9 +163,27 @@ class NibeUplink(object):
         _LOGGER.info("Requesting systems")
         systems = self.get('systems')
 
+        configs = None
+        if self.config.get(CONF_SYSTEMS):
+            configs  = {
+                str(system[CONF_SYSTEM]): system
+                for system in self.config.get(CONF_SYSTEMS)
+            }
+        else:
+            configs = {
+                str(system['systemId']) : None
+                for system in systems['objects']
+            }
+
         self.systems = {
-                system['systemId'] : NibeSystem(self.hass, self, system, self.config) for system in systems['objects']
+            str(system['systemId']) : NibeSystem(self.hass,
+                                                 self,
+                                                 system,
+                                                 configs.get(str(system['systemId']))
+                                      )
+            for system in systems['objects'] if str(system['systemId']) in configs
         }
+
 
     def get(self, uri, params = {}):
         if not self.session.authorized:
@@ -240,6 +266,11 @@ class NibeSystem(object):
         categories = self.get('serviceinfo/categories')
 
         for category in categories:
+            # Filter categories based on config if a category segment exist
+            if self.config and \
+               self.config.get(CONF_CATEGORIES) != None and \
+               category['categoryId'] not in self.config.get(CONF_CATEGORIES):
+                continue
 
             self.categories[category['categoryId']] = category
 
@@ -257,7 +288,7 @@ class NibeSystem(object):
             self.create_group(parameters, category)
 
 
-        discovery_info = [ { 'systemId'   : self.system['systemId'],
+        discovery_info = [ { 'systemId'   : str(self.system['systemId']),
                              'parameterId': sensor
                            } for sensor in sensors
                          ]
