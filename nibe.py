@@ -234,6 +234,7 @@ class NibeSystem(object):
                         self.system['productName'],
                         user_defined = False,
                         view = True,
+                        icon = 'mdi:nest-thermostat',
                         entity_ids = [g.entity_id for g in self.groups]
                      )
 
