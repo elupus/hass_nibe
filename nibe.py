@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import pickle
-import requests
 import sys
 import time
 
@@ -26,9 +25,6 @@ from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 import homeassistant.loader as loader
-
-from requests_oauthlib import OAuth2Session
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,6 +106,8 @@ class NibeUplink(object):
             'client_id'    : client_id,
             'client_secret': client_secret,
         }
+
+        from requests_oauthlib import OAuth2Session
 
         self.session = OAuth2Session(
                 client_id            = client_id,
