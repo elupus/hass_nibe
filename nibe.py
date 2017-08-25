@@ -151,7 +151,8 @@ class NibeUplink(object):
                                 description = AUTH_STR.format(self.config.get(CONF_REDIRECT_URI)),
                                 link_name   = "Authorize",
                                 link_url    = auth_uri,
-                                fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}]
+                                fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}],
+                                submit_caption = 'Set Url'
                              )
 
         else:
