@@ -132,9 +132,9 @@ class NibeUplink(object):
                                 authorization_response = data['url']
                             )
 
-                    request_done(config_request)
+                    request_done(hass, config_request)
                 except:
-                    notify_errors(config_request, "An error occured: %s" % sys.exc_info()[0])
+                    notify_errors(hass, config_request, "An error occured: %s" % sys.exc_info()[0])
                     return
 
                 self.token_write(token)
@@ -143,7 +143,6 @@ class NibeUplink(object):
 
 
             config_request = request_config(
-                                hass,
                                 "Nibe Uplink Code",
                                 callback    = config_callback,
                                 description = AUTH_STR.format(self.config.get(CONF_REDIRECT_URI)),
