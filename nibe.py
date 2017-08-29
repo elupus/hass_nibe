@@ -15,7 +15,6 @@ import time
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
-from homeassistant.components.configurator import (request_config, notify_errors, request_done)
 from homeassistant.const import (CONF_ACCESS_TOKEN,
                                  CONF_EMAIL,
                                  CONF_PASSWORD,
@@ -132,9 +131,9 @@ class NibeUplink(object):
                                 authorization_response = data['url']
                             )
 
-                    request_done(hass, config_request)
+                    hass.components.configurator.request_done(config_request)
                 except:
-                    notify_errors(hass, config_request, "An error occured: %s" % sys.exc_info()[0])
+                    hass.components.configurator.notify_errors(config_request, "An error occured: %s" % sys.exc_info()[0])
                     return
 
                 self.token_write(token)
@@ -142,7 +141,7 @@ class NibeUplink(object):
 
 
 
-            config_request = request_config(
+            config_request = hass.components.configurator.request_config(
                                 "Nibe Uplink Code",
                                 callback    = config_callback,
                                 description = AUTH_STR.format(self.config.get(CONF_REDIRECT_URI)),
