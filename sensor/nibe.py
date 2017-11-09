@@ -107,7 +107,6 @@ class NibeSensor(Entity):
         data = yield from self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id)
 
         if data:
-
             scale = SCALES.get(data['unit'], SCALE_DEFAULT)
 
             self._name  = data['title']
