@@ -31,7 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN              = 'nibe'
 
-REQUIREMENTS        = ['requests', 'requests_oauthlib', 'nibeuplink']
+REQUIREMENTS        = ['nibeuplink']
 
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
