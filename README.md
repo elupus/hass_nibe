@@ -21,7 +21,7 @@ nibe:
 
     systems:
         - system: <required system identifier>
-
+          writeaccess: false # set to true to support climate write (needs new tokens)
           categories: # optional list of categories to retrieve, leave empty for all
             - <category identifer>
 
