@@ -6,7 +6,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, ATTR_HUMIDITY)
-from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE)
+from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_NAME)
 from homeassistant.loader import get_component
 
 # Cheaty way to import since paths for custom components don't seem to work with normal imports
@@ -26,6 +26,7 @@ CONF_ADJUST    = 'adjust'
 
 PLATFORM_SCHEMA.extend({
         vol.Required(CONF_SYSTEM) : cv.positive_int,
+        vol.Required(CONF_NAME)   : cv.string,
         vol.Optional(CONF_CURRENT): cv.positive_int,
         vol.Optional(CONF_TARGET) : cv.positive_int,
         vol.Optional(CONF_ADJUST) : cv.positive_int,
@@ -38,13 +39,14 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     if (discovery_info):
         pass
     else:
-        sensors = [ NibeClimate(config.get(CONF_SYSTEM), config.get(CONF_CURRENT), config.get(CONF_TARGET), config.get(CONF_ADJUST)) ]
+        sensors = [ NibeClimate(config.get(CONF_NAME), config.get(CONF_SYSTEM), config.get(CONF_CURRENT), config.get(CONF_TARGET), config.get(CONF_ADJUST)) ]
 
     async_add_devices(sensors, True)
 
 
 class NibeClimate(ClimateDevice):
-    def __init__(self, system_id, current_id, target_id, adjust_id):
+    def __init__(self, name, system_id, current_id, target_id, adjust_id):
+        self._name         = name
         self._system_id    = system_id
         self._current_id   = current_id
         self._target_id    = target_id
@@ -53,6 +55,10 @@ class NibeClimate(ClimateDevice):
         self._current      = None
         self._target       = None
         self._adjust       = None
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def current_temperature(self):
