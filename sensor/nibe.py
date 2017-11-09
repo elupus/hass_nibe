@@ -1,13 +1,16 @@
 import logging
 import time
+import asyncio
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
+from homeassistant.core import callback
 from homeassistant.helpers.entity import (Entity, generate_entity_id)
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 DEPENDENCIES = ['nibe']
 DOMAIN       = 'nibe'
@@ -16,6 +19,8 @@ _LOGGER      = logging.getLogger(__name__)
 
 CONF_SYSTEM    = 'system'
 CONF_PARAMETER = 'parameter'
+
+SIGNAL_UPDATE  = 'nibe_update'
 
 PLATFORM_SCHEMA = vol.Schema({
         vol.Required(CONF_SYSTEM): cv.string,
@@ -39,19 +44,19 @@ SCALE_DEFAULT = { 'scale': None, 'unit': None, 'icon': None }
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     if (discovery_info):
-        sensors = [ NibeSensor(hass, sensor['systemId'], sensor['parameterId']) for sensor in discovery_info ]
+        sensors = [ NibeSensor(hass, parameter) for parameter in discovery_info ]
     else:
-        sensors = [ NibeSensor(hass, config.get(CONF_SYSTEM), config.get(CONF_PARAMETER)) ]
+        parameter = hass.data[DOMAIN].uplink.get_parameter(config.get(CONF_SYSTEM), config.get(CONF_PARAMETER))
+        sensors = [ NibeSensor(hass, parameter) ]
 
     add_devices(sensors, True)
 
 class NibeSensor(Entity):
-    def __init__(self, hass, system, parameter):
+    def __init__(self, hass, parameter):
         """Initialize the Nibe sensor."""
         self._state      = None
-        self._system     = system
         self._parameter  = parameter
-        self._name       = "{}_{}".format(system, parameter)
+        self._name       = "{}_{}".format(parameter.system_id, parameter.parameter_id)
         self._unit       = None
         self._data       = None
         self._icon       = None
@@ -59,6 +64,14 @@ class NibeSensor(Entity):
                                 ENTITY_ID_FORMAT,
                                 self._name,
                                 hass=hass)
+
+    @asyncio.coroutine
+    def async_added_to_hass(self):
+        async_dispatcher_connect(self.hass, SIGNAL_UPDATE, self.update_callback)
+
+    @callback
+    def update_callback(self):
+        self.async_schedule_update_ha_state(True)
 
     @property
     def name(self):
@@ -78,6 +91,11 @@ class NibeSensor(Entity):
     @property
     def icon(self):
         return self._icon
+
+    @property
+    def should_poll(self):
+        """No polling needed."""
+        return False
 
     @property
     def device_state_attributes(self):
@@ -104,7 +122,7 @@ class NibeSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
 
-        data = self.hass.data[DOMAIN].get_parameter(self._system, self._parameter)
+        data = self._parameter.data
         if data:
 
             self._name  = data['title']
