@@ -130,12 +130,12 @@ class NibeUplink(object):
 
 
     async def load(self):
-        await self.uplink.update_systems()
+        systems = await self.uplink.get_systems()
 
         if self.config.get(CONF_SYSTEMS):
             self.systems = [ NibeSystem(self.hass,
                                         self.uplink,
-                                        self.uplink.get_system(config[CONF_SYSTEM]),
+                                        config[CONF_SYSTEM],
                                         config)
                              for config in self.config.get(CONF_SYSTEMS)
                            ]
@@ -144,7 +144,7 @@ class NibeUplink(object):
                                         self.uplink,
                                         system,
                                         None)
-                             for system in self.uplink.systems.values()
+                             for system in systems
                            ]
         tasks = [ system.load() for system in self.systems ]
 
@@ -158,7 +158,7 @@ class NibeSystem(object):
         self.config     = config
         self.system     = system
         self.uplink     = uplink
-        self.prefix     = "{}_".format(system.system_id)
+        self.prefix     = "{}_".format(system['systemId'])
         self.groups     = []
 
         group = loader.get_component('group')
@@ -174,47 +174,47 @@ class NibeSystem(object):
 
         return await group.Group.async_create_group(
                 self.hass,
-                "{} - {}".format(self.system.data['productName'],
-                                 category.name),
+                "{} - {}".format(self.system['productName'],
+                                 category['name']),
                 entity_ids = entity_ids)
 
     async def load(self):
         sensors = set()
 
-        await self.uplink.update_categories(self.system.system_id)
+        data = await self.uplink.get_categories(self.system['systemId'])
         group_tasks = []
-        for category in self.system.categories.values():
+        for category in data:
             # Filter categories based on config if a category segment exist
             if self.config and \
                self.config.get(CONF_CATEGORIES) != None and \
-               category.category_id not in self.config.get(CONF_CATEGORIES):
+               category['category_id'] not in self.config.get(CONF_CATEGORIES):
                 continue
 
-            for parameter_id in category.parameter_ids:
-                sensors.add(parameter_id)
+            parameter_ids = [c['parameterId'] for c in category['parameters']]
+            sensors.update(parameter_ids)
 
-            group_tasks.append(self.create_group(category.parameter_ids, category))
+            group_tasks.append(self.create_group(parameter_ids, category))
 
         self.groups = await asyncio.gather(*group_tasks, loop = self.hass.loop)
 
         group = loader.get_component('group')
         await group.Group.async_create_group(
             self.hass,
-            self.system.data['productName'],
+            self.system['productName'],
             user_defined = False,
             view = True,
             icon = 'mdi:nest-thermostat',
             entity_ids = [g.entity_id for g in self.groups])
 
-        discovery_info = [ { 'system_id': self.system.system_id, 'parameter_id': sensor } for sensor in sensors ]
+        discovery_info = [ { 'system_id': self.system['systemId'], 'parameter_id': sensor } for sensor in sensors ]
 
-        await discovery.async_load_platform(
+        self.hass.async_add_job(discovery.async_load_platform(
             self.hass,
             'sensor',
             DOMAIN,
-            discovery_info)
+            discovery_info))
 
-        async_track_time_interval(self.hass, self.update, MIN_TIME_BETWEEN_UPDATES)
+        #async_track_time_interval(self.hass, self.update, MIN_TIME_BETWEEN_UPDATES)
 
     async def update(self, call):
         _LOGGER.debug("Refreshing system {}".format(self.system.system_id))

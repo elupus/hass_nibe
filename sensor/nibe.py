@@ -6,7 +6,7 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant.core import callback
-from homeassistant.helpers.entity import (Entity, generate_entity_id)
+from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
@@ -41,14 +41,16 @@ SCALE = {
 
 SCALE_DEFAULT = { 'scale': None, 'unit': None, 'icon': None }
 
+@asyncio.coroutine
+def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
-def setup_platform(hass, config, add_devices, discovery_info=None):
+    sensors = None
     if (discovery_info):
         sensors = [ NibeSensor(hass, parameter['system_id'], parameter['parameter_id']) for parameter in discovery_info ]
     else:
         sensors = [ NibeSensor(hass, config.get(CONF_SYSTEM), config.get(CONF_PARAMETER)) ]
 
-    add_devices(sensors, True)
+    async_add_devices(sensors, True)
 
 class NibeSensor(Entity):
     def __init__(self, hass, system_id, parameter_id):
@@ -60,7 +62,7 @@ class NibeSensor(Entity):
         self._unit         = None
         self._data         = None
         self._icon         = None
-        self.entity_id     = generate_entity_id(
+        self.entity_id     = async_generate_entity_id(
                                 ENTITY_ID_FORMAT,
                                 self._name,
                                 hass=hass)
@@ -95,7 +97,7 @@ class NibeSensor(Entity):
     @property
     def should_poll(self):
         """No polling needed."""
-        return False
+        return True
 
     @property
     def device_state_attributes(self):
@@ -116,13 +118,15 @@ class NibeSensor(Entity):
         else:
             return True
 
-    def update(self):
+    @asyncio.coroutine
+    def async_update(self):
         """Fetch new state data for the sensor.
 
         This is the only method that should fetch new data for Home Assistant.
         """
 
-        data = self.hass.data[DOMAIN].uplink.get_parameter(self._system_id, self._parameter_id).data
+        data = yield from self.hass.data[DOMAIN].uplink.get_parameter_data(self._system_id, self._parameter_id)
+        print(data)
         if data:
 
             self._name  = data['title']
