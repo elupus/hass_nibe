@@ -214,7 +214,7 @@ class NibeSystem(object):
             discovery_info)
 
         # all loaded and well, let's run the background updater. Seems hass.async_add_job can't handle this
-        self.hass.loop.run_until_complete(self.run)
+        self.hass.loop.ensure_future(self.run())
 
     async def run(self):
         while True:
