@@ -86,21 +86,23 @@ class NibeClimate(ClimateDevice):
     def max_humidity(self):
         return 10
 
+    @asyncio.coroutine
     def async_set_temperature(self, **kwargs):
         data = kwargs.get(ATTR_TEMPERATURE)
         if data is None:
             return
 
         uplink = self.hass.data[DATA_NIBE]['uplink']
-        uplink.set_parameter(self._system_id, self._target_id, data)
+        yield from uplink.set_parameter(self._system_id, self._target_id, data)
 
+    @asyncio.coroutine
     def async_set_humidity(self, **kwargs):
         data = kwargs.get(ATTR_HUMIDITY)
         if data is None:
             return
 
         uplink = self.hass.data[DATA_NIBE]['uplink']
-        uplink.set_parameter(self._system_id, self._adjust_id, data)
+        yield from uplink.set_parameter(self._system_id, self._adjust_id, data)
 
 
     @asyncio.coroutine
