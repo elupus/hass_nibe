@@ -16,4 +16,17 @@ nibe:
     client_secret: <client secret from nibe uplink>
     redirect_uri: <the redirect url you have entered at nibe uplink configuration>
 
+    systems:
+        - system: 0 <required system identifier>
+
+          categories: <optional list of categories to retrieve, leave empty for all>
+            - category_1
+
+          statuses: <optional list of status screens to retrieve, leave empty for all>
+            - status_1
+
+          parameters: <optional list of additional parameters to retrieve>
+            - 1
+            - 2
+
 ```

@@ -8,6 +8,7 @@ import logging
 import sys
 import time
 import asyncio
+import json
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
@@ -24,6 +25,7 @@ import homeassistant.loader as loader
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.components import persistent_notification
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +37,8 @@ CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
 CONF_REDIRECT_URI   = 'redirect_uri'
 CONF_CATEGORIES     = 'categories'
+CONF_PARAMETERS     = 'parameters'
+CONF_STATUSES       = 'statuses'
 CONF_SYSTEMS        = 'systems'
 CONF_SYSTEM         = 'system'
 
@@ -52,14 +56,16 @@ MAX_REQUEST_PARAMETERS   = 15
 
 SYSTEM_SCHEMA = vol.Schema({
         vol.Required(CONF_SYSTEM): cv.positive_int,
-        vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string])
+        vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(CONF_PARAMETERS): vol.All(cv.ensure_list, [cv.positive_int])
     })
 
 NIBE_SCHEMA = vol.Schema({
             vol.Required(CONF_REDIRECT_URI): cv.string,
             vol.Required(CONF_CLIENT_ID): cv.string,
             vol.Required(CONF_CLIENT_SECRET): cv.string,
-            vol.Optional(CONF_SYSTEMS): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
+            vol.Optional(CONF_SYSTEMS, default = []): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
     })
 
 CONFIG_SCHEMA = vol.Schema({
@@ -113,6 +119,8 @@ def async_setup(hass, config):
     else:
         hass.data[DOMAIN] = NibeUplink(hass, config, uplink)
 
+    yield from hass.data[DOMAIN].load()
+
     return True
 
 class NibeUplink(object):
@@ -126,44 +134,41 @@ class NibeUplink(object):
         self.config     = config[DOMAIN]
         self.parameters = {}
 
-        hass.add_job(self.load)
-
-
     async def load(self):
-        systems = await self.uplink.get_systems()
 
-        if self.config.get(CONF_SYSTEMS):
-            self.systems = [ NibeSystem(self.hass,
-                                        self.uplink,
-                                        config[CONF_SYSTEM],
-                                        config)
-                             for config in self.config.get(CONF_SYSTEMS)
-                           ]
-        else:
-            self.systems = [ NibeSystem(self.hass,
-                                        self.uplink,
-                                        system,
-                                        None)
-                             for system in systems
-                           ]
+        if not len(self.config.get(CONF_SYSTEMS)):
+            systems = await self.uplink.get_systems()
+            msg = json.dumps(systems, indent=1)
+            persistent_notification.async_create(self.hass, 'No systems selected, please configure one system id of:<br/><br/><pre>{}</pre>'.format(msg) , 'Invalid nibe config', 'invalid_config')
+            return
+
+        self.systems = [ NibeSystem(self.hass,
+                                    self.uplink,
+                                    config[CONF_SYSTEM],
+                                    None,
+                                    config)
+                         for config in self.config.get(CONF_SYSTEMS)
+                       ]
+
         tasks = [ system.load() for system in self.systems ]
 
         await asyncio.gather(*tasks)
 
 
 class NibeSystem(object):
-    def __init__(self, hass, uplink, system, config):
+    def __init__(self, hass, uplink, system_id, system, config):
         self.hass       = hass
         self.parameters = {}
         self.config     = config
+        self.system_id  = system_id
         self.system     = system
         self.uplink     = uplink
-        self.prefix     = "{}_".format(system['systemId'])
+        self.prefix     = "{}_".format(self.system_id)
         self.groups     = []
 
         group = loader.get_component('group')
 
-    async def create_group(self, parameters, category):
+    async def create_group(self, parameters, name):
         group = loader.get_component('group')
 
         entity_ids = [ 'sensor.{}{}'.format(self.prefix,
@@ -175,27 +180,57 @@ class NibeSystem(object):
         return await group.Group.async_create_group(
                 self.hass,
                 "{} - {}".format(self.system['productName'],
-                                 category['name']),
+                                 name),
                 entity_ids = entity_ids)
+
+
+    async def load_parameters(self):
+        sensors = set()
+        sensors.update(self.config.get(CONF_PARAMETERS))
+        return sensors
+
+    async def load_categories(self):
+        sensors = set()
+        data    = await self.uplink.get_categories(self.system_id)
+
+        for x in data:
+            # Filter categories based on config if a category segment exist
+            if len(self.config.get(CONF_CATEGORIES)) and \
+               x['categoryId'] not in self.config.get(CONF_CATEGORIES):
+                continue
+
+            ids = [c['parameterId'] for c in x['parameters']]
+            sensors.update(ids)
+            self.groups.append(await self.create_group(ids, x['name']))
+
+        return sensors
+
+    async def load_status(self):
+        sensors = set()
+        data    = await self.uplink.get_status(self.system_id)
+        print(data)
+        for x in data:
+            ids = [c['parameterId'] for c in x['parameters']]
+            sensors.update(ids)
+            self.groups.append(await self.create_group(ids, x['image']['name']))
+
+        return sensors
+
 
     async def load(self):
         sensors = set()
 
-        data = await self.uplink.get_categories(self.system['systemId'])
-        group_tasks = []
-        for category in data:
-            # Filter categories based on config if a category segment exist
-            if self.config and \
-               self.config.get(CONF_CATEGORIES) != None and \
-               category['category_id'] not in self.config.get(CONF_CATEGORIES):
-                continue
+        if not self.system:
+            self.system = await self.uplink.get_system(self.system_id)
 
-            parameter_ids = [c['parameterId'] for c in category['parameters']]
-            sensors.update(parameter_ids)
+        if CONF_CATEGORIES in self.config:
+            sensors.update(await self.load_categories())
 
-            group_tasks.append(self.create_group(parameter_ids, category))
+        if CONF_PARAMETERS in self.config:
+            sensors.update(await self.load_parameters())
 
-        self.groups = await asyncio.gather(*group_tasks, loop = self.hass.loop)
+        if CONF_STATUSES in self.config:
+            sensors.update(await self.load_status())
 
         group = loader.get_component('group')
         await group.Group.async_create_group(
@@ -204,20 +239,15 @@ class NibeSystem(object):
             user_defined = False,
             view = True,
             icon = 'mdi:nest-thermostat',
+            object_id = 'nibe_' + str(self.system_id),
             entity_ids = [g.entity_id for g in self.groups])
 
         discovery_info = [ { 'system_id': self.system['systemId'], 'parameter_id': sensor } for sensor in sensors ]
 
-        self.hass.async_add_job(discovery.async_load_platform(
-            self.hass,
-            'sensor',
-            DOMAIN,
-            discovery_info))
-
-        #async_track_time_interval(self.hass, self.update, MIN_TIME_BETWEEN_UPDATES)
-
-    async def update(self, call):
-        _LOGGER.debug("Refreshing system {}".format(self.system.system_id))
-        await self.uplink.update_categories(self.system.system_id)
-        async_dispatcher_send(self.hass, SIGNAL_UPDATE)
+        if sensors:
+            self.hass.async_add_job(discovery.async_load_platform(
+                self.hass,
+                'sensor',
+                DOMAIN,
+                discovery_info))
 
