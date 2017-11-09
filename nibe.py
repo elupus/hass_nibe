@@ -26,7 +26,7 @@ from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
-from homeassistant.helpers.entity import Entity, EntityComponent
+from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.core import callback
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
@@ -93,8 +93,31 @@ CONFIG_SCHEMA = vol.Schema({
     }, extra=vol.ALLOW_EXTRA)
 
 
-@asyncio.coroutine
-def async_setup(hass, config):
+async def async_setup_systems(hass, config, uplink):
+
+    if not len(config.get(CONF_SYSTEMS)):
+        systems = await uplink.get_systems()
+        msg = json.dumps(systems, indent=1)
+        persistent_notification.async_create(hass, 'No systems selected, please configure one system id of:<br/><br/><pre>{}</pre>'.format(msg) , 'Invalid nibe config', 'invalid_config')
+        return
+
+    systems = [ NibeSystem(hass,
+                           uplink,
+                           config[CONF_SYSTEM],
+                           config)
+                     for config in config.get(CONF_SYSTEMS)
+              ]
+
+    hass.data[DOMAIN] = {}
+    hass.data[DOMAIN]['systems'] = systems
+    hass.data[DOMAIN]['uplink']  = uplink
+
+    tasks = [ system.load() for system in systems ]
+
+    await asyncio.gather(*tasks)
+
+
+async def async_setup(hass, config):
     """Setup nibe uplink component"""
 
     store = hass.config.path('nibe.json')
@@ -125,7 +148,7 @@ def async_setup(hass, config):
                 hass.components.configurator.notify_errors(config_request, "An error occured: %s" % sys.exc_info()[0])
                 return
 
-            hass.data[DOMAIN] = NibeUplink(hass, config, uplink)
+            hass.async_add_job(async_setup_systems(hass, config[DOMAIN], uplink))
 
         config_request = hass.components.configurator.async_request_config(
                             "Nibe Uplink Code",
@@ -137,51 +160,18 @@ def async_setup(hass, config):
                             submit_caption = 'Set Url'
                          )
     else:
-        hass.data[DOMAIN] = NibeUplink(hass, config, uplink)
-
-    yield from hass.data[DOMAIN].load()
+        hass.async_add_job(async_setup_systems(hass, config[DOMAIN], uplink))
 
     return True
 
-class NibeUplink(object):
-    """Nibe System class."""
-
-    def __init__(self, hass, config, uplink):
-        """Initialize the system."""
-        self.hass       = hass
-        self.uplink     = uplink
-        self.systems    = []
-        self.config     = config[DOMAIN]
-        self.parameters = {}
-
-    async def load(self):
-
-        if not len(self.config.get(CONF_SYSTEMS)):
-            systems = await self.uplink.get_systems()
-            msg = json.dumps(systems, indent=1)
-            persistent_notification.async_create(self.hass, 'No systems selected, please configure one system id of:<br/><br/><pre>{}</pre>'.format(msg) , 'Invalid nibe config', 'invalid_config')
-            return
-
-        self.systems = [ NibeSystem(self.hass,
-                                    self.uplink,
-                                    config[CONF_SYSTEM],
-                                    None,
-                                    config)
-                         for config in self.config.get(CONF_SYSTEMS)
-                       ]
-
-        tasks = [ system.load() for system in self.systems ]
-
-        await asyncio.gather(*tasks)
-
 
 class NibeSystem(object):
-    def __init__(self, hass, uplink, system_id, system, config):
+    def __init__(self, hass, uplink, system_id, config):
         self.hass       = hass
         self.parameters = {}
         self.config     = config
         self.system_id  = system_id
-        self.system     = system
+        self.system     = None
         self.uplink     = uplink
         self.prefix     = "{}_".format(self.system_id)
         self.groups     = []
@@ -335,7 +325,7 @@ class NibeSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
 
-        data = yield from self.hass.data[DOMAIN].uplink.get_parameter(self._system_id, self._parameter_id)
+        data = yield from self.hass.data[DOMAIN]['uplink'].get_parameter(self._system_id, self._parameter_id)
         print(data)
         if data:
 
