@@ -9,7 +9,6 @@ import sys
 import time
 import asyncio
 import json
-
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
@@ -55,7 +54,7 @@ AUTH_STR            = ("Navigate to provided authorization link, this"
                        " redirected too here.")
 
 
-SCALE = {
+SCALES = {
         '°C'        : { 'scale' : 10,   'unit': TEMP_CELSIUS,   'icon': None },
         'A'         : { 'scale' : 10,   'unit': 'A',            'icon': 'mdi:power-plug' },
         'DM'        : { 'scale' : 10,   'unit': 'DM',           'icon': None },
@@ -65,7 +64,6 @@ SCALE = {
         'h'         : { 'scale' : 1,    'unit': 'h',            'icon': 'mdi:clock' },
         'öre/kWh'   : { 'scale' : 100,  'unit': 'kr/MWh',       'icon': None },
 }
-
 
 SCALE_DEFAULT = { 'scale': None, 'unit': None, 'icon': None }
 
@@ -92,6 +90,16 @@ CONFIG_SCHEMA = vol.Schema({
         DOMAIN: NIBE_SCHEMA
     }, extra=vol.ALLOW_EXTRA)
 
+def parse_parameter_data(data, scale):
+    if data:
+        if data['displayValue'] == '--':
+            return None
+        elif scale['scale']:
+            return data['rawValue'] / scale['scale']
+        else:
+            return data['displayValue']
+
+    return None
 
 async def async_setup_systems(hass, config, uplink):
 
