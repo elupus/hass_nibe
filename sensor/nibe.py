@@ -125,7 +125,7 @@ class NibeSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
 
-        data = yield from self.hass.data[DOMAIN].uplink.get_parameter_data(self._system_id, self._parameter_id)
+        data = yield from self.hass.data[DOMAIN].uplink.get_parameter(self._system_id, self._parameter_id)
         print(data)
         if data:
 
