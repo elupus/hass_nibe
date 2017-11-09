@@ -5,10 +5,8 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
-from homeassistant.components.climate import (
-    ClimateDevice, PLATFORM_SCHEMA, ATTR_FAN_MODE, ATTR_FAN_LIST,
-    ATTR_OPERATION_MODE, ATTR_OPERATION_LIST)
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, ATTR_HUMIDITY)
+from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE)
 from homeassistant.loader import get_component
 
 # Cheaty way to import since paths for custom components don't seem to work with normal imports
@@ -87,6 +85,23 @@ class NibeClimate(ClimateDevice):
     @property
     def max_humidity(self):
         return 10
+
+    def async_set_temperature(self, **kwargs):
+        data = kwargs.get(ATTR_TEMPERATURE)
+        if data is None:
+            return
+
+        uplink = self.hass.data[DATA_NIBE]['uplink']
+        uplink.set_parameter(self._system_id, self._target_id, data)
+
+    def async_set_humidity(self, **kwargs):
+        data = kwargs.get(ATTR_HUMIDITY)
+        if data is None:
+            return
+
+        uplink = self.hass.data[DATA_NIBE]['uplink']
+        uplink.set_parameter(self._system_id, self._adjust_id, data)
+
 
     @asyncio.coroutine
     def async_update(self):

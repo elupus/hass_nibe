@@ -39,6 +39,7 @@ REQUIREMENTS        = ['nibeuplink']
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
 CONF_REDIRECT_URI   = 'redirect_uri'
+CONF_WRITEACCESS    = 'writeaccess'
 CONF_CATEGORIES     = 'categories'
 CONF_PARAMETERS     = 'parameters'
 CONF_STATUSES       = 'statuses'
@@ -83,6 +84,8 @@ NIBE_SCHEMA = vol.Schema({
             vol.Required(CONF_REDIRECT_URI): cv.string,
             vol.Required(CONF_CLIENT_ID): cv.string,
             vol.Required(CONF_CLIENT_SECRET): cv.string,
+            vol.Required(CONF_CLIENT_SECRET): cv.string,
+            vol.Optional(CONF_WRITEACCESS, default = False): cv.boolean,
             vol.Optional(CONF_SYSTEMS, default = []): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
     })
 
@@ -135,12 +138,19 @@ async def async_setup(hass, config):
 
     from nibeuplink import Uplink
 
+    scope = None
+    if config[DOMAIN].get(CONF_WRITEACCESS):
+        scope = ['READSYSTEM', 'WRITESYSTEM']
+    else:
+        scope = ['READSYSTEM']
+
     uplink = Uplink(
             client_id            = config[DOMAIN].get(CONF_CLIENT_ID),
             client_secret        = config[DOMAIN].get(CONF_CLIENT_SECRET),
             redirect_uri         = config[DOMAIN].get(CONF_REDIRECT_URI),
             access_data          = load_json(store),
-            access_data_write    = save_json_local
+            access_data_write    = save_json_local,
+            scope                = scope
     )
 
     if not uplink.access_data:
