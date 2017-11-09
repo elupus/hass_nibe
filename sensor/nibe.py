@@ -21,9 +21,10 @@ CONF_PARAMETER = 'parameter'
 
 DATA_NIBE      = 'nibe'
 
+
 PLATFORM_SCHEMA = vol.Schema({
-        vol.Required(CONF_SYSTEM): cv.string,
-        vol.Required(CONF_PARAMETER): cv.string,
+        vol.Required(CONF_SYSTEM): cv.positive_int,
+        vol.Required(CONF_PARAMETER): cv.positive_int,
     }, extra=vol.ALLOW_EXTRA)
 
 @asyncio.coroutine
