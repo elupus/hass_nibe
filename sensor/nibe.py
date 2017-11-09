@@ -44,23 +44,23 @@ SCALE_DEFAULT = { 'scale': None, 'unit': None, 'icon': None }
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     if (discovery_info):
-        sensors = [ NibeSensor(hass, parameter) for parameter in discovery_info ]
+        sensors = [ NibeSensor(hass, parameter['system_id'], parameter['parameter_id']) for parameter in discovery_info ]
     else:
-        parameter = hass.data[DOMAIN].uplink.get_parameter(config.get(CONF_SYSTEM), config.get(CONF_PARAMETER))
-        sensors = [ NibeSensor(hass, parameter) ]
+        sensors = [ NibeSensor(hass, config.get(CONF_SYSTEM), config.get(CONF_PARAMETER)) ]
 
     add_devices(sensors, True)
 
 class NibeSensor(Entity):
-    def __init__(self, hass, parameter):
+    def __init__(self, hass, system_id, parameter_id):
         """Initialize the Nibe sensor."""
-        self._state      = None
-        self._parameter  = parameter
-        self._name       = "{}_{}".format(parameter.system_id, parameter.parameter_id)
-        self._unit       = None
-        self._data       = None
-        self._icon       = None
-        self.entity_id  = generate_entity_id(
+        self._state        = None
+        self._system_id    = system_id
+        self._parameter_id = parameter_id
+        self._name         = "{}_{}".format(system_id, parameter_id)
+        self._unit         = None
+        self._data         = None
+        self._icon         = None
+        self.entity_id     = generate_entity_id(
                                 ENTITY_ID_FORMAT,
                                 self._name,
                                 hass=hass)
@@ -122,7 +122,7 @@ class NibeSensor(Entity):
         This is the only method that should fetch new data for Home Assistant.
         """
 
-        data = self._parameter.data
+        data = self.hass.data[DOMAIN].uplink.get_parameter(self._system_id, self._parameter_id).data
         if data:
 
             self._name  = data['title']

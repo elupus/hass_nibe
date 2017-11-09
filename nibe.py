@@ -205,7 +205,7 @@ class NibeSystem(object):
             icon = 'mdi:nest-thermostat',
             entity_ids = [g.entity_id for g in self.groups])
 
-        discovery_info = [ self.uplink.get_parameter(self.system.system_id, sensor) for sensor in sensors ]
+        discovery_info = [ { 'system_id': self.system.system_id, 'parameter_id': sensor } for sensor in sensors ]
 
         await discovery.async_load_platform(
             self.hass,
