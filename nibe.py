@@ -23,6 +23,7 @@ from homeassistant.util import Throttle
 import homeassistant.loader as loader
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_interval
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ AUTH_STR            = ("Navigate to provided authorization link, this"
                        " Nibe Uplink. Enter the complete url you where"
                        " redirected too here.")
 
-MIN_TIME_BETWEEN_UPDATES = 15
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=8)
 MAX_REQUEST_PARAMETERS   = 15
 
 
@@ -213,13 +214,10 @@ class NibeSystem(object):
             DOMAIN,
             discovery_info)
 
-        # all loaded and well, let's run the background updater. Seems hass.async_add_job can't handle this
-        self.hass.loop.ensure_future(self.run())
+        async_track_time_interval(self.hass, self.update, MIN_TIME_BETWEEN_UPDATES)
 
-    async def run(self):
-        while True:
-            _LOGGER.debug("Refreshing system {}".format(self.system.system_id))
-            await self.uplink.update_categories(self.system.system_id)
-            async_dispatcher_send(self.hass, SIGNAL_UPDATE)
-            await asyncio.sleep(MIN_TIME_BETWEEN_UPDATES)
+    async def update(self, call):
+        _LOGGER.debug("Refreshing system {}".format(self.system.system_id))
+        await self.uplink.update_categories(self.system.system_id)
+        async_dispatcher_send(self.hass, SIGNAL_UPDATE)
 
