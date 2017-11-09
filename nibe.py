@@ -160,18 +160,18 @@ async def async_setup(hass, config):
 
         async def config_callback(data):
             try:
-                await uplink.get_access_token(uplink.get_code_from_url(data))
-                hass.components.configurator.request_done(config_request)
+                await uplink.get_access_token(uplink.get_code_from_url(data['url']))
+                hass.components.configurator.async_request_done(config_request)
             except:
-                hass.components.configurator.notify_errors(config_request, "An error occured: %s" % sys.exc_info()[0])
-                return
+                hass.components.configurator.async_notify_errors(config_request, "An error occured: %s" % sys.exc_info()[0])
+                raise
 
             hass.async_add_job(async_setup_systems(hass, config[DOMAIN], uplink))
 
         config_request = hass.components.configurator.async_request_config(
                             "Nibe Uplink Code",
                             callback    = config_callback,
-                            description = AUTH_STR.format(self.config.get(CONF_REDIRECT_URI)),
+                            description = AUTH_STR.format(config.get(CONF_REDIRECT_URI)),
                             link_name   = "Authorize",
                             link_url    = auth_uri,
                             fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}],
