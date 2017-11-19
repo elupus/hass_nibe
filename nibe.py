@@ -55,20 +55,6 @@ AUTH_STR            = ("Navigate to provided authorization link, this"
                        " redirected too here.")
 
 
-SCALES = {
-        '°C'        : { 'scale' : 10,   'unit': TEMP_CELSIUS,   'icon': None },
-        'A'         : { 'scale' : 10,   'unit': 'A',            'icon': 'mdi:power-plug' },
-        'DM'        : { 'scale' : 10,   'unit': 'DM',           'icon': None },
-        'kW'        : { 'scale' : 100,  'unit': 'kW',           'icon': None },
-        'Hz'        : { 'scale' : 10,   'unit': 'Hz',           'icon': 'mdi:update' },
-        '%'         : { 'scale' : 1,    'unit': '%',            'icon': None },
-        'h'         : { 'scale' : 1,    'unit': 'h',            'icon': 'mdi:clock' },
-        'öre/kWh'   : { 'scale' : 100,  'unit': 'kr/MWh',       'icon': None },
-}
-
-SCALE_DEFAULT = { 'scale': None, 'unit': None, 'icon': None }
-
-
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=8)
 MAX_REQUEST_PARAMETERS   = 15
 
@@ -92,17 +78,6 @@ NIBE_SCHEMA = vol.Schema({
 CONFIG_SCHEMA = vol.Schema({
         DOMAIN: NIBE_SCHEMA
     }, extra=vol.ALLOW_EXTRA)
-
-def parse_parameter_data(data, scale):
-    if data:
-        if data['displayValue'] == '--':
-            return None
-        elif scale['scale']:
-            return data['rawValue'] / scale['scale']
-        else:
-            return data['displayValue']
-
-    return None
 
 async def async_setup_systems(hass, config, uplink):
 

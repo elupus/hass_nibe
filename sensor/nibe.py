@@ -8,10 +8,11 @@ from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.loader import get_component
 
-# Cheaty way to import since paths for custom components don't seem to work with normal imports
-SCALE_DEFAULT = get_component('nibe').__dict__['SCALE_DEFAULT']
-SCALES        = get_component('nibe').__dict__['SCALES']
-parse_parameter_data = get_component('nibe').__dict__['parse_parameter_data']
+UNIT_ICON = {
+        'A' : 'mdi:power-plug',
+        'Hz': 'mdi:update',
+        'h' : 'mdi:clock',
+}
 
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)
@@ -107,12 +108,10 @@ class NibeSensor(Entity):
         data = yield from self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id)
 
         if data:
-            scale = SCALES.get(data['unit'], SCALE_DEFAULT)
-
             self._name  = data['title']
-            self._icon  = scale['icon']
-            self._unit  = scale['unit']
-            self._state = parse_parameter_data(data, scale)
+            self._icon  = UNIT_ICON.get(data['unit'], None)
+            self._unit  = data['unit']
+            self._state = data['value']
             self._data  = data
 
         else:
