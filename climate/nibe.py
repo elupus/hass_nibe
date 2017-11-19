@@ -62,6 +62,7 @@ class NibeClimate(ClimateDevice):
         self._target       = None
         self._adjust       = None
 
+
     @property
     def name(self):
         return self._name

@@ -169,11 +169,11 @@ class NibeSystem(object):
         self.prefix     = "nibe_{}_".format(self.system_id)
         self.groups     = []
 
-    async def create_group(self, parameters, name):
+    async def create_group(self, name, sensors):
         group = loader.get_component('group')
 
-        entity_ids = [ 'sensor.' + self.prefix + str(parameter)
-                        for parameter in parameters
+        entity_ids = [ 'sensor.' + self.prefix + str(sensor)
+                        for sensor in sensors
                      ]
 
         return await group.Group.async_create_group(
@@ -199,7 +199,7 @@ class NibeSystem(object):
 
             ids = [c['parameterId'] for c in x['parameters']]
             sensors.update(ids)
-            self.groups.append(await self.create_group(ids, x['name']))
+            self.groups.append(await self.create_group(x['name'], sensors = ids))
 
         return sensors
 
@@ -210,7 +210,7 @@ class NibeSystem(object):
         for x in data:
             ids = [c['parameterId'] for c in x['parameters']]
             sensors.update(ids)
-            self.groups.append(await self.create_group(ids, x['image']['name']))
+            self.groups.append(await self.create_group(x['image']['name'], sensors = ids))
 
         return sensors
 
@@ -235,18 +235,23 @@ class NibeSystem(object):
             self.hass,
             self.system['productName'],
             user_defined = False,
-            view = True,
-            icon = 'mdi:nest-thermostat',
-            object_id = 'nibe_' + str(self.system_id),
-            entity_ids = [g.entity_id for g in self.groups])
-
-        discovery_info = [ { 'system_id': self.system['systemId'], 'parameter_id': sensor } for sensor in sensors ]
+            view         = True,
+            icon         = 'mdi:nest-thermostat',
+            object_id    = self.prefix,
+            entity_ids   = [g.entity_id for g in self.groups])
 
         if sensors:
-            self.hass.async_add_job(discovery.async_load_platform(
+            discovery_info = [
+                { 'system_id'   : self.system['systemId'],
+                  'parameter_id': sensor
+                }
+                for sensor in sensors
+            ]
+
+            await discovery.async_load_platform(
                 self.hass,
                 'sensor',
                 DOMAIN,
-                discovery_info))
+                discovery_info)
 
 
