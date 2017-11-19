@@ -39,7 +39,13 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     if (discovery_info):
         pass
     else:
-        sensors = [ NibeClimate(config.get(CONF_NAME), config.get(CONF_SYSTEM), config.get(CONF_CURRENT), config.get(CONF_TARGET), config.get(CONF_ADJUST)) ]
+        sensors = [
+            NibeClimate(config.get(CONF_NAME),
+                        config.get(CONF_SYSTEM),
+                        config.get(CONF_CURRENT),
+                        config.get(CONF_TARGET),
+                        config.get(CONF_ADJUST))
+        ]
 
     async_add_devices(sensors, True)
 
