@@ -3,7 +3,6 @@ import asyncio
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
-from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.loader import get_component
@@ -76,7 +75,6 @@ class NibeSensor(Entity):
 
     @property
     def should_poll(self):
-        """No polling needed."""
         return True
 
     @property
