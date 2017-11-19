@@ -166,24 +166,21 @@ class NibeSystem(object):
         self.system_id  = system_id
         self.system     = None
         self.uplink     = uplink
-        self.prefix     = "{}_".format(self.system_id)
+        self.prefix     = "nibe_{}_".format(self.system_id)
         self.groups     = []
 
     async def create_group(self, parameters, name):
         group = loader.get_component('group')
 
-        entity_ids = [ 'sensor.{}{}'.format(self.prefix,
-                                            parameter)
-
+        entity_ids = [ 'sensor.' + self.prefix + str(parameter)
                         for parameter in parameters
                      ]
 
         return await group.Group.async_create_group(
                 self.hass,
-                "{} - {}".format(self.system['productName'],
-                                 name),
-                entity_ids = entity_ids)
-
+                name       = name,
+                entity_ids = entity_ids,
+                object_id  = self.prefix + name)
 
     async def load_parameters(self):
         sensors = set()
@@ -209,7 +206,7 @@ class NibeSystem(object):
     async def load_status(self):
         sensors = set()
         data    = await self.uplink.get_status(self.system_id)
-        print(data)
+
         for x in data:
             ids = [c['parameterId'] for c in x['parameters']]
             sensors.update(ids)

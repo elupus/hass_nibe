@@ -46,13 +46,13 @@ class NibeSensor(Entity):
         self._state        = None
         self._system_id    = system_id
         self._parameter_id = parameter_id
-        self._name         = "{}_{}".format(system_id, parameter_id)
+        self._name         = None
         self._unit         = None
         self._data         = None
         self._icon         = None
         self.entity_id     = async_generate_entity_id(
-                                ENTITY_ID_FORMAT,
-                                self._name,
+                                'sensor.nibe_' + str(self._system_id) + '_{}',
+                                str(self._parameter_id),
                                 hass=hass)
 
     @property
