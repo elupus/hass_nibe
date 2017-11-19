@@ -9,11 +9,6 @@ from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, AT
 from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_NAME)
 from homeassistant.loader import get_component
 
-# Cheaty way to import since paths for custom components don't seem to work with normal imports
-SCALE_DEFAULT = get_component('nibe').__dict__['SCALE_DEFAULT']
-SCALES        = get_component('nibe').__dict__['SCALES']
-parse_parameter_data = get_component('nibe').__dict__['parse_parameter_data']
-
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)
 
@@ -40,7 +35,8 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
         pass
     else:
         sensors = [
-            NibeClimate(config.get(CONF_NAME),
+            NibeClimate(hass,
+                        config.get(CONF_NAME),
                         config.get(CONF_SYSTEM),
                         config.get(CONF_CURRENT),
                         config.get(CONF_TARGET),
@@ -51,17 +47,23 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
 
 class NibeClimate(ClimateDevice):
-    def __init__(self, name, system_id, current_id, target_id, adjust_id):
+    def __init__(self, hass, name, system_id, current_id, target_id, adjust_id):
         self._name         = name
         self._system_id    = system_id
         self._current_id   = current_id
         self._target_id    = target_id
         self._adjust_id    = adjust_id
-        self._unit         = TEMP_CELSIUS
+        self._unit         = None
         self._current      = None
         self._target       = None
         self._adjust       = None
+        self._uplink       = hass.data[DATA_NIBE]['uplink']
 
+    def get_value(self, data):
+        if data == None or data['value'] == '--':
+            return None
+        else:
+            return data['value']
 
     @property
     def name(self):
@@ -69,15 +71,18 @@ class NibeClimate(ClimateDevice):
 
     @property
     def current_temperature(self):
-        return self._current
+        return self.get_value(self._current)
 
     @property
     def target_temperature(self):
-        return self._target
+        return self.get_value(self._target)
 
     @property
     def temperature_unit(self):
-        return self._unit
+        if self._current:
+            return self._current['unit']
+        else:
+            return None
 
     @property
     def target_temperature_step(self):
@@ -85,11 +90,11 @@ class NibeClimate(ClimateDevice):
 
     @property
     def target_humidity(self):
-        return self._adjust
+        return self.get_value(self._adjust)
 
     @property
     def current_humidity(self):
-        return self._adjust
+        return self.get_value(self._adjust)
 
     @property
     def min_humidity(self):
@@ -105,8 +110,7 @@ class NibeClimate(ClimateDevice):
         if data is None:
             return
 
-        uplink = self.hass.data[DATA_NIBE]['uplink']
-        yield from uplink.set_parameter(self._system_id, self._target_id, data)
+        yield from self._uplink.set_parameter(self._system_id, self._target_id, data)
 
     @asyncio.coroutine
     def async_set_humidity(self, **kwargs):
@@ -114,23 +118,17 @@ class NibeClimate(ClimateDevice):
         if data is None:
             return
 
-        uplink = self.hass.data[DATA_NIBE]['uplink']
-        yield from uplink.set_parameter(self._system_id, self._adjust_id, data)
+        yield from self._uplink.set_parameter(self._system_id, self._adjust_id, data)
 
 
     @asyncio.coroutine
     def async_update(self):
 
-        uplink = self.hass.data[DATA_NIBE]['uplink']
-
         @asyncio.coroutine
         def get_parameter(parameter_id):
             if parameter_id:
-                value = yield from uplink.get_parameter(self._system_id, parameter_id)
-                if value:
-                    scale = SCALES.get(value['unit'], SCALE_DEFAULT)
-                    return parse_parameter_data(value, scale)
-                return None
+                data = yield from self._uplink.get_parameter(self._system_id, parameter_id)
+                return data
             else:
                 return None
 
