@@ -6,6 +6,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.const import TEMP_CELSIUS
 from homeassistant.loader import get_component
+from homeassistant.const import (CONF_NAME)
 
 UNIT_ICON = {
         'A' : 'mdi:power-plug',
@@ -23,8 +24,9 @@ DATA_NIBE      = 'nibe'
 
 
 PLATFORM_SCHEMA = vol.Schema({
-        vol.Required(CONF_SYSTEM): cv.positive_int,
+        vol.Required(CONF_SYSTEM)   : cv.positive_int,
         vol.Required(CONF_PARAMETER): cv.positive_int,
+        vol.Optional(CONF_NAME)     : cv.string
     }, extra=vol.ALLOW_EXTRA)
 
 @asyncio.coroutine
@@ -32,20 +34,30 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     sensors = None
     if (discovery_info):
-        sensors = [ NibeSensor(hass, parameter['system_id'], parameter['parameter_id']) for parameter in discovery_info ]
+        sensors = [
+            NibeSensor(hass,
+                       parameter['system_id'],
+                       parameter['parameter_id'])
+            for parameter in discovery_info
+        ]
     else:
-        sensors = [ NibeSensor(hass, config.get(CONF_SYSTEM), config.get(CONF_PARAMETER)) ]
+        sensors = [
+            NibeSensor(hass,
+                       config.get(CONF_SYSTEM),
+                       config.get(CONF_PARAMETER),
+                       name = config.get(CONF_NAME, None))
+        ]
 
     async_add_devices(sensors, True)
 
 
 class NibeSensor(Entity):
-    def __init__(self, hass, system_id, parameter_id):
+    def __init__(self, hass, system_id, parameter_id, name = None):
         """Initialize the Nibe sensor."""
         self._state        = None
         self._system_id    = system_id
         self._parameter_id = parameter_id
-        self._name         = None
+        self._name         = name
         self._unit         = None
         self._data         = None
         self._icon         = None
@@ -106,7 +118,8 @@ class NibeSensor(Entity):
         data = yield from self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id)
 
         if data:
-            self._name  = data['title']
+            if self._name == None:
+                self._name = data['title']
             self._icon  = UNIT_ICON.get(data['unit'], None)
             self._unit  = data['unit']
             self._state = data['value']
