@@ -8,6 +8,7 @@ from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, ATTR_HUMIDITY)
 from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_NAME)
 from homeassistant.loader import get_component
+from collections import namedtuple
 
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ _LOGGER      = logging.getLogger(__name__)
 DATA_NIBE      = 'nibe'
 
 CONF_SYSTEM    = 'system'
+CONF_CLIMATE   = 'climate'
 CONF_CURRENT   = 'current'
 CONF_TARGET    = 'target'
 CONF_ADJUST    = 'adjust'
@@ -22,10 +24,37 @@ CONF_ADJUST    = 'adjust'
 PLATFORM_SCHEMA.extend({
         vol.Required(CONF_SYSTEM) : cv.positive_int,
         vol.Required(CONF_NAME)   : cv.string,
+        vol.Optional(CONF_CLIMATE): cv.string,
         vol.Optional(CONF_CURRENT): cv.positive_int,
         vol.Optional(CONF_TARGET) : cv.positive_int,
         vol.Optional(CONF_ADJUST) : cv.positive_int,
 })
+
+
+ClimateSystem = namedtuple(
+    'ClimateSystem',
+    ['name', 'current', 'target', 'adjust']
+)
+
+CLIMATE_SYSTEMS = {
+    '1h': ClimateSystem('System 1 when heating', 40033, 47398, 47011),
+    '2h': ClimateSystem('System 2 when heating', 40032, 47397, 47010),
+    '3h': ClimateSystem('System 3 when heating', 40031, 47396, 47009),
+    '4h': ClimateSystem('System 4 when heating', 40030, 47395, 47008),
+    '5h': ClimateSystem('System 5 when heating', 40167, 48683, 48494),
+    '6h': ClimateSystem('System 6 when heating', 40166, 48682, 48493),
+    '7h': ClimateSystem('System 7 when heating', 40165, 48681, 48492),
+    '8h': ClimateSystem('System 8 when heating', 40164, 48680, 48491),
+
+    '1c': ClimateSystem('System 1 when cooling', 40033, 48785, 48739),
+    '2c': ClimateSystem('System 2 when cooling', 40032, 48784, 48738),
+    '3c': ClimateSystem('System 3 when cooling', 40031, 48783, 48737),
+    '4c': ClimateSystem('System 4 when cooling', 40030, 48782, 48736),
+    '5c': ClimateSystem('System 5 when cooling', 40167, 48781, 48735),
+    '6c': ClimateSystem('System 6 when cooling', 40166, 48780, 48734),
+    '7c': ClimateSystem('System 7 when cooling', 40165, 48779, 48733),
+    '8c': ClimateSystem('System 8 when cooling', 40164, 48778, 48732),
+}
 
 @asyncio.coroutine
 def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
@@ -34,14 +63,23 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
     if (discovery_info):
         pass
     else:
-        sensors = [
-            NibeClimate(hass,
-                        config.get(CONF_NAME),
-                        config.get(CONF_SYSTEM),
-                        config.get(CONF_CURRENT),
-                        config.get(CONF_TARGET),
-                        config.get(CONF_ADJUST))
-        ]
+        sensors = []
+        climate = config.get(CONF_CLIMATE)
+        if (climate):
+            sensors.append(NibeClimate(hass,
+                                       config.get(CONF_NAME, CLIMATE_SYSTEMS[climate].name),
+                                       config.get(CONF_SYSTEM),
+                                       CLIMATE_SYSTEMS[climate].current,
+                                       CLIMATE_SYSTEMS[climate].target,
+                                       CLIMATE_SYSTEMS[climate].adjust))
+        else:
+            sensors.append(NibeClimate(hass,
+                                       config.get(CONF_NAME),
+                                       config.get(CONF_SYSTEM),
+                                       config.get(CONF_CURRENT),
+                                       config.get(CONF_TARGET),
+                                       config.get(CONF_ADJUST)))
+
 
     async_add_devices(sensors, True)
 
@@ -58,6 +96,10 @@ class NibeClimate(ClimateDevice):
         self._target       = None
         self._adjust       = None
         self._uplink       = hass.data[DATA_NIBE]['uplink']
+        self.entity_id     = async_generate_entity_id(
+                                'climate.nibe_' + str(self._system_id) + '_{}',
+                                str(self._current_id),
+                                hass=hass)
 
     def get_value(self, data):
         if data == None or data['value'] == '--':
