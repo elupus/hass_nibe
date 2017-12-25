@@ -5,7 +5,12 @@ import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, ATTR_HUMIDITY)
+from homeassistant.components.climate import (
+    ClimateDevice, PLATFORM_SCHEMA, ATTR_HUMIDITY,
+    SUPPORT_TARGET_TEMPERATURE, SUPPORT_TARGET_HUMIDITY,
+    SUPPORT_AWAY_MODE, SUPPORT_HOLD_MODE, SUPPORT_FAN_MODE,
+    SUPPORT_OPERATION_MODE, SUPPORT_AUX_HEAT, SUPPORT_SWING_MODE,
+    SUPPORT_TARGET_TEMPERATURE_HIGH, SUPPORT_TARGET_TEMPERATURE_LOW)
 from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_NAME)
 from homeassistant.loader import get_component
 from collections import namedtuple
@@ -80,7 +85,6 @@ def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
                                        config.get(CONF_TARGET),
                                        config.get(CONF_ADJUST)))
 
-
     async_add_devices(sensors, True)
 
 
@@ -146,6 +150,15 @@ class NibeClimate(ClimateDevice):
     def max_humidity(self):
         return 10
 
+    @property
+    def supported_features(self):
+        features = (SUPPORT_TARGET_TEMPERATURE |
+                    SUPPORT_TARGET_TEMPERATURE_HIGH |
+                    SUPPORT_TARGET_TEMPERATURE_LOW)
+        if self._adjust_id:
+            features += SUPPORT_TARGET_HUMIDITY
+        return features
+
     @asyncio.coroutine
     def async_set_temperature(self, **kwargs):
         data = kwargs.get(ATTR_TEMPERATURE)
@@ -155,13 +168,9 @@ class NibeClimate(ClimateDevice):
         yield from self._uplink.set_parameter(self._system_id, self._target_id, data)
 
     @asyncio.coroutine
-    def async_set_humidity(self, **kwargs):
-        data = kwargs.get(ATTR_HUMIDITY)
-        if data is None:
-            return
-
-        yield from self._uplink.set_parameter(self._system_id, self._adjust_id, data)
-
+    def async_set_humidity(self, humidity):
+        uplink = self.hass.data[DATA_NIBE]['uplink']
+        yield from self._uplink.set_parameter(self._system_id, self._adjust_id, humidity)
 
     @asyncio.coroutine
     def async_update(self):
