@@ -42,23 +42,23 @@ ClimateSystem = namedtuple(
 )
 
 CLIMATE_SYSTEMS = {
-    '1h': ClimateSystem('System 1 when heating', 40033, 47398, 47011),
-    '2h': ClimateSystem('System 2 when heating', 40032, 47397, 47010),
-    '3h': ClimateSystem('System 3 when heating', 40031, 47396, 47009),
-    '4h': ClimateSystem('System 4 when heating', 40030, 47395, 47008),
-    '5h': ClimateSystem('System 5 when heating', 40167, 48683, 48494),
-    '6h': ClimateSystem('System 6 when heating', 40166, 48682, 48493),
-    '7h': ClimateSystem('System 7 when heating', 40165, 48681, 48492),
-    '8h': ClimateSystem('System 8 when heating', 40164, 48680, 48491),
+    '1h': ClimateSystem('S1 (heating)', 40033, 47398, 47011),
+    '2h': ClimateSystem('S2 (heating)', 40032, 47397, 47010),
+    '3h': ClimateSystem('S3 (heating)', 40031, 47396, 47009),
+    '4h': ClimateSystem('S4 (heating)', 40030, 47395, 47008),
+    '5h': ClimateSystem('S5 (heating)', 40167, 48683, 48494),
+    '6h': ClimateSystem('S6 (heating)', 40166, 48682, 48493),
+    '7h': ClimateSystem('S7 (heating)', 40165, 48681, 48492),
+    '8h': ClimateSystem('S8 (heating)', 40164, 48680, 48491),
 
-    '1c': ClimateSystem('System 1 when cooling', 40033, 48785, 48739),
-    '2c': ClimateSystem('System 2 when cooling', 40032, 48784, 48738),
-    '3c': ClimateSystem('System 3 when cooling', 40031, 48783, 48737),
-    '4c': ClimateSystem('System 4 when cooling', 40030, 48782, 48736),
-    '5c': ClimateSystem('System 5 when cooling', 40167, 48781, 48735),
-    '6c': ClimateSystem('System 6 when cooling', 40166, 48780, 48734),
-    '7c': ClimateSystem('System 7 when cooling', 40165, 48779, 48733),
-    '8c': ClimateSystem('System 8 when cooling', 40164, 48778, 48732),
+    '1c': ClimateSystem('S1 (cooling)', 40033, 48785, 48739),
+    '2c': ClimateSystem('S2 (cooling)', 40032, 48784, 48738),
+    '3c': ClimateSystem('S3 (cooling)', 40031, 48783, 48737),
+    '4c': ClimateSystem('S4 (cooling)', 40030, 48782, 48736),
+    '5c': ClimateSystem('S5 (cooling)', 40167, 48781, 48735),
+    '6c': ClimateSystem('S6 (cooling)', 40166, 48780, 48734),
+    '7c': ClimateSystem('S7 (cooling)', 40165, 48779, 48733),
+    '8c': ClimateSystem('S8 (cooling)', 40164, 48778, 48732),
 }
 
 @asyncio.coroutine
