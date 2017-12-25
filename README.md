@@ -41,7 +41,7 @@ climate: # optional climate system setup
     target : 47398 # parameter id of target temperature
     adjust : 47011 # parameter id of the parallell adjustment
 
-sensor: # optional explitit sensor
+sensor: # optional explicit sensor
   - platform: nibe
     system: <required system identifier>
     parameter: <required parameter identifier>
