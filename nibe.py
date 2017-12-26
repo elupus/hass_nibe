@@ -39,6 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
+INTERVAL            = timedelta(minutes=1)
 
 REQUIREMENTS        = ['nibeuplink==0.3.0']
 
@@ -145,6 +146,7 @@ class NibeSystem(object):
         self.uplink     = uplink
         self.prefix     = "nibe_{}_".format(self.system_id)
         self.groups     = []
+        self.notice     = []
 
     async def create_group(self, name, sensors):
         group = loader.get_component('group')
@@ -230,6 +232,27 @@ class NibeSystem(object):
                 'sensor',
                 DOMAIN,
                 discovery_info)
+
+        await self.update()
+        async_track_time_interval(self.hass, self.update, INTERVAL)
+
+    async def update(self, now = None):
+        notice = await self.uplink.get_notifications(self.system_id)
+        added   = [ k for k in notice      if k not in self.notice ]
+        removed = [ k for k in self.notice if k not in notice ]
+        self.notice = notice
+
+        for x in added:
+            persistent_notification.async_create(
+                self.hass,
+                x['info']['description'],
+                x['info']['title'],
+                'nibe:{}'.format(x['notificationId'])
+            )
+        for x in removed:
+            persistent_notification.async_dismiss(
+                'nibe:{}'.format(x['notificationId'])
+            )
 
 class NibeAuthView(HomeAssistantView):
     """Handle nibe  authentication callbacks."""
