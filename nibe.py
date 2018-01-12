@@ -34,7 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
 
-REQUIREMENTS        = ['nibeuplink==0.2.0']
+REQUIREMENTS        = ['nibeuplink==0.3.0']
 
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
