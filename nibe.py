@@ -10,6 +10,7 @@ import time
 import asyncio
 import json
 import voluptuous as vol
+import traceback
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant.const import (CONF_ACCESS_TOKEN,
@@ -24,10 +25,15 @@ import homeassistant.loader as loader
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.core import callback
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import (
+    TEMP_CELSIUS,
+    HTTP_OK,
+    HTTP_BAD_REQUEST,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,16 +54,8 @@ CONF_SYSTEM         = 'system'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
-AUTH_STR            = ("Navigate to provided authorization link, this"
-                       " will redirect you to your configured redirect"
-                       " url ('{}'). This must match what was setup in"
-                       " Nibe Uplink. Enter the complete url you where"
-                       " redirected too here.")
-
-
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=8)
 MAX_REQUEST_PARAMETERS   = 15
-
 
 SYSTEM_SCHEMA = vol.Schema({
         vol.Required(CONF_SYSTEM): cv.positive_int,
@@ -129,34 +127,13 @@ async def async_setup(hass, config):
     )
 
     if not uplink.access_data:
-        auth_uri = uplink.get_authorize_url()
-
-        config_request = None
-
-        async def config_callback(data):
-            try:
-                await uplink.get_access_token(uplink.get_code_from_url(data['url']))
-                hass.components.configurator.async_request_done(config_request)
-            except:
-                hass.components.configurator.async_notify_errors(config_request, "An error occured: %s" % sys.exc_info()[0])
-                raise
-
-            hass.async_add_job(async_setup_systems(hass, config[DOMAIN], uplink))
-
-        config_request = hass.components.configurator.async_request_config(
-                            "Nibe Uplink Code",
-                            callback    = config_callback,
-                            description = AUTH_STR.format(config.get(CONF_REDIRECT_URI)),
-                            link_name   = "Authorize",
-                            link_url    = auth_uri,
-                            fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}],
-                            submit_caption = 'Set Url'
-                         )
+        view = NibeAuthView(hass, uplink, config)
+        hass.http.register_view(view)
+        view.async_request_config()
     else:
         hass.async_add_job(async_setup_systems(hass, config[DOMAIN], uplink))
 
     return True
-
 
 class NibeSystem(object):
     def __init__(self, hass, uplink, system_id, config):
@@ -254,4 +231,82 @@ class NibeSystem(object):
                 DOMAIN,
                 discovery_info)
 
+class NibeAuthView(HomeAssistantView):
+    """Handle nibe  authentication callbacks."""
+
+    url  = '/api/nibe/auth'
+    name = 'api:nibe:auth'
+
+    requires_auth = False
+
+    def __init__(self, hass, uplink, config) -> None:
+        """Initialize instance of the view."""
+        super().__init__()
+        self.hass           = hass
+        self.uplink         = uplink
+        self.config         = config
+        self.request_id     = None
+
+    def async_request_config(self):
+        auth_uri    = self.uplink.get_authorize_url()
+
+        description = """
+Please authorize Home Assistant to access nibe uplink by following the authorization link.
+
+Automatic configuration will only work if your configured redirect url is set to
+a url that will match the access url of Home Assistant. If for example you access
+Home Assisant on http://localhost:8123 you should set your callback url, both on Nibe
+Uplink and in Home Assistant configuration, to http://localhost:8123/api/nibe/auth.
+
+If automatic configuration of home assistant fails, you can enter the url to the webpage you
+get redirected to in the below prompt.
+"""
+
+        self.request_id = self.hass.components.configurator.async_request_config(
+            "Nibe Uplink authorization required",
+            callback    = self.callback,
+            description = description,
+            link_name   = "Authorize",
+            link_url    = auth_uri,
+            fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}],
+            submit_caption = 'Manually set url'
+        )
+
+    async def configure(self, url):
+
+        if not self.request_id:
+            raise Exception('No Nibe configuration in progress!')
+
+        try:
+            code = self.uplink.get_code_from_url(url)
+
+            await self.uplink.get_access_token(code)
+
+            self.hass.components.configurator.async_request_done(self.request_id)
+            self.hass.async_add_job(async_setup_systems(self.hass, self.config[DOMAIN], self.uplink))
+
+        except:
+            self.hass.components.configurator.async_notify_errors(self.request_id,
+                "An error occured during nibe authorization. See logfile for more information.")
+            raise
+
+    async def callback(self, data):
+        await self.configure(data['url'])
+
+    
+    async def get(self, request):
+        """Handle oauth token request."""
+
+        from aiohttp import web
+
+        try:
+            await self.configure(str(request.url))
+        except:
+            msg = "An error occured during nibe authorization."
+            _LOGGER.exception(msg)
+            return self.json_message(msg, status_code =HTTP_BAD_REQUEST)
+        else:
+            msg = "Nibe has been authorized! you can close this window, and restart Home Assistant."
+            _LOGGER.info(msg)
+            return self.json_message(msg, status_code =HTTP_OK)
 
