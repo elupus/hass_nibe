@@ -12,7 +12,6 @@ from homeassistant.components.climate import (
     SUPPORT_OPERATION_MODE, SUPPORT_AUX_HEAT, SUPPORT_SWING_MODE,
     SUPPORT_TARGET_TEMPERATURE_HIGH, SUPPORT_TARGET_TEMPERATURE_LOW)
 from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_NAME)
-from homeassistant.loader import get_component
 from collections import namedtuple
 
 DEPENDENCIES = ['nibe']

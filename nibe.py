@@ -21,7 +21,6 @@ from homeassistant.const import (CONF_ACCESS_TOKEN,
 from homeassistant.helpers import discovery
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
-import homeassistant.loader as loader
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
@@ -149,7 +148,7 @@ class NibeSystem(object):
         self.notice     = []
 
     async def create_group(self, name, sensors):
-        group = loader.get_component('group')
+        group = self.hass.components.group
 
         entity_ids = [ 'sensor.' + self.prefix + str(sensor)
                         for sensor in sensors
@@ -209,7 +208,7 @@ class NibeSystem(object):
         if CONF_STATUSES in self.config:
             sensors.update(await self.load_status())
 
-        group = loader.get_component('group')
+        group = self.hass.components.group
         await group.Group.async_create_group(
             self.hass,
             self.system['productName'],

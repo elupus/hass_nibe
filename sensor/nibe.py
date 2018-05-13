@@ -4,7 +4,6 @@ import asyncio
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
-from homeassistant.loader import get_component
 from homeassistant.const import (CONF_NAME)
 
 UNIT_ICON = {
