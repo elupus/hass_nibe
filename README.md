@@ -14,7 +14,6 @@ Installation
 
  * Clone or copy the root of the repository into `<config dir>/custom_components`
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
- * Install nibeuplink module (currently not available PyPi) `pip install git+https://github.com/elupus/nibeuplink.git`
 
 Configuration
 -------------
@@ -29,10 +28,10 @@ nibe:
     systems:
         - system: <required system identifier>
           writeaccess: false # set to true to support climate write (needs new tokens)
-          categories: # optional list of categories to retrieve, leave empty for all
+          categories: # optional list of categories to retrieve, leave empty for all, remove tag for none
             - <category identifer>
 
-          statuses:   # optional list of status screens to retrieve, leave empty for all
+          statuses:   # optional list of status screens to retrieve, leave empty for all, remove tag for none
             - <status identifier>
 
           parameters: # optional list of additional parameters to retrieve, can be done here or on the sensor platform
@@ -49,7 +48,7 @@ climate:
     system : <required system identifier>
     current: 40033 # parameter id of current temperature
     target : 47398 # parameter id of target temperature
-    adjust : 47011 # parameter id of the parallell adjustment
+    adjust : 47011 # parameter id of the parallel adjustment
 ```
 
 Optional explicit sensor setup
