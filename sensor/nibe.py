@@ -106,6 +106,11 @@ class NibeSensor(Entity):
         else:
             return True
 
+    @property
+    def unique_id(self):
+        """Return a unique, HASS-friendly identifier for this entity."""
+        return "{}_{}".format(self._system_id, self._parameter_id)
+
     @asyncio.coroutine
     def async_update(self):
         """Fetch new state data for the sensor.
