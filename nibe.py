@@ -40,7 +40,7 @@ DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
 INTERVAL            = timedelta(minutes=1)
 
-REQUIREMENTS        = ['nibeuplink==0.3.1']
+REQUIREMENTS        = ['nibeuplink==0.3.2']
 
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
