@@ -143,14 +143,14 @@ class NibeSystem(object):
         self.system_id  = system_id
         self.system     = None
         self.uplink     = uplink
-        self.prefix     = "nibe_{}_".format(self.system_id)
+        self.prefix     = "nibe_{}".format(self.system_id)
         self.groups     = []
         self.notice     = []
 
     async def create_group(self, name, sensors):
         group = self.hass.components.group
 
-        entity_ids = [ 'sensor.' + self.prefix + str(sensor)
+        entity_ids = [ 'sensor.{}_{}'.format(self.prefix, str(sensor))
                         for sensor in sensors
                      ]
 
@@ -158,7 +158,7 @@ class NibeSystem(object):
                 self.hass,
                 name       = name,
                 entity_ids = entity_ids,
-                object_id  = self.prefix + name)
+                object_id  = '{}_{}'.format(self.prefix, name))
 
     async def load_parameters(self):
         sensors = set()
