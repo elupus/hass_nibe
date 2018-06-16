@@ -54,9 +54,6 @@ CONF_SYSTEM         = 'system'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=8)
-MAX_REQUEST_PARAMETERS   = 15
-
 SYSTEM_SCHEMA = vol.Schema({
         vol.Required(CONF_SYSTEM): cv.positive_int,
         vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
