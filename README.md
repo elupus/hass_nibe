@@ -24,10 +24,10 @@ nibe:
     client_id: <client id from nibe uplink>
     client_secret: <client secret from nibe uplink>
     redirect_uri: <the redirect url you have entered at nibe uplink configuration>
+    writeaccess: false # set to true to support climate write (needs new tokens)
 
     systems:
         - system: <required system identifier>
-          writeaccess: false # set to true to support climate write (needs new tokens)
           categories: # optional list of categories to retrieve, leave empty for all, remove tag for none
             - <category identifer>
 
