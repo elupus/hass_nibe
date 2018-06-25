@@ -46,15 +46,23 @@ climate:
   - platform: nibe
     name: 'Climate System 1'
     system : <required system identifier>
-    current: 40033 # parameter id of current temperature
-    target : 47398 # parameter id of target temperature
-    adjust : 47011 # parameter id of the parallel adjustment
+    current: <parameter id of current temperature>
+    target : <parameter id of target temperature>
+    adjust : <parameter id of the parallel adjustment>
+```
+
+Optional explicit climate system setup with standard id's (climate value should be one of '1h', ..., '8h', '1c', ..., '8c')
+```yaml
+climate:
+  - platform: nibe
+    system : <required system identifier>
+    climate: <required climate identifier as per above>
 ```
 
 Optional explicit sensor setup
 ```yaml
 sensor:
   - platform: nibe
-    system: <required system identifier>
+    system   : <required system identifier>
     parameter: <required parameter identifier>
 ```
