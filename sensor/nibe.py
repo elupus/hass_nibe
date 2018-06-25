@@ -27,8 +27,7 @@ PLATFORM_SCHEMA = vol.Schema({
         vol.Optional(CONF_NAME)     : cv.string
     }, extra=vol.ALLOW_EXTRA)
 
-@asyncio.coroutine
-def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     sensors = None
     if (discovery_info):
@@ -111,14 +110,13 @@ class NibeSensor(Entity):
         """Return a unique, HASS-friendly identifier for this entity."""
         return "{}_{}".format(self._system_id, self._parameter_id)
 
-    @asyncio.coroutine
     def async_update(self):
         """Fetch new state data for the sensor.
 
         This is the only method that should fetch new data for Home Assistant.
         """
 
-        data = yield from self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id)
+        data = await self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id)
 
         if data:
             if self._name == None:

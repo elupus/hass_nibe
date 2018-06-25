@@ -60,8 +60,7 @@ CLIMATE_SYSTEMS = {
     '8c': ClimateSystem('S8 (cooling)', 40164, 48778, 48732),
 }
 
-@asyncio.coroutine
-def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     sensors = None
     if (discovery_info):
@@ -158,31 +157,27 @@ class NibeClimate(ClimateDevice):
             features += SUPPORT_TARGET_HUMIDITY
         return features
 
-    @asyncio.coroutine
-    def async_set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs):
         data = kwargs.get(ATTR_TEMPERATURE)
         if data is None:
             return
 
-        yield from self._uplink.set_parameter(self._system_id, self._target_id, data)
+        await self._uplink.set_parameter(self._system_id, self._target_id, data)
 
-    @asyncio.coroutine
-    def async_set_humidity(self, humidity):
+    async def async_set_humidity(self, humidity):
         uplink = self.hass.data[DATA_NIBE]['uplink']
-        yield from self._uplink.set_parameter(self._system_id, self._adjust_id, humidity)
+        await self._uplink.set_parameter(self._system_id, self._adjust_id, humidity)
 
-    @asyncio.coroutine
-    def async_update(self):
+    async def async_update(self):
 
-        @asyncio.coroutine
-        def get_parameter(parameter_id):
+        async def get_parameter(parameter_id):
             if parameter_id:
-                data = yield from self._uplink.get_parameter(self._system_id, parameter_id)
+                data = await self._uplink.get_parameter(self._system_id, parameter_id)
                 return data
             else:
                 return None
 
-        self._current, self._target, self._adjust = yield from asyncio.gather(
+        self._current, self._target, self._adjust = await asyncio.gather(
             get_parameter(self._current_id),
             get_parameter(self._target_id),
             get_parameter(self._adjust_id),
