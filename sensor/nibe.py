@@ -110,7 +110,7 @@ class NibeSensor(Entity):
         """Return a unique, HASS-friendly identifier for this entity."""
         return "{}_{}".format(self._system_id, self._parameter_id)
 
-    def async_update(self):
+    async def async_update(self):
         """Fetch new state data for the sensor.
 
         This is the only method that should fetch new data for Home Assistant.
