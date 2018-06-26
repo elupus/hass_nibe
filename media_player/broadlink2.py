@@ -29,6 +29,7 @@ from homeassistant.const import (
     CONF_COMMAND_OFF,
     STATE_OFF,
     STATE_ON,
+    STATE_PLAYING,
     STATE_UNKNOWN)
 
 import homeassistant.helpers.config_validation as cv
@@ -136,7 +137,7 @@ class BroadlinkRM(MediaPlayerDevice):
         self.mac     = binascii.unhexlify(config.get(CONF_MAC).encode().replace(b':', b''))
 
         self.link    = link
-        self._state  = STATE_UNKNOWN
+        self._state  = STATE_OFF
         self._source = None
 
     async def send(self, command):
