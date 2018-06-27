@@ -18,7 +18,7 @@ Installation
 Configuration
 -------------
 
-Base configuration
+Configuration description
 ```yaml
 nibe:
     client_id: <client id from nibe uplink>
@@ -27,18 +27,43 @@ nibe:
     writeaccess: false # set to true to support climate write (needs new tokens)
 
     systems:
-        - system: <required system identifier>
-          categories: # optional list of categories to retrieve, leave empty for all, remove tag for none
-            - <category identifer>
+        # required system identifier
+        - system: <identifier>
 
-          statuses:   # optional list of status screens to retrieve, leave empty for all, remove tag for none
-            - <status identifier>
+          # list of units to retrieve data for
+          units:
+              # unit to retrieve data for (0 is the master unit and should always exist)
+            - unit: <identifier>
 
-          parameters: # optional list of additional parameters to retrieve, can be done here or on the sensor platform
-            - <parameter identifier>
-            - <parameter identifier>
+              # retrieve categories, leave empty for all, remove tag for none
+              categories:
+                - <identifer>  # category identifier like 'SYSTEM_1'
+                - <identifer>
+
+              # retrieve status parameters, remove tag for none
+              statuses:
+
+          # optional list of additional parameters to retrieve, can be done here or on the sensor platform
+              parameters:
+                - <parameter identifier>
+                - <parameter identifier>
 
 ```
+
+Minimal configuration
+```yaml
+    client_id: <client id from nibe uplink>
+    client_secret: <client secret from nibe uplink>
+    redirect_uri: <the redirect url you have entered at nibe uplink configuration>
+    writeaccess: false # set to true to support climate write (needs new tokens)
+
+    systems:
+        - system: <required system identifier>
+          units:
+            - unit: 0
+              categories:
+```
+
 
 Optional explicit climate system setup
 ```yaml

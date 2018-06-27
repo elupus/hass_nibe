@@ -11,6 +11,7 @@ import asyncio
 import json
 import voluptuous as vol
 import traceback
+from typing import List
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant.const import (CONF_ACCESS_TOKEN,
@@ -40,7 +41,7 @@ DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
 INTERVAL            = timedelta(minutes=1)
 
-REQUIREMENTS        = ['nibeuplink==0.3.2']
+REQUIREMENTS        = ['nibeuplink==0.4.0']
 
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
@@ -51,14 +52,21 @@ CONF_PARAMETERS     = 'parameters'
 CONF_STATUSES       = 'statuses'
 CONF_SYSTEMS        = 'systems'
 CONF_SYSTEM         = 'system'
+CONF_UNITS          = 'units'
+CONF_UNIT           = 'unit'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
-SYSTEM_SCHEMA = vol.Schema({
-        vol.Required(CONF_SYSTEM): cv.positive_int,
+UNIT_SCHEMA = vol.Schema({
+        vol.Required(CONF_UNIT): cv.positive_int,
         vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(CONF_PARAMETERS): vol.All(cv.ensure_list, [cv.positive_int])
+})
+
+SYSTEM_SCHEMA = vol.Schema({
+        vol.Required(CONF_SYSTEM): cv.positive_int,
+        vol.Optional(CONF_UNITS): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
     })
 
 NIBE_SCHEMA = vol.Schema({
@@ -132,6 +140,15 @@ async def async_setup(hass, config):
 
     return True
 
+
+def filter_list(data: List[dict], field: str, selected: List[str]):
+    """Return a filtered array based on existance in a filter list"""
+    if len(selected):
+        return [x for x in data if x[field] in selected]
+    else:
+        return data
+
+
 class NibeSystem(object):
     def __init__(self, hass, uplink, system_id, config):
         self.hass       = hass
@@ -140,80 +157,93 @@ class NibeSystem(object):
         self.system_id  = system_id
         self.system     = None
         self.uplink     = uplink
-        self.prefix     = "nibe_{}".format(self.system_id)
-        self.groups     = []
         self.notice     = []
 
-    async def create_group(self, name, sensors):
-        group = self.hass.components.group
-
-        entity_ids = [ 'sensor.{}_{}'.format(self.prefix, str(sensor))
-                        for sensor in sensors
+    async def load_parameters(self, ids, entities, sensors: set):
+        entity_ids = [ 'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
+                        for sensor in ids
                      ]
 
-        return await group.Group.async_create_group(
-                self.hass,
-                name       = name,
-                entity_ids = entity_ids,
-                object_id  = '{}_{}'.format(self.prefix, name))
+        sensors.update(ids)
+        entities.extend(entity_ids)
 
-    async def load_parameters(self):
-        sensors = set()
-        sensors.update(self.config.get(CONF_PARAMETERS))
-        return sensors
+    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict], entities: list, sensors: set):
+        group = self.hass.components.group
+        ids = [c['parameterId'] for c in parameters]
 
-    async def load_categories(self):
-        sensors = set()
-        data    = await self.uplink.get_categories(self.system_id, True)
+        entity_ids = [ 'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
+                        for sensor in ids
+                     ]
 
-        for x in data:
-            # Filter categories based on config if a category segment exist
-            if len(self.config.get(CONF_CATEGORIES)) and \
-               x['categoryId'] not in self.config.get(CONF_CATEGORIES):
-                continue
+        entity = await group.Group.async_create_group(
+                        self.hass,
+                        name       = name,
+                        control    = False,
+                        entity_ids = entity_ids,
+                        object_id  = '{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
 
-            ids = [c['parameterId'] for c in x['parameters']]
-            sensors.update(ids)
-            self.groups.append(await self.create_group(x['name'], sensors = ids))
+        sensors.update(ids)
+        entities.append(entity.entity_id)
 
-        return sensors
 
-    async def load_status(self):
-        sensors = set()
-        data    = await self.uplink.get_status(self.system_id)
+    async def load_categories(self, unit: int, selected, entities: list, sensors: set):
+        data   = await self.uplink.get_categories(self.system_id, True, unit)
+        data   = filter_list(data, 'categoryId', selected)
 
         for x in data:
-            ids = [c['parameterId'] for c in x['parameters']]
-            sensors.update(ids)
-            self.groups.append(await self.create_group(x['image']['name'], sensors = ids))
+            await self.load_parameter_group(x['name'],
+                                            '{}_{}'.format(unit, x['categoryId']),
+                                            x['parameters'],
+                                            entities,
+                                            sensors)
 
-        return sensors
 
+    async def load_status(self, unit: int, entities: list, sensors: set):
+        data   = await self.uplink.get_status(self.system_id, unit)
+
+        for x in data:
+            await self.load_parameter_group(x['title'],
+                                            '{}_{}'.format(unit, x['title']),
+                                            x['parameters'],
+                                            entities,
+                                            sensors)
 
     async def load(self):
-        sensors = set()
-
         if not self.system:
             self.system = await self.uplink.get_system(self.system_id)
 
-        if CONF_CATEGORIES in self.config:
-            sensors.update(await self.load_categories())
+        sensors  = set()
+        for unit in self.config.get(CONF_UNITS):
+            entities = []
+            if CONF_CATEGORIES in unit:
+                await self.load_categories(
+                    unit.get(CONF_UNIT),
+                    unit.get(CONF_CATEGORIES),
+                    entities,
+                    sensors)
 
-        if CONF_PARAMETERS in self.config:
-            sensors.update(await self.load_parameters())
+            if CONF_STATUSES in unit:
+                await self.load_status(
+                    unit.get(CONF_UNIT),
+                    entities,
+                    sensors)
 
-        if CONF_STATUSES in self.config:
-            sensors.update(await self.load_status())
+            if CONF_PARAMETERS in unit:
+                await self.load_parameters(
+                    unit.get(CONF_PARAMETERS),
+                    entities,
+                    sensors)
 
-        group = self.hass.components.group
-        await group.Group.async_create_group(
-            self.hass,
-            self.system['productName'],
-            user_defined = False,
-            view         = True,
-            icon         = 'mdi:thermostat',
-            object_id    = self.prefix,
-            entity_ids   = [g.entity_id for g in self.groups])
+            group = self.hass.components.group
+            await group.Group.async_create_group(
+                self.hass,
+                '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
+                user_defined = False,
+                control      = False,
+                view         = True,
+                icon         = 'mdi:thermostat',
+                object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
+                entity_ids   = entities)
 
         if sensors:
             discovery_info = [
