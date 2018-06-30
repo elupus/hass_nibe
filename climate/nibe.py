@@ -26,14 +26,16 @@ CONF_CURRENT   = 'current'
 CONF_TARGET    = 'target'
 CONF_ADJUST    = 'adjust'
 
-PLATFORM_SCHEMA.extend({
+CLIMATE_SCHEMA = {
     vol.Required(CONF_SYSTEM) : cv.positive_int,
     vol.Required(CONF_NAME)   : cv.string,
     vol.Optional(CONF_CLIMATE): cv.string,
     vol.Optional(CONF_CURRENT): cv.positive_int,
     vol.Optional(CONF_TARGET) : cv.positive_int,
     vol.Optional(CONF_ADJUST) : cv.positive_int,
-})
+}
+
+PLATFORM_SCHEMA.extend(CLIMATE_SCHEMA)
 
 NAME_HEATING_ROOM = "S{} Heat (room)"
 NAME_HEATING_FLOW = "S{} Heat (flow)"
