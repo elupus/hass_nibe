@@ -85,7 +85,7 @@ CLIMATE_SYSTEMS = {
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
-    sensors = None
+    sensors = []
     configs = []
     if (discovery_info):
         configs = discovery_info
