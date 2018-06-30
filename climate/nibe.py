@@ -162,11 +162,12 @@ class NibeClimate(ClimateDevice):
         if data is None:
             return
 
-        await self._uplink.set_parameter(self._system_id, self._target_id, data)
+        res = await self._uplink.put_parameter(self._system_id, self._target_id, data)
+        _LOGGER.debug("Put parameter response {}".format(res))
 
     async def async_set_humidity(self, humidity):
-        uplink = self.hass.data[DATA_NIBE]['uplink']
-        await self._uplink.set_parameter(self._system_id, self._adjust_id, humidity)
+        res = await self._uplink.put_parameter(self._system_id, self._adjust_id, humidity)
+        _LOGGER.debug("Put parameter response {}".format(res))
 
     async def async_update(self):
 
