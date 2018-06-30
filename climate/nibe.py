@@ -82,6 +82,8 @@ CLIMATE_SYSTEMS = {
     '8ca': ClimateSystem(NAME_COOLING_FLOW.format(8), None , None , 48732),
 }
 
+CLIMATE_NONE = ClimateSystem(None, None, None, None)
+
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
@@ -93,21 +95,17 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
         configs = [config]
 
     for c in configs:
-        climate = c.get(CONF_CLIMATE)
-        if (climate):
-            sensors.append(NibeClimate(hass,
-                                       config.get(CONF_NAME, CLIMATE_SYSTEMS[climate].name),
-                                       config.get(CONF_SYSTEM),
-                                       CLIMATE_SYSTEMS[climate].current,
-                                       CLIMATE_SYSTEMS[climate].target,
-                                       CLIMATE_SYSTEMS[climate].adjust))
+        if CONF_CLIMATE in c:
+            climate = CLIMATE_SYSTEMS[c[CONF_CLIMATE]]
         else:
-            sensors.append(NibeClimate(hass,
-                                       config.get(CONF_NAME),
-                                       config.get(CONF_SYSTEM),
-                                       config.get(CONF_CURRENT),
-                                       config.get(CONF_TARGET),
-                                       config.get(CONF_ADJUST)))
+            climate = CLIMATE_NONE
+
+        sensors.append(NibeClimate(hass,
+                                   c.get(CONF_NAME   , climate.name),
+                                   c.get(CONF_SYSTEM),
+                                   c.get(CONF_CURRENT, climate.current),
+                                   c.get(CONF_TARGET , climate.target),
+                                   c.get(CONF_ADJUST , climate.adjust)))
 
     async_add_devices(sensors, True)
 
