@@ -9,7 +9,6 @@ from homeassistant.components.climate import (
     ENTITY_ID_FORMAT,
     PLATFORM_SCHEMA,
     SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_TARGET_HUMIDITY,
     SUPPORT_TARGET_TEMPERATURE_HIGH,
     SUPPORT_TARGET_TEMPERATURE_LOW
 )
@@ -36,6 +35,10 @@ PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_ADJUST) : cv.positive_int,
 })
 
+NAME_HEATING_ROOM = "S{} Heat (room)"
+NAME_HEATING_FLOW = "S{} Heat (flow)"
+NAME_COOLING_ROOM = "S{} Cool (room)"
+NAME_COOLING_FLOW = "S{} Cool (flow)"
 
 ClimateSystem = namedtuple(
     'ClimateSystem',
@@ -43,34 +46,52 @@ ClimateSystem = namedtuple(
 )
 
 CLIMATE_SYSTEMS = {
-    '1h': ClimateSystem('S1 (heating)', 40033, 47398, 47011),
-    '2h': ClimateSystem('S2 (heating)', 40032, 47397, 47010),
-    '3h': ClimateSystem('S3 (heating)', 40031, 47396, 47009),
-    '4h': ClimateSystem('S4 (heating)', 40030, 47395, 47008),
-    '5h': ClimateSystem('S5 (heating)', 40167, 48683, 48494),
-    '6h': ClimateSystem('S6 (heating)', 40166, 48682, 48493),
-    '7h': ClimateSystem('S7 (heating)', 40165, 48681, 48492),
-    '8h': ClimateSystem('S8 (heating)', 40164, 48680, 48491),
-
-    '1c': ClimateSystem('S1 (cooling)', 40033, 48785, 48739),
-    '2c': ClimateSystem('S2 (cooling)', 40032, 48784, 48738),
-    '3c': ClimateSystem('S3 (cooling)', 40031, 48783, 48737),
-    '4c': ClimateSystem('S4 (cooling)', 40030, 48782, 48736),
-    '5c': ClimateSystem('S5 (cooling)', 40167, 48781, 48735),
-    '6c': ClimateSystem('S6 (cooling)', 40166, 48780, 48734),
-    '7c': ClimateSystem('S7 (cooling)', 40165, 48779, 48733),
-    '8c': ClimateSystem('S8 (cooling)', 40164, 48778, 48732),
+    '1h' : ClimateSystem(NAME_HEATING_ROOM.format(1), 40033, 47398, None ),
+    '2h' : ClimateSystem(NAME_HEATING_ROOM.format(2), 40032, 47397, None ),
+    '3h' : ClimateSystem(NAME_HEATING_ROOM.format(3), 40031, 47396, None ),
+    '4h' : ClimateSystem(NAME_HEATING_ROOM.format(4), 40030, 47395, None ),
+    '5h' : ClimateSystem(NAME_HEATING_ROOM.format(5), 40167, 48683, None ),
+    '6h' : ClimateSystem(NAME_HEATING_ROOM.format(6), 40166, 48682, None ),
+    '7h' : ClimateSystem(NAME_HEATING_ROOM.format(7), 40165, 48681, None ),
+    '8h' : ClimateSystem(NAME_HEATING_ROOM.format(8), 40164, 48680, None ),
+    '1ha': ClimateSystem(NAME_HEATING_FLOW.format(1), 40008, 43009, 47011),
+    '2ha': ClimateSystem(NAME_HEATING_FLOW.format(2), 40007, 43008, 47010),
+    '3ha': ClimateSystem(NAME_HEATING_FLOW.format(3), 40006, 43007, 47009),
+    '4ha': ClimateSystem(NAME_HEATING_FLOW.format(4), 40004, 43006, 47008),
+    '5ha': ClimateSystem(NAME_HEATING_FLOW.format(5), None , None , 48494),
+    '6ha': ClimateSystem(NAME_HEATING_FLOW.format(6), None , None , 48493),
+    '7ha': ClimateSystem(NAME_HEATING_FLOW.format(7), None , None , 48492),
+    '8ha': ClimateSystem(NAME_HEATING_FLOW.format(8), None , None , 48491),
+    '1c' : ClimateSystem(NAME_COOLING_ROOM.format(1), 40033, 48785, None ),
+    '2c' : ClimateSystem(NAME_COOLING_ROOM.format(2), 40032, 48784, None ),
+    '3c' : ClimateSystem(NAME_COOLING_ROOM.format(3), 40031, 48783, None ),
+    '4c' : ClimateSystem(NAME_COOLING_ROOM.format(4), 40030, 48782, None ),
+    '5c' : ClimateSystem(NAME_COOLING_ROOM.format(5), 40167, 48781, None ),
+    '6c' : ClimateSystem(NAME_COOLING_ROOM.format(6), 40166, 48780, None ),
+    '7c' : ClimateSystem(NAME_COOLING_ROOM.format(7), 40165, 48779, None ),
+    '8c' : ClimateSystem(NAME_COOLING_ROOM.format(8), 40164, 48778, None ),
+    '1ca': ClimateSystem(NAME_COOLING_FLOW.format(1), 40008, 43009, 48739),
+    '2ca': ClimateSystem(NAME_COOLING_FLOW.format(2), 40007, 43008, 48738),
+    '3ca': ClimateSystem(NAME_COOLING_FLOW.format(3), 40006, 43007, 48737),
+    '4ca': ClimateSystem(NAME_COOLING_FLOW.format(4), 40004, 43006, 48736),
+    '5ca': ClimateSystem(NAME_COOLING_FLOW.format(5), None , None , 48735),
+    '6ca': ClimateSystem(NAME_COOLING_FLOW.format(6), None , None , 48734),
+    '7ca': ClimateSystem(NAME_COOLING_FLOW.format(7), None , None , 48733),
+    '8ca': ClimateSystem(NAME_COOLING_FLOW.format(8), None , None , 48732),
 }
 
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     sensors = None
+    configs = []
     if (discovery_info):
-        pass
+        configs = discovery_info
     else:
-        sensors = []
-        climate = config.get(CONF_CLIMATE)
+        configs = [config]
+
+    for c in configs:
+        climate = c.get(CONF_CLIMATE)
         if (climate):
             sensors.append(NibeClimate(hass,
                                        config.get(CONF_NAME, CLIMATE_SYSTEMS[climate].name),
@@ -100,6 +121,7 @@ class NibeClimate(ClimateDevice):
         self._current      = None
         self._target       = None
         self._adjust       = None
+        self._status       = 'DONE'
         self._uplink       = hass.data[DATA_NIBE]['uplink']
         self.entity_id     = async_generate_entity_id(
             ENTITY_ID_FORMAT,
@@ -107,11 +129,14 @@ class NibeClimate(ClimateDevice):
             hass=hass
         )
 
-    def get_value(self, data):
-        if data is None:
-            return None
+    def get_value(self, data, default = None):
+        if data is None or data['value'] is None:
+            return default
         else:
-            return data['value']
+            return float(data['value'])
+
+    def get_target_base(self):
+        return self.get_value(self._target, 0)  - self.get_value(self._adjust, 0)
 
     @property
     def name(self):
@@ -134,31 +159,40 @@ class NibeClimate(ClimateDevice):
 
     @property
     def target_temperature_step(self):
-        return 0.5
+        if self._adjust_id:
+            return 1.0
+        else:
+            return 0.5
 
     @property
-    def target_humidity(self):
-        return self.get_value(self._adjust)
+    def max_temp(self):
+        if self._adjust_id:
+            return self.get_target_base() + 10.0
+        else:
+            return 35.0
 
     @property
-    def current_humidity(self):
-        return self.get_value(self._adjust)
+    def min_temp(self):
+        if self._adjust_id:
+            return self.get_target_base() - 10.0
+        else:
+            return 5.0
 
     @property
-    def min_humidity(self):
-        return -10
+    def state_attributes(self):
+        data = super().state_attributes
+        data['status'] = self._status
+        return data
 
     @property
-    def max_humidity(self):
-        return 10
+    def available(self):
+        return self.get_value(self._current) is not None
 
     @property
     def supported_features(self):
         features = (SUPPORT_TARGET_TEMPERATURE |
                     SUPPORT_TARGET_TEMPERATURE_HIGH |
                     SUPPORT_TARGET_TEMPERATURE_LOW)
-        if self._adjust_id:
-            features += SUPPORT_TARGET_HUMIDITY
         return features
 
     async def async_set_temperature(self, **kwargs):
@@ -166,12 +200,23 @@ class NibeClimate(ClimateDevice):
         if data is None:
             return
 
-        res = await self._uplink.put_parameter(self._system_id, self._target_id, data)
-        _LOGGER.debug("Put parameter response {}".format(res))
+        if self._adjust_id:
+            # calculate what offset was used to calculate the target
+            data = data - self.get_target_base()
+            parameter = self._adjust_id
+        else:
+            parameter = self._target_id
 
-    async def async_set_humidity(self, humidity):
-        res = await self._uplink.put_parameter(self._system_id, self._adjust_id, humidity)
-        _LOGGER.debug("Put parameter response {}".format(res))
+        _LOGGER.debug("Set temperature on parameter {} to {}".format(parameter, data))
+
+        try:
+            self._status = await self._uplink.put_parameter(self._system_id, parameter, data)
+        except:
+
+            self._status = 'ERROR'
+            pass
+        finally:
+            _LOGGER.debug("Put parameter response {}".format(self._status))
 
     async def async_update(self):
 
