@@ -108,7 +108,7 @@ class NibeClimate(ClimateDevice):
         )
 
     def get_value(self, data):
-        if data == None or data['value'] == '--':
+        if data is None:
             return None
         else:
             return data['value']
@@ -177,8 +177,7 @@ class NibeClimate(ClimateDevice):
 
         async def get_parameter(parameter_id):
             if parameter_id:
-                data = await self._uplink.get_parameter(self._system_id, parameter_id)
-                return data
+                return await self._uplink.get_parameter(self._system_id, parameter_id)
             else:
                 return None
 
