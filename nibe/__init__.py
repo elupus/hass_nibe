@@ -169,6 +169,8 @@ class NibeSystem(object):
 
     async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict], entities: list, sensors: set):
         group = self.hass.components.group
+        # we currently can't load parameters with no id
+        parameters  = [x for x in parameters if x['parameterId'] != 0]
         ids = [c['parameterId'] for c in parameters]
 
         entity_ids = [ 'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
