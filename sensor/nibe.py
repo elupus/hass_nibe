@@ -1,15 +1,15 @@
 import logging
-import asyncio
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
+from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.const import (CONF_NAME)
 
 UNIT_ICON = {
-        'A' : 'mdi:power-plug',
-        'Hz': 'mdi:update',
-        'h' : 'mdi:clock',
+    'A' : 'mdi:power-plug',
+    'Hz': 'mdi:update',
+    'h' : 'mdi:clock',
 }
 
 DEPENDENCIES = ['nibe']
@@ -22,10 +22,11 @@ DATA_NIBE      = 'nibe'
 
 
 PLATFORM_SCHEMA = vol.Schema({
-        vol.Required(CONF_SYSTEM)   : cv.positive_int,
-        vol.Required(CONF_PARAMETER): cv.positive_int,
-        vol.Optional(CONF_NAME)     : cv.string
-    }, extra=vol.ALLOW_EXTRA)
+    vol.Required(CONF_SYSTEM)   : cv.positive_int,
+    vol.Required(CONF_PARAMETER): cv.positive_int,
+    vol.Optional(CONF_NAME)     : cv.string
+}, extra=vol.ALLOW_EXTRA)
+
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
@@ -59,9 +60,10 @@ class NibeSensor(Entity):
         self._data         = None
         self._icon         = None
         self.entity_id     = async_generate_entity_id(
-                                'sensor.nibe_' + str(self._system_id) + '_{}',
-                                str(self._parameter_id),
-                                hass=hass)
+            ENTITY_ID_FORMAT,
+            'nibe_{}_{}'.format(system_id, parameter_id),
+            hass=hass
+        )
 
     @property
     def name(self):
@@ -100,7 +102,7 @@ class NibeSensor(Entity):
     @property
     def available(self):
         """Return True if entity is available."""
-        if self._state == None:
+        if self._state is None:
             return False
         else:
             return True
@@ -119,7 +121,7 @@ class NibeSensor(Entity):
         data = await self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id)
 
         if data:
-            if self._name == None:
+            if self._name is None:
                 self._name = data['title']
             self._icon  = UNIT_ICON.get(data['unit'], None)
             self._unit  = data['unit']

@@ -3,15 +3,17 @@ import asyncio
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
-from homeassistant.components.sensor import ENTITY_ID_FORMAT
-from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
+from homeassistant.helpers.entity import (async_generate_entity_id)
 from homeassistant.components.climate import (
-    ClimateDevice, PLATFORM_SCHEMA, ATTR_HUMIDITY,
-    SUPPORT_TARGET_TEMPERATURE, SUPPORT_TARGET_HUMIDITY,
-    SUPPORT_AWAY_MODE, SUPPORT_HOLD_MODE, SUPPORT_FAN_MODE,
-    SUPPORT_OPERATION_MODE, SUPPORT_AUX_HEAT, SUPPORT_SWING_MODE,
-    SUPPORT_TARGET_TEMPERATURE_HIGH, SUPPORT_TARGET_TEMPERATURE_LOW)
-from homeassistant.const import (TEMP_CELSIUS, ATTR_TEMPERATURE, CONF_NAME)
+    ClimateDevice,
+    ENTITY_ID_FORMAT,
+    PLATFORM_SCHEMA,
+    SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_TARGET_HUMIDITY,
+    SUPPORT_TARGET_TEMPERATURE_HIGH,
+    SUPPORT_TARGET_TEMPERATURE_LOW
+)
+from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME)
 from collections import namedtuple
 
 DEPENDENCIES = ['nibe']
@@ -26,12 +28,12 @@ CONF_TARGET    = 'target'
 CONF_ADJUST    = 'adjust'
 
 PLATFORM_SCHEMA.extend({
-        vol.Required(CONF_SYSTEM) : cv.positive_int,
-        vol.Required(CONF_NAME)   : cv.string,
-        vol.Optional(CONF_CLIMATE): cv.string,
-        vol.Optional(CONF_CURRENT): cv.positive_int,
-        vol.Optional(CONF_TARGET) : cv.positive_int,
-        vol.Optional(CONF_ADJUST) : cv.positive_int,
+    vol.Required(CONF_SYSTEM) : cv.positive_int,
+    vol.Required(CONF_NAME)   : cv.string,
+    vol.Optional(CONF_CLIMATE): cv.string,
+    vol.Optional(CONF_CURRENT): cv.positive_int,
+    vol.Optional(CONF_TARGET) : cv.positive_int,
+    vol.Optional(CONF_ADJUST) : cv.positive_int,
 })
 
 
@@ -59,6 +61,7 @@ CLIMATE_SYSTEMS = {
     '7c': ClimateSystem('S7 (cooling)', 40165, 48779, 48733),
     '8c': ClimateSystem('S8 (cooling)', 40164, 48778, 48732),
 }
+
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
@@ -99,9 +102,10 @@ class NibeClimate(ClimateDevice):
         self._adjust       = None
         self._uplink       = hass.data[DATA_NIBE]['uplink']
         self.entity_id     = async_generate_entity_id(
-                                'climate.nibe_' + str(self._system_id) + '_{}',
-                                str(self._current_id),
-                                hass=hass)
+            ENTITY_ID_FORMAT,
+            'nibe_{}_{}'.format(system_id, current_id),
+            hass=hass
+        )
 
     def get_value(self, data):
         if data == None or data['value'] == '--':
