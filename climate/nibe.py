@@ -10,7 +10,8 @@ from homeassistant.components.climate import (
     PLATFORM_SCHEMA,
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_TARGET_TEMPERATURE_HIGH,
-    SUPPORT_TARGET_TEMPERATURE_LOW
+    SUPPORT_TARGET_TEMPERATURE_LOW,
+    SUPPORT_ON_OFF
 )
 from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME)
 from collections import namedtuple
@@ -25,6 +26,7 @@ CONF_CLIMATE   = 'climate'
 CONF_CURRENT   = 'current'
 CONF_TARGET    = 'target'
 CONF_ADJUST    = 'adjust'
+CONF_ACTIVE    = 'active'
 
 CLIMATE_SCHEMA = {
     vol.Required(CONF_SYSTEM) : cv.positive_int,
@@ -44,45 +46,47 @@ NAME_COOLING_FLOW = "S{} Cool (flow)"
 
 ClimateSystem = namedtuple(
     'ClimateSystem',
-    ['name', 'current', 'target', 'adjust']
+    ['name', 'current', 'target', 'adjust', 'active']
 )
 
+PARAM_PUMP_SPEED = 43437
+
 CLIMATE_SYSTEMS = {
-    '1h' : ClimateSystem(NAME_HEATING_ROOM.format(1), 40033, 47398, None ),
-    '2h' : ClimateSystem(NAME_HEATING_ROOM.format(2), 40032, 47397, None ),
-    '3h' : ClimateSystem(NAME_HEATING_ROOM.format(3), 40031, 47396, None ),
-    '4h' : ClimateSystem(NAME_HEATING_ROOM.format(4), 40030, 47395, None ),
-    '5h' : ClimateSystem(NAME_HEATING_ROOM.format(5), 40167, 48683, None ),
-    '6h' : ClimateSystem(NAME_HEATING_ROOM.format(6), 40166, 48682, None ),
-    '7h' : ClimateSystem(NAME_HEATING_ROOM.format(7), 40165, 48681, None ),
-    '8h' : ClimateSystem(NAME_HEATING_ROOM.format(8), 40164, 48680, None ),
-    '1ha': ClimateSystem(NAME_HEATING_FLOW.format(1), 40008, 43009, 47011),
-    '2ha': ClimateSystem(NAME_HEATING_FLOW.format(2), 40007, 43008, 47010),
-    '3ha': ClimateSystem(NAME_HEATING_FLOW.format(3), 40006, 43007, 47009),
-    '4ha': ClimateSystem(NAME_HEATING_FLOW.format(4), 40004, 43006, 47008),
-    '5ha': ClimateSystem(NAME_HEATING_FLOW.format(5), None , None , 48494),
-    '6ha': ClimateSystem(NAME_HEATING_FLOW.format(6), None , None , 48493),
-    '7ha': ClimateSystem(NAME_HEATING_FLOW.format(7), None , None , 48492),
-    '8ha': ClimateSystem(NAME_HEATING_FLOW.format(8), None , None , 48491),
-    '1c' : ClimateSystem(NAME_COOLING_ROOM.format(1), 40033, 48785, None ),
-    '2c' : ClimateSystem(NAME_COOLING_ROOM.format(2), 40032, 48784, None ),
-    '3c' : ClimateSystem(NAME_COOLING_ROOM.format(3), 40031, 48783, None ),
-    '4c' : ClimateSystem(NAME_COOLING_ROOM.format(4), 40030, 48782, None ),
-    '5c' : ClimateSystem(NAME_COOLING_ROOM.format(5), 40167, 48781, None ),
-    '6c' : ClimateSystem(NAME_COOLING_ROOM.format(6), 40166, 48780, None ),
-    '7c' : ClimateSystem(NAME_COOLING_ROOM.format(7), 40165, 48779, None ),
-    '8c' : ClimateSystem(NAME_COOLING_ROOM.format(8), 40164, 48778, None ),
-    '1ca': ClimateSystem(NAME_COOLING_FLOW.format(1), 40008, 43009, 48739),
-    '2ca': ClimateSystem(NAME_COOLING_FLOW.format(2), 40007, 43008, 48738),
-    '3ca': ClimateSystem(NAME_COOLING_FLOW.format(3), 40006, 43007, 48737),
-    '4ca': ClimateSystem(NAME_COOLING_FLOW.format(4), 40004, 43006, 48736),
-    '5ca': ClimateSystem(NAME_COOLING_FLOW.format(5), None , None , 48735),
-    '6ca': ClimateSystem(NAME_COOLING_FLOW.format(6), None , None , 48734),
-    '7ca': ClimateSystem(NAME_COOLING_FLOW.format(7), None , None , 48733),
-    '8ca': ClimateSystem(NAME_COOLING_FLOW.format(8), None , None , 48732),
+    '1h' : ClimateSystem(NAME_HEATING_ROOM.format(1), 40033, 47398, None , PARAM_PUMP_SPEED),
+    '2h' : ClimateSystem(NAME_HEATING_ROOM.format(2), 40032, 47397, None , PARAM_PUMP_SPEED),
+    '3h' : ClimateSystem(NAME_HEATING_ROOM.format(3), 40031, 47396, None , PARAM_PUMP_SPEED),
+    '4h' : ClimateSystem(NAME_HEATING_ROOM.format(4), 40030, 47395, None , PARAM_PUMP_SPEED),
+    '5h' : ClimateSystem(NAME_HEATING_ROOM.format(5), 40167, 48683, None , PARAM_PUMP_SPEED),
+    '6h' : ClimateSystem(NAME_HEATING_ROOM.format(6), 40166, 48682, None , PARAM_PUMP_SPEED),
+    '7h' : ClimateSystem(NAME_HEATING_ROOM.format(7), 40165, 48681, None , PARAM_PUMP_SPEED),
+    '8h' : ClimateSystem(NAME_HEATING_ROOM.format(8), 40164, 48680, None , PARAM_PUMP_SPEED),
+    '1ha': ClimateSystem(NAME_HEATING_FLOW.format(1), 40008, 43009, 47011, PARAM_PUMP_SPEED),
+    '2ha': ClimateSystem(NAME_HEATING_FLOW.format(2), 40007, 43008, 47010, PARAM_PUMP_SPEED),
+    '3ha': ClimateSystem(NAME_HEATING_FLOW.format(3), 40006, 43007, 47009, PARAM_PUMP_SPEED),
+    '4ha': ClimateSystem(NAME_HEATING_FLOW.format(4), 40004, 43006, 47008, PARAM_PUMP_SPEED),
+    '5ha': ClimateSystem(NAME_HEATING_FLOW.format(5), None , None , 48494, PARAM_PUMP_SPEED),
+    '6ha': ClimateSystem(NAME_HEATING_FLOW.format(6), None , None , 48493, PARAM_PUMP_SPEED),
+    '7ha': ClimateSystem(NAME_HEATING_FLOW.format(7), None , None , 48492, PARAM_PUMP_SPEED),
+    '8ha': ClimateSystem(NAME_HEATING_FLOW.format(8), None , None , 48491, PARAM_PUMP_SPEED),
+    '1c' : ClimateSystem(NAME_COOLING_ROOM.format(1), 40033, 48785, None , None),
+    '2c' : ClimateSystem(NAME_COOLING_ROOM.format(2), 40032, 48784, None , None),
+    '3c' : ClimateSystem(NAME_COOLING_ROOM.format(3), 40031, 48783, None , None),
+    '4c' : ClimateSystem(NAME_COOLING_ROOM.format(4), 40030, 48782, None , None),
+    '5c' : ClimateSystem(NAME_COOLING_ROOM.format(5), 40167, 48781, None , None),
+    '6c' : ClimateSystem(NAME_COOLING_ROOM.format(6), 40166, 48780, None , None),
+    '7c' : ClimateSystem(NAME_COOLING_ROOM.format(7), 40165, 48779, None , None),
+    '8c' : ClimateSystem(NAME_COOLING_ROOM.format(8), 40164, 48778, None , None),
+    '1ca': ClimateSystem(NAME_COOLING_FLOW.format(1), 40008, 43009, 48739, None),
+    '2ca': ClimateSystem(NAME_COOLING_FLOW.format(2), 40007, 43008, 48738, None),
+    '3ca': ClimateSystem(NAME_COOLING_FLOW.format(3), 40006, 43007, 48737, None),
+    '4ca': ClimateSystem(NAME_COOLING_FLOW.format(4), 40004, 43006, 48736, None),
+    '5ca': ClimateSystem(NAME_COOLING_FLOW.format(5), None , None , 48735, None),
+    '6ca': ClimateSystem(NAME_COOLING_FLOW.format(6), None , None , 48734, None),
+    '7ca': ClimateSystem(NAME_COOLING_FLOW.format(7), None , None , 48733, None),
+    '8ca': ClimateSystem(NAME_COOLING_FLOW.format(8), None , None , 48732, None),
 }
 
-CLIMATE_NONE = ClimateSystem(None, None, None, None)
+CLIMATE_NONE = ClimateSystem(None, None, None, None, None)
 
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
@@ -105,22 +109,25 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
                                    c.get(CONF_SYSTEM),
                                    c.get(CONF_CURRENT, climate.current),
                                    c.get(CONF_TARGET , climate.target),
-                                   c.get(CONF_ADJUST , climate.adjust)))
+                                   c.get(CONF_ADJUST , climate.adjust),
+                                   c.get(CONF_ADJUST , climate.active)))
 
     async_add_devices(sensors, True)
 
 
 class NibeClimate(ClimateDevice):
-    def __init__(self, hass, name, system_id, current_id, target_id, adjust_id):
+    def __init__(self, hass, name, system_id, current_id, target_id, adjust_id, active_id):
         self._name         = name
         self._system_id    = system_id
         self._current_id   = current_id
         self._target_id    = target_id
         self._adjust_id    = adjust_id
+        self._active_id    = active_id
         self._unit         = None
         self._current      = None
         self._target       = None
         self._adjust       = None
+        self._active       = None
         self._status       = 'DONE'
         self._uplink       = hass.data[DATA_NIBE]['uplink']
         self.entity_id     = async_generate_entity_id(
@@ -193,7 +200,23 @@ class NibeClimate(ClimateDevice):
         features = (SUPPORT_TARGET_TEMPERATURE |
                     SUPPORT_TARGET_TEMPERATURE_HIGH |
                     SUPPORT_TARGET_TEMPERATURE_LOW)
+        if self._active_id:
+            features = features | SUPPORT_ON_OFF
         return features
+
+    @property
+    def is_on(self):
+        if self._active_id:
+            _LOGGER.error("GAD {}".format(self._active is not None and self._active['value']))
+            return self._active is not None and bool(self._active['value'])
+        else:
+            return None
+
+    async def async_turn_on(self):
+        return
+
+    async def async_turn_off(self):
+        return
 
     async def async_set_temperature(self, **kwargs):
         data = kwargs.get(ATTR_TEMPERATURE)
@@ -226,8 +249,9 @@ class NibeClimate(ClimateDevice):
             else:
                 return None
 
-        self._current, self._target, self._adjust = await asyncio.gather(
+        self._current, self._target, self._adjust, self._active = await asyncio.gather(
             get_parameter(self._current_id),
             get_parameter(self._target_id),
             get_parameter(self._adjust_id),
+            get_parameter(self._active_id),
         )
