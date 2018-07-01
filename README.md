@@ -66,7 +66,7 @@ Minimal configuration
 
 
 Optional climate system setup with standard id's. climate field should be in the format of
-`[1-8](h|c)(a?)` as an example `1h` for system 1 heating, `2ca` for system 2 cooling flow adjust
+`[1-4](h|c)(a?)` as an example `1h` for system 1 heating, `2ca` for system 2 cooling flow adjust
 ```yaml
 climate:
   - platform: nibe
