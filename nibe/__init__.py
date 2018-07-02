@@ -27,7 +27,7 @@ DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
 INTERVAL            = timedelta(minutes=1)
 
-REQUIREMENTS        = ['nibeuplink==0.4.2']
+REQUIREMENTS        = ['nibeuplink==0.4.3']
 
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
@@ -147,108 +147,104 @@ class NibeSystem(object):
         self.uplink     = uplink
         self.notice     = []
 
-    async def load_parameters(self, ids, entities, sensors: set):
-        entity_ids = [
-            'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
-            for sensor in ids
+    async def load_parameters(self, ids: List[str], data: dict = {}):
+
+        discovery_info = [
+            {
+                'system_id'   : self.system['systemId'],
+                'parameter_id': x,
+                'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
+                'data'        : data.get(x, None)
+            }
+            for x in ids
+            if x != "0"  # we currently can't load parameters with no id
         ]
 
-        sensors.update(ids)
-        entities.extend(entity_ids)
+        if not discovery_info:
+            return []
 
-    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict], entities: list, sensors: set):
+        await discovery.async_load_platform(
+            self.hass,
+            'sensor',
+            DOMAIN,
+            discovery_info)
+
+        return [
+            'sensor.{}'.format(x['object_id'])
+            for x in discovery_info
+        ]
+
+    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict]):
+        data = {
+            x['parameterId']: x
+            for x in parameters
+        }
+
+        entity_ids = await self.load_parameters(list(data.keys()), data)
+
         group = self.hass.components.group
-        # we currently can't load parameters with no id
-        parameters  = [x for x in parameters if x['parameterId'] != 0]
-        ids = [c['parameterId'] for c in parameters]
-
-        entity_ids = [
-            'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
-            for sensor in ids
-        ]
-
         entity = await group.Group.async_create_group(
             self.hass,
             name       = name,
             control    = False,
             entity_ids = entity_ids,
             object_id  = '{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
+        return entity.entity_id
 
-        sensors.update(ids)
-        entities.append(entity.entity_id)
-
-    async def load_categories(self, unit: int, selected, entities: list, sensors: set):
+    async def load_categories(self, unit: int, selected):
         data   = await self.uplink.get_categories(self.system_id, True, unit)
         data   = filter_list(data, 'categoryId', selected)
-
-        for x in data:
+        return [
             await self.load_parameter_group(x['name'],
                                             '{}_{}'.format(unit, x['categoryId']),
-                                            x['parameters'],
-                                            entities,
-                                            sensors)
+                                            x['parameters'])
+            for x in data
+        ]
 
-    async def load_status(self, unit: int, entities: list, sensors: set):
+    async def load_status(self, unit: int):
         data   = await self.uplink.get_status(self.system_id, unit)
-
-        for x in data:
+        return [
             await self.load_parameter_group(x['title'],
                                             '{}_{}'.format(unit, x['title']),
-                                            x['parameters'],
-                                            entities,
-                                            sensors)
+                                            x['parameters'])
+            for x in data
+        ]
+
+    async def load_unit(self, unit):
+        entities = []
+        if CONF_CATEGORIES in unit:
+            entities.extend(
+                await self.load_categories(
+                    unit.get(CONF_UNIT),
+                    unit.get(CONF_CATEGORIES)))
+
+        if CONF_STATUSES in unit:
+            entities.extend(
+                await self.load_status(
+                    unit.get(CONF_UNIT)))
+
+        if CONF_PARAMETERS in unit:
+            entities.extend(
+                await self.load_parameters(
+                    unit.get(CONF_PARAMETERS)))
+
+        group = self.hass.components.group
+        return await group.Group.async_create_group(
+            self.hass,
+            '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
+            user_defined = False,
+            control      = False,
+            view         = True,
+            icon         = 'mdi:thermostat',
+            object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
+            entity_ids   = entities)
 
     async def load(self):
         if not self.system:
             self.system = await self.uplink.get_system(self.system_id)
 
-        sensors  = set()
         for unit in self.config.get(CONF_UNITS):
-            entities = []
-            if CONF_CATEGORIES in unit:
-                await self.load_categories(
-                    unit.get(CONF_UNIT),
-                    unit.get(CONF_CATEGORIES),
-                    entities,
-                    sensors)
-
-            if CONF_STATUSES in unit:
-                await self.load_status(
-                    unit.get(CONF_UNIT),
-                    entities,
-                    sensors)
-
-            if CONF_PARAMETERS in unit:
-                await self.load_parameters(
-                    unit.get(CONF_PARAMETERS),
-                    entities,
-                    sensors)
-
-            group = self.hass.components.group
-            await group.Group.async_create_group(
-                self.hass,
-                '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
-                user_defined = False,
-                control      = False,
-                view         = True,
-                icon         = 'mdi:thermostat',
-                object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
-                entity_ids   = entities)
-
-        if sensors:
-            discovery_info = [
-                {
-                    'system_id'   : self.system['systemId'],
-                    'parameter_id': sensor
-                }
-                for sensor in sensors
-            ]
-
-            await discovery.async_load_platform(
-                self.hass,
-                'sensor',
-                DOMAIN,
-                discovery_info)
+            await self.load_unit(unit)
 
         await self.update()
         async_track_time_interval(self.hass, self.update, INTERVAL)
