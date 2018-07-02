@@ -157,7 +157,7 @@ class NibeSystem(object):
                 'data'        : data.get(x, None)
             }
             for x in ids
-            if x != "0"  # we currently can't load parameters with no id
+            if str(x) != "0"  # we currently can't load parameters with no id
         ]
 
         if not discovery_info:
