@@ -44,33 +44,47 @@ NAME_HEATING_FLOW = "S{} Heat (flow)"
 NAME_COOLING_ROOM = "S{} Cool (room)"
 NAME_COOLING_FLOW = "S{} Cool (flow)"
 
+
 ClimateSystem = namedtuple(
     'ClimateSystem',
-    ['name', 'current', 'target', 'adjust', 'active']
+    [
+        'name',
+        'return_temp',                 # BT3
+        'supply_temp',                 # BT2
+        'calc_supply_temp_heat',       # CSTH
+        'offset_cool',                 # OC
+        'room_temp',                   # BT50
+        'room_setpoint_heat',          # RSH
+        'room_setpoint_cool',          # RSC
+        'use_room_sensor',             # URS
+        'active_accessory',            # AA
+        'external_adjustment_active',  # EAA
+        'calc_supply_temp_cool',       # CSTC
+        'offset_heat',                 # OH
+        'heat_curve',                  # HC
+        'min_supply',                  # MIS
+        'max_supply',                  # MAS
+        'extra_heat_pump'              # EHP
+    ]
 )
+
+CLIMATE_SYSTEMS = {
+    #                        BT3    BT2    CSTH   OC     BT50   RSH    RSC    URS    AA     EAA    CSTC   OH     HC     MIS    MAS    HP
+    '1': ClimateSystem('S1', 40012, 40008, 43009, 48739, 40033, 47398, 48785, 47394, None , 43161, 44270, 47011, 47007, 47015, 47016, None),
+    '2': ClimateSystem('S2', 40129, 40007, 43008, 48738, 40032, 47397, 48784, 47393, 47302, 43160, 44269, 47010, 47006, 47014, 47017, 44746),
+    '3': ClimateSystem('S3', 40128, 40006, 43007, 48737, 40031, 47396, 48783, 47392, 47303, 43159, 44268, 47009, 47005, 47013, 47018, 44745),
+    '4': ClimateSystem('S4', 40127, 40005, 43006, 48736, 40030, 47395, 48782, 47391, 47304, 43158, 44267, 47008, 47004, 47012, 47019, 44744),
+}
 
 PARAM_PUMP_SPEED = 43437
 
-CLIMATE_SYSTEMS = {
-    '1h' : ClimateSystem(NAME_HEATING_ROOM.format(1), 40033, 47398, None , PARAM_PUMP_SPEED),
-    '2h' : ClimateSystem(NAME_HEATING_ROOM.format(2), 40032, 47397, None , PARAM_PUMP_SPEED),
-    '3h' : ClimateSystem(NAME_HEATING_ROOM.format(3), 40031, 47396, None , PARAM_PUMP_SPEED),
-    '4h' : ClimateSystem(NAME_HEATING_ROOM.format(4), 40030, 47395, None , PARAM_PUMP_SPEED),
-    '1ha': ClimateSystem(NAME_HEATING_FLOW.format(1), 40008, 43009, 47011, PARAM_PUMP_SPEED),
-    '2ha': ClimateSystem(NAME_HEATING_FLOW.format(2), 40007, 43008, 47010, PARAM_PUMP_SPEED),
-    '3ha': ClimateSystem(NAME_HEATING_FLOW.format(3), 40006, 43007, 47009, PARAM_PUMP_SPEED),
-    '4ha': ClimateSystem(NAME_HEATING_FLOW.format(4), 40005, 43006, 47008, PARAM_PUMP_SPEED),
-    '1c' : ClimateSystem(NAME_COOLING_ROOM.format(1), 40033, 48785, None , None),
-    '2c' : ClimateSystem(NAME_COOLING_ROOM.format(2), 40032, 48784, None , None),
-    '3c' : ClimateSystem(NAME_COOLING_ROOM.format(3), 40031, 48783, None , None),
-    '4c' : ClimateSystem(NAME_COOLING_ROOM.format(4), 40030, 48782, None , None),
-    '1ca': ClimateSystem(NAME_COOLING_FLOW.format(1), 40008, 43009, 48739, None),
-    '2ca': ClimateSystem(NAME_COOLING_FLOW.format(2), 40007, 43008, 48738, None),
-    '3ca': ClimateSystem(NAME_COOLING_FLOW.format(3), 40006, 43007, 48737, None),
-    '4ca': ClimateSystem(NAME_COOLING_FLOW.format(4), 40005, 43006, 48736, None),
+CLIMATE_NAMES = {
+    ''  : '',
+    'h' : 'Heat (room)',
+    'ha': 'Heat (flow)',
+    'c' : 'Cool (room)',
+    'ca': 'Cool (flow)'
 }
-
-CLIMATE_NONE = ClimateSystem(None, None, None, None, None)
 
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
@@ -83,24 +97,55 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
         configs = [config]
 
     for c in configs:
-        if CONF_CLIMATE in c:
-            climate = CLIMATE_SYSTEMS[c[CONF_CLIMATE]]
+        index   = c.get(CONF_CLIMATE, '0')[0]
+        variant = c.get(CONF_CLIMATE, '0')[1:]
+        climate = CLIMATE_SYSTEMS.get(index)
+        if climate:
+            name = climate.name
+            if variant == 'h':
+                current = climate.room_temp
+                target  = climate.room_setpoint_heat
+                adjust  = None
+                active  = PARAM_PUMP_SPEED
+            elif variant == 'c':
+                current = climate.room_temp
+                target  = climate.room_setpoint_cool
+                adjust  = None
+                active  = None
+            elif variant == 'ha':
+                current = climate.supply_temp
+                target  = climate.calc_supply_temp_heat
+                adjust  = climate.offset_heat
+                active  = PARAM_PUMP_SPEED
+            elif variant == 'ca':
+                current = climate.supply_temp
+                target  = climate.calc_supply_temp_cool
+                adjust  = climate.offset_cool
+                active  = None
         else:
-            climate = CLIMATE_NONE
+            name    = 'System'
+            current = c.get(CONF_CURRENT)
+            target  = c.get(CONF_TARGET)
+            adjust  = c.get(CONF_ADJUST)
+            active  = c.get(CONF_ACTIVE)
 
-        sensors.append(NibeClimate(hass,
-                                   c.get(CONF_NAME   , climate.name),
-                                   c.get(CONF_SYSTEM),
-                                   c.get(CONF_CURRENT, climate.current),
-                                   c.get(CONF_TARGET , climate.target),
-                                   c.get(CONF_ADJUST , climate.adjust),
-                                   c.get(CONF_ADJUST , climate.active)))
+        sensors.append(
+            NibeClimate(
+                hass,
+                c.get(CONF_NAME, name),
+                c.get(CONF_SYSTEM),
+                current,
+                target,
+                adjust,
+                active
+            )
+        )
 
     async_add_devices(sensors, True)
 
 
 class NibeClimate(ClimateDevice):
-    def __init__(self, hass, name, system_id, current_id, target_id, adjust_id, active_id):
+    def __init__(self, hass, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str):
         self._name         = name
         self._system_id    = system_id
         self._current_id   = current_id
@@ -191,7 +236,6 @@ class NibeClimate(ClimateDevice):
     @property
     def is_on(self):
         if self._active_id:
-            _LOGGER.error("GAD {}".format(self._active is not None and self._active['value']))
             return self._active is not None and bool(self._active['value'])
         else:
             return None
