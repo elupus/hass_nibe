@@ -5,32 +5,18 @@ Support for nibe uplink.
 
 from datetime import timedelta
 import logging
-import sys
-import time
 import asyncio
 import json
 import voluptuous as vol
-import traceback
 from typing import List
 import homeassistant.helpers.config_validation as cv
 
-from homeassistant.const import (CONF_ACCESS_TOKEN,
-                                 CONF_EMAIL,
-                                 CONF_PASSWORD,
-                                 EVENT_HOMEASSISTANT_START,
-                                 EVENT_HOMEASSISTANT_STOP)
 from homeassistant.helpers import discovery
-from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
-from homeassistant.helpers.entity_component import EntityComponent
-from homeassistant.core import callback
 from homeassistant.const import (
-    TEMP_CELSIUS,
     HTTP_OK,
     HTTP_BAD_REQUEST,
 )
@@ -41,7 +27,7 @@ DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
 INTERVAL            = timedelta(minutes=1)
 
-REQUIREMENTS        = ['nibeuplink==0.4.0']
+REQUIREMENTS        = ['nibeuplink==0.4.3']
 
 CONF_CLIENT_ID      = 'client_id'
 CONF_CLIENT_SECRET  = 'client_secret'
@@ -58,29 +44,30 @@ CONF_UNIT           = 'unit'
 SIGNAL_UPDATE       = 'nibe_update'
 
 UNIT_SCHEMA = vol.Schema({
-        vol.Required(CONF_UNIT): cv.positive_int,
-        vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_PARAMETERS): vol.All(cv.ensure_list, [cv.positive_int])
+    vol.Required(CONF_UNIT): cv.positive_int,
+    vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_PARAMETERS): vol.All(cv.ensure_list, [cv.positive_int])
 })
 
 SYSTEM_SCHEMA = vol.Schema({
-        vol.Required(CONF_SYSTEM): cv.positive_int,
-        vol.Optional(CONF_UNITS): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
-    })
+    vol.Required(CONF_SYSTEM): cv.positive_int,
+    vol.Optional(CONF_UNITS): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
+})
 
 NIBE_SCHEMA = vol.Schema({
-            vol.Required(CONF_REDIRECT_URI): cv.string,
-            vol.Required(CONF_CLIENT_ID): cv.string,
-            vol.Required(CONF_CLIENT_SECRET): cv.string,
-            vol.Required(CONF_CLIENT_SECRET): cv.string,
-            vol.Optional(CONF_WRITEACCESS, default = False): cv.boolean,
-            vol.Optional(CONF_SYSTEMS, default = []): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
-    })
+    vol.Required(CONF_REDIRECT_URI): cv.string,
+    vol.Required(CONF_CLIENT_ID): cv.string,
+    vol.Required(CONF_CLIENT_SECRET): cv.string,
+    vol.Required(CONF_CLIENT_SECRET): cv.string,
+    vol.Optional(CONF_WRITEACCESS, default = False): cv.boolean,
+    vol.Optional(CONF_SYSTEMS, default = []): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
+})
 
 CONFIG_SCHEMA = vol.Schema({
-        DOMAIN: NIBE_SCHEMA
-    }, extra=vol.ALLOW_EXTRA)
+    DOMAIN: NIBE_SCHEMA
+}, extra=vol.ALLOW_EXTRA)
+
 
 async def async_setup_systems(hass, config, uplink):
 
@@ -90,18 +77,19 @@ async def async_setup_systems(hass, config, uplink):
         persistent_notification.async_create(hass, 'No systems selected, please configure one system id of:<br/><br/><pre>{}</pre>'.format(msg) , 'Invalid nibe config', 'invalid_config')
         return
 
-    systems = [ NibeSystem(hass,
-                           uplink,
-                           config[CONF_SYSTEM],
-                           config)
-                     for config in config.get(CONF_SYSTEMS)
-              ]
+    systems = [
+        NibeSystem(hass,
+                   uplink,
+                   config[CONF_SYSTEM],
+                   config)
+        for config in config.get(CONF_SYSTEMS)
+    ]
 
     hass.data[DATA_NIBE] = {}
     hass.data[DATA_NIBE]['systems'] = systems
     hass.data[DATA_NIBE]['uplink']  = uplink
 
-    tasks = [ system.load() for system in systems ]
+    tasks = [system.load() for system in systems]
 
     await asyncio.gather(*tasks)
 
@@ -123,12 +111,12 @@ async def async_setup(hass, config):
         scope = ['READSYSTEM']
 
     uplink = Uplink(
-            client_id            = config[DOMAIN].get(CONF_CLIENT_ID),
-            client_secret        = config[DOMAIN].get(CONF_CLIENT_SECRET),
-            redirect_uri         = config[DOMAIN].get(CONF_REDIRECT_URI),
-            access_data          = load_json(store),
-            access_data_write    = save_json_local,
-            scope                = scope
+        client_id            = config[DOMAIN].get(CONF_CLIENT_ID),
+        client_secret        = config[DOMAIN].get(CONF_CLIENT_SECRET),
+        redirect_uri         = config[DOMAIN].get(CONF_REDIRECT_URI),
+        access_data          = load_json(store),
+        access_data_write    = save_json_local,
+        scope                = scope
     )
 
     if not uplink.access_data:
@@ -159,113 +147,114 @@ class NibeSystem(object):
         self.uplink     = uplink
         self.notice     = []
 
-    async def load_parameters(self, ids, entities, sensors: set):
-        entity_ids = [ 'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
-                        for sensor in ids
-                     ]
+    async def load_parameters(self, ids: List[str], data: dict = {}):
 
-        sensors.update(ids)
-        entities.extend(entity_ids)
+        discovery_info = [
+            {
+                'system_id'   : self.system['systemId'],
+                'parameter_id': x,
+                'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
+                'data'        : data.get(x, None)
+            }
+            for x in ids
+            if str(x) != "0"  # we currently can't load parameters with no id
+        ]
 
-    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict], entities: list, sensors: set):
+        if not discovery_info:
+            return []
+
+        await discovery.async_load_platform(
+            self.hass,
+            'sensor',
+            DOMAIN,
+            discovery_info)
+
+        return [
+            'sensor.{}'.format(x['object_id'])
+            for x in discovery_info
+        ]
+
+    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict]):
+        data = {
+            x['parameterId']: x
+            for x in parameters
+        }
+
+        entity_ids = await self.load_parameters(list(data.keys()), data)
+
         group = self.hass.components.group
-        ids = [c['parameterId'] for c in parameters]
-
-        entity_ids = [ 'sensor.{}_{}_{}'.format(DOMAIN, self.system_id, str(sensor))
-                        for sensor in ids
-                     ]
-
         entity = await group.Group.async_create_group(
-                        self.hass,
-                        name       = name,
-                        control    = False,
-                        entity_ids = entity_ids,
-                        object_id  = '{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
+            self.hass,
+            name       = name,
+            control    = False,
+            entity_ids = entity_ids,
+            object_id  = '{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
+        return entity.entity_id
 
-        sensors.update(ids)
-        entities.append(entity.entity_id)
-
-
-    async def load_categories(self, unit: int, selected, entities: list, sensors: set):
+    async def load_categories(self, unit: int, selected):
         data   = await self.uplink.get_categories(self.system_id, True, unit)
         data   = filter_list(data, 'categoryId', selected)
-
-        for x in data:
-            await self.load_parameter_group(x['name'],
+        tasks = [
+            self.load_parameter_group(x['name'],
                                             '{}_{}'.format(unit, x['categoryId']),
-                                            x['parameters'],
-                                            entities,
-                                            sensors)
+                                            x['parameters'])
+            for x in data
+        ]
+        return await asyncio.gather(*tasks)
 
-
-    async def load_status(self, unit: int, entities: list, sensors: set):
+    async def load_status(self, unit: int):
         data   = await self.uplink.get_status(self.system_id, unit)
-
-        for x in data:
-            await self.load_parameter_group(x['title'],
+        tasks = [
+            self.load_parameter_group(x['title'],
                                             '{}_{}'.format(unit, x['title']),
-                                            x['parameters'],
-                                            entities,
-                                            sensors)
+                                            x['parameters'])
+            for x in data
+        ]
+        return await asyncio.gather(*tasks)
+
+    async def load_unit(self, unit):
+        entities = []
+        if CONF_CATEGORIES in unit:
+            entities.extend(
+                await self.load_categories(
+                    unit.get(CONF_UNIT),
+                    unit.get(CONF_CATEGORIES)))
+
+        if CONF_STATUSES in unit:
+            entities.extend(
+                await self.load_status(
+                    unit.get(CONF_UNIT)))
+
+        if CONF_PARAMETERS in unit:
+            entities.extend(
+                await self.load_parameters(
+                    unit.get(CONF_PARAMETERS)))
+
+        group = self.hass.components.group
+        return await group.Group.async_create_group(
+            self.hass,
+            '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
+            user_defined = False,
+            control      = False,
+            view         = True,
+            icon         = 'mdi:thermostat',
+            object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
+            entity_ids   = entities)
 
     async def load(self):
         if not self.system:
             self.system = await self.uplink.get_system(self.system_id)
 
-        sensors  = set()
         for unit in self.config.get(CONF_UNITS):
-            entities = []
-            if CONF_CATEGORIES in unit:
-                await self.load_categories(
-                    unit.get(CONF_UNIT),
-                    unit.get(CONF_CATEGORIES),
-                    entities,
-                    sensors)
-
-            if CONF_STATUSES in unit:
-                await self.load_status(
-                    unit.get(CONF_UNIT),
-                    entities,
-                    sensors)
-
-            if CONF_PARAMETERS in unit:
-                await self.load_parameters(
-                    unit.get(CONF_PARAMETERS),
-                    entities,
-                    sensors)
-
-            group = self.hass.components.group
-            await group.Group.async_create_group(
-                self.hass,
-                '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
-                user_defined = False,
-                control      = False,
-                view         = True,
-                icon         = 'mdi:thermostat',
-                object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
-                entity_ids   = entities)
-
-        if sensors:
-            discovery_info = [
-                { 'system_id'   : self.system['systemId'],
-                  'parameter_id': sensor
-                }
-                for sensor in sensors
-            ]
-
-            await discovery.async_load_platform(
-                self.hass,
-                'sensor',
-                DOMAIN,
-                discovery_info)
+            await self.load_unit(unit)
 
         await self.update()
         async_track_time_interval(self.hass, self.update, INTERVAL)
 
     async def update(self, now = None):
         notice = await self.uplink.get_notifications(self.system_id)
-        added   = [ k for k in notice      if k not in self.notice ]
-        removed = [ k for k in self.notice if k not in notice ]
+        added   = [k for k in notice      if k not in self.notice]
+        removed = [k for k in self.notice if k not in notice]
         self.notice = notice
 
         for x in added:
@@ -279,6 +268,7 @@ class NibeSystem(object):
             persistent_notification.async_dismiss(
                 'nibe:{}'.format(x['notificationId'])
             )
+
 
 class NibeAuthView(HomeAssistantView):
     """Handle nibe  authentication callbacks."""
@@ -342,11 +332,8 @@ get redirected to in the below prompt.
     async def callback(self, data):
         await self.configure(data['url'])
 
-    
     async def get(self, request):
         """Handle oauth token request."""
-
-        from aiohttp import web
 
         try:
             await self.configure(str(request.url))
