@@ -194,21 +194,23 @@ class NibeSystem(object):
     async def load_categories(self, unit: int, selected):
         data   = await self.uplink.get_categories(self.system_id, True, unit)
         data   = filter_list(data, 'categoryId', selected)
-        return [
-            await self.load_parameter_group(x['name'],
+        tasks = [
+            self.load_parameter_group(x['name'],
                                             '{}_{}'.format(unit, x['categoryId']),
                                             x['parameters'])
             for x in data
         ]
+        return await asyncio.gather(*tasks)
 
     async def load_status(self, unit: int):
         data   = await self.uplink.get_status(self.system_id, unit)
-        return [
-            await self.load_parameter_group(x['title'],
+        tasks = [
+            self.load_parameter_group(x['title'],
                                             '{}_{}'.format(unit, x['title']),
                                             x['parameters'])
             for x in data
         ]
+        return await asyncio.gather(*tasks)
 
     async def load_unit(self, unit):
         entities = []
