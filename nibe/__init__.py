@@ -40,6 +40,7 @@ CONF_SYSTEMS        = 'systems'
 CONF_SYSTEM         = 'system'
 CONF_UNITS          = 'units'
 CONF_UNIT           = 'unit'
+CONF_CLIMATES       = 'climates'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
@@ -48,6 +49,7 @@ UNIT_SCHEMA = vol.Schema({
     vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
@@ -151,7 +153,7 @@ class NibeSystem(object):
 
         discovery_info = [
             {
-                'system_id'   : self.system['systemId'],
+                'system'      : self.system['systemId'],
                 'parameter_id': x,
                 'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
                 'data'        : data.get(x, None)
@@ -212,6 +214,32 @@ class NibeSystem(object):
         ]
         return await asyncio.gather(*tasks)
 
+    async def load_climate(self, selected):
+        _LOGGER.debug("Loading climate systems: {}".format(selected))
+        discovery_info = [
+            {
+                'system'      : self.system['systemId'],
+                'climate'     : x,
+                'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x))
+            }
+            for x in selected
+        ]
+
+        if not discovery_info:
+            return []
+
+        await discovery.async_load_platform(
+            self.hass,
+            'climate',
+            DOMAIN,
+            discovery_info)
+
+        return [
+            'climate.{}'.format(x['object_id'])
+            for x in discovery_info
+        ]
+
+
     async def load_unit(self, unit):
         entities = []
         if CONF_CATEGORIES in unit:
@@ -229,6 +257,11 @@ class NibeSystem(object):
             entities.extend(
                 await self.load_parameters(
                     unit.get(CONF_SENSORS)))
+
+        if CONF_CLIMATES in unit:
+            entities.extend(
+                await self.load_climate(
+                    unit.get(CONF_CLIMATES)))
 
         group = self.hass.components.group
         return await group.Group.async_create_group(

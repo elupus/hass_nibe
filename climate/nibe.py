@@ -26,14 +26,16 @@ CONF_CURRENT   = 'current'
 CONF_TARGET    = 'target'
 CONF_ADJUST    = 'adjust'
 CONF_ACTIVE    = 'active'
+CONF_OBJECTID  = 'object_id'
 
 CLIMATE_SCHEMA = {
     vol.Required(CONF_SYSTEM) : cv.positive_int,
-    vol.Required(CONF_NAME)   : cv.string,
+    vol.Optional(CONF_NAME)   : cv.string,
     vol.Optional(CONF_CLIMATE): cv.string,
     vol.Optional(CONF_CURRENT): cv.positive_int,
     vol.Optional(CONF_TARGET) : cv.positive_int,
     vol.Optional(CONF_ADJUST) : cv.positive_int,
+    vol.Optional(CONF_OBJECTID) : cv.entity_id,
 }
 
 PLATFORM_SCHEMA.extend(CLIMATE_SCHEMA)
@@ -95,7 +97,8 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
                 current,
                 target,
                 adjust,
-                active
+                active,
+                c.get(CONF_OBJECTID),
             )
         )
 
@@ -103,7 +106,7 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
 
 class NibeClimate(ClimateDevice):
-    def __init__(self, hass, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str):
+    def __init__(self, hass, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str, object_id: str):
         self._name         = name
         self._system_id    = system_id
         self._current_id   = current_id
@@ -117,11 +120,9 @@ class NibeClimate(ClimateDevice):
         self._active       = None
         self._status       = 'DONE'
         self._uplink       = hass.data[DATA_NIBE]['uplink']
-        self.entity_id     = async_generate_entity_id(
-            ENTITY_ID_FORMAT,
-            'nibe_{}_{}'.format(system_id, current_id),
-            hass=hass
-        )
+        if object_id is None:
+            object_id = 'nibe_{}_{}'.format(system_id, current_id)
+        self.entity_id     = async_generate_entity_id(ENTITY_ID_FORMAT, object_id, hass=hass)
 
     def get_value(self, data, default = None):
         if data is None or data['value'] is None:

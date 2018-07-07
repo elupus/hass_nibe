@@ -36,7 +36,7 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
     if (discovery_info):
         sensors = [
             NibeSensor(hass,
-                       parameter['system_id'],
+                       parameter['system'],
                        parameter['parameter_id'],
                        object_id = parameter['object_id'],
                        data      = parameter['data'])
