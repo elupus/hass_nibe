@@ -128,6 +128,12 @@ class NibeClimate(ClimateDevice):
         else:
             return float(data['value'])
 
+    def get_scale(self, data):
+        if data is None or data['value'] is None:
+            return 1.0
+        else:
+            return float(data['rawValue']) / float(data['value'])
+
     def get_target_base(self):
         return self.get_value(self._target, 0)  - self.get_value(self._adjust, 0)
 
@@ -214,9 +220,10 @@ class NibeClimate(ClimateDevice):
 
         if self._adjust_id:
             # calculate what offset was used to calculate the target
-            data = data - self.get_target_base()
+            data = self.get_scale(self._adjust) * (data - self.get_target_base())
             parameter = self._adjust_id
         else:
+            data = self.get_scale(self._target) * data
             parameter = self._target_id
 
         _LOGGER.debug("Set temperature on parameter {} to {}".format(parameter, data))
@@ -224,7 +231,6 @@ class NibeClimate(ClimateDevice):
         try:
             self._status = await self._uplink.put_parameter(self._system_id, parameter, data)
         except:
-
             self._status = 'ERROR'
             pass
         finally:
