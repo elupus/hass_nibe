@@ -44,7 +44,7 @@ nibe:
               statuses:
 
           # optional list of additional parameters to retrieve, can be done here or on the sensor platform
-              parameters:
+              sensors:
                 - <parameter identifier>
                 - <parameter identifier>
 

@@ -34,7 +34,7 @@ CONF_CLIENT_SECRET  = 'client_secret'
 CONF_REDIRECT_URI   = 'redirect_uri'
 CONF_WRITEACCESS    = 'writeaccess'
 CONF_CATEGORIES     = 'categories'
-CONF_PARAMETERS     = 'parameters'
+CONF_SENSORS        = 'sensors'
 CONF_STATUSES       = 'statuses'
 CONF_SYSTEMS        = 'systems'
 CONF_SYSTEM         = 'system'
@@ -47,7 +47,7 @@ UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
     vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_PARAMETERS): vol.All(cv.ensure_list, [cv.positive_int])
+    vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
@@ -225,10 +225,10 @@ class NibeSystem(object):
                 await self.load_status(
                     unit.get(CONF_UNIT)))
 
-        if CONF_PARAMETERS in unit:
+        if CONF_SENSORS in unit:
             entities.extend(
                 await self.load_parameters(
-                    unit.get(CONF_PARAMETERS)))
+                    unit.get(CONF_SENSORS)))
 
         group = self.hass.components.group
         return await group.Group.async_create_group(
