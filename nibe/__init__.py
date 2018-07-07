@@ -19,6 +19,7 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import (
     HTTP_OK,
     HTTP_BAD_REQUEST,
+    CONF_PLATFORM,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +42,14 @@ CONF_SYSTEM         = 'system'
 CONF_UNITS          = 'units'
 CONF_UNIT           = 'unit'
 CONF_CLIMATES       = 'climates'
+CONF_PARAMETER      = 'parameter'
+CONF_OBJECTID       = 'object_id'
+CONF_DATA           = 'data'
+CONF_CLIMATE        = 'climate'
+CONF_CURRENT        = 'current'
+CONF_TARGET         = 'target'
+CONF_ADJUST         = 'adjust'
+CONF_ACTIVE         = 'active'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
@@ -153,10 +162,11 @@ class NibeSystem(object):
 
         discovery_info = [
             {
-                'system'      : self.system['systemId'],
-                'parameter_id': x,
-                'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
-                'data'        : data.get(x, None)
+                CONF_PLATFORM  : DOMAIN,
+                CONF_SYSTEM    : self.system['systemId'],
+                CONF_PARAMETER : x,
+                CONF_OBJECTID  : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
+                CONF_DATA      : data.get(x, None)
             }
             for x in ids
             if str(x) != "0"  # we currently can't load parameters with no id
@@ -218,9 +228,10 @@ class NibeSystem(object):
         _LOGGER.debug("Loading climate systems: {}".format(selected))
         discovery_info = [
             {
-                'system'      : self.system['systemId'],
-                'climate'     : x,
-                'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x))
+                CONF_PLATFORM : DOMAIN,
+                CONF_SYSTEM   : self.system['systemId'],
+                CONF_CLIMATE  : x,
+                CONF_OBJECTID : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x))
             }
             for x in selected
         ]

@@ -14,39 +14,37 @@ from homeassistant.components.climate import (
     SUPPORT_ON_OFF
 )
 from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME)
+from ..nibe import (
+    CONF_OBJECTID,
+    CONF_SYSTEM,
+    CONF_CLIMATE,
+    CONF_CURRENT,
+    CONF_TARGET,
+    CONF_ADJUST,
+    CONF_ACTIVE,
+)
 
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)
 
 DATA_NIBE      = 'nibe'
 
-CONF_SYSTEM    = 'system'
-CONF_CLIMATE   = 'climate'
-CONF_CURRENT   = 'current'
-CONF_TARGET    = 'target'
-CONF_ADJUST    = 'adjust'
-CONF_ACTIVE    = 'active'
-CONF_OBJECTID  = 'object_id'
-
-CLIMATE_SCHEMA = {
+PLATFORM_SCHEMA.extend({
     vol.Required(CONF_SYSTEM) : cv.positive_int,
     vol.Optional(CONF_NAME)   : cv.string,
     vol.Optional(CONF_CLIMATE): cv.string,
     vol.Optional(CONF_CURRENT): cv.positive_int,
     vol.Optional(CONF_TARGET) : cv.positive_int,
     vol.Optional(CONF_ADJUST) : cv.positive_int,
-    vol.Optional(CONF_OBJECTID) : cv.entity_id,
-}
-
-PLATFORM_SCHEMA.extend(CLIMATE_SCHEMA)
-
+    vol.Optional(CONF_OBJECTID) : cv.string,
+})
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     sensors = []
     configs = []
     if (discovery_info):
-        configs = discovery_info
+        configs = [PLATFORM_SCHEMA(x) for x in discovery_info]
     else:
         configs = [config]
 

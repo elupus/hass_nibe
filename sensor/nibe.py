@@ -3,8 +3,17 @@ import logging
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
-from homeassistant.components.sensor import ENTITY_ID_FORMAT
+from homeassistant.components.sensor import (
+    PLATFORM_SCHEMA,
+    ENTITY_ID_FORMAT,
+)
 from homeassistant.const import (CONF_NAME)
+from ..nibe import (
+    CONF_OBJECTID,
+    CONF_SYSTEM,
+    CONF_PARAMETER,
+    CONF_DATA
+)
 
 UNIT_ICON = {
     'A' : 'mdi:power-plug',
@@ -15,42 +24,46 @@ UNIT_ICON = {
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)
 
-CONF_SYSTEM    = 'system'
-CONF_PARAMETER = 'parameter'
-
 DATA_NIBE      = 'nibe'
 
-
-PLATFORM_SCHEMA = vol.Schema({
+PLATFORM_SCHEMA.extend({
     vol.Required(CONF_SYSTEM)   : cv.positive_int,
     vol.Required(CONF_PARAMETER): cv.positive_int,
-    vol.Optional(CONF_NAME)     : cv.string
-}, extra=vol.ALLOW_EXTRA)
+    vol.Optional(CONF_NAME)     : cv.string,
+    vol.Optional(CONF_OBJECTID) : cv.string,
+    vol.Optional(CONF_DATA)     : vol.Any(None, dict),
+})
 
 discovered_entities = set()
 
 
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
-    sensors = None
     if (discovery_info):
-        sensors = [
-            NibeSensor(hass,
-                       parameter['system'],
-                       parameter['parameter_id'],
-                       object_id = parameter['object_id'],
-                       data      = parameter['data'])
-            for parameter in discovery_info
-            if parameter['object_id'] not in discovered_entities
-        ]
-        discovered_entities.update([x['object_id'] for x in discovery_info])
+        _LOGGER.error(discovery_info[0])
+        entries = [PLATFORM_SCHEMA(x) for x in discovery_info]
     else:
-        sensors = [
-            NibeSensor(hass,
-                       config.get(CONF_SYSTEM),
-                       config.get(CONF_PARAMETER),
-                       name = config.get(CONF_NAME, None))
-        ]
+        entries = [config]
+
+    sensors = []
+    for entry in entries:
+
+        object_id = entry.get(CONF_OBJECTID)
+        if object_id:
+            if object_id in discovered_entities:
+                continue
+            discovered_entities.update(object_id)
+
+        sensors.append(
+            NibeSensor(
+                hass,
+                entry.get(CONF_SYSTEM),
+                entry.get(CONF_PARAMETER),
+                object_id = object_id,
+                data      = entry.get(CONF_DATA),
+                name      = entry.get(CONF_NAME)
+            )
+        )
 
     async_add_devices(sensors)
 
