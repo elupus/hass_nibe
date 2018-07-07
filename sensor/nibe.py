@@ -61,6 +61,8 @@ class NibeSensor(Entity):
         self._system_id    = system_id
         self._parameter_id = parameter_id
         self._name         = name
+        self._unit         = None
+        self._icon         = None
 
         self.parse_data(data)
 
