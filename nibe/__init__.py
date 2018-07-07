@@ -50,8 +50,15 @@ CONF_CURRENT        = 'current'
 CONF_TARGET         = 'target'
 CONF_ADJUST         = 'adjust'
 CONF_ACTIVE         = 'active'
+CONF_SWITCHES       = 'switches'
 
 SIGNAL_UPDATE       = 'nibe_update'
+
+UNIT_ICON = {
+    'A' : 'mdi:power-plug',
+    'Hz': 'mdi:update',
+    'h' : 'mdi:clock',
+}
 
 UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
@@ -59,6 +66,7 @@ UNIT_SCHEMA = vol.Schema({
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SWITCHES): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
@@ -158,6 +166,23 @@ class NibeSystem(object):
         self.uplink     = uplink
         self.notice     = []
 
+    async def load_platform(self, discovery_info, platform):
+
+        if not discovery_info:
+            return []
+
+        await discovery.async_load_platform(
+            self.hass,
+            platform,
+            DOMAIN,
+            discovery_info)
+
+        return [
+            '{}.{}'.format(platform, x[CONF_OBJECTID])
+            for x in discovery_info
+        ]
+
+
     async def load_parameters(self, ids: List[str], data: dict = {}):
 
         discovery_info = [
@@ -171,20 +196,7 @@ class NibeSystem(object):
             for x in ids
             if str(x) != "0"  # we currently can't load parameters with no id
         ]
-
-        if not discovery_info:
-            return []
-
-        await discovery.async_load_platform(
-            self.hass,
-            'sensor',
-            DOMAIN,
-            discovery_info)
-
-        return [
-            'sensor.{}'.format(x['object_id'])
-            for x in discovery_info
-        ]
+        return await self.load_platform(discovery_info, 'sensor')
 
     async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict]):
         data = {
@@ -235,21 +247,20 @@ class NibeSystem(object):
             }
             for x in selected
         ]
+        return await self.load_platform(discovery_info, 'climate')
 
-        if not discovery_info:
-            return []
-
-        await discovery.async_load_platform(
-            self.hass,
-            'climate',
-            DOMAIN,
-            discovery_info)
-
-        return [
-            'climate.{}'.format(x['object_id'])
-            for x in discovery_info
+    async def load_switch(self, selected):
+        _LOGGER.debug("Loading switches: {}".format(selected))
+        discovery_info = [
+            {
+                CONF_PLATFORM  : DOMAIN,
+                CONF_SYSTEM    : self.system['systemId'],
+                CONF_PARAMETER : x,
+                CONF_OBJECTID  : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x))
+            }
+            for x in selected
         ]
-
+        return await self.load_platform(discovery_info, 'switch')
 
     async def load_unit(self, unit):
         entities = []
@@ -273,6 +284,11 @@ class NibeSystem(object):
             entities.extend(
                 await self.load_climate(
                     unit.get(CONF_CLIMATES)))
+
+        if CONF_SWITCHES in unit:
+            entities.extend(
+                await self.load_switch(
+                    unit.get(CONF_SWITCHES)))
 
         group = self.hass.components.group
         return await group.Group.async_create_group(
