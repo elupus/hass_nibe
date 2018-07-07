@@ -120,8 +120,7 @@ class NibeSensor(Entity):
 
     @property
     def unique_id(self):
-        """Return a unique, HASS-friendly identifier for this entity."""
-        return "{}_{}".format(self._system_id, self._parameter_id)
+        return "nibe_{}_{}".format(self._system_id, self._parameter_id)
 
     def parse_data(self, data):
         if data:
