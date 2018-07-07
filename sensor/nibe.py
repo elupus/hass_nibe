@@ -40,7 +40,6 @@ discovered_entities = set()
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     if (discovery_info):
-        _LOGGER.error(discovery_info[0])
         entries = [PLATFORM_SCHEMA(x) for x in discovery_info]
     else:
         entries = [config]
