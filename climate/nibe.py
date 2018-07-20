@@ -10,8 +10,6 @@ from homeassistant.components.climate import (
     ENTITY_ID_FORMAT,
     PLATFORM_SCHEMA,
     SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_TARGET_TEMPERATURE_HIGH,
-    SUPPORT_TARGET_TEMPERATURE_LOW,
     SUPPORT_ON_OFF
 )
 from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME)
@@ -195,9 +193,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def supported_features(self):
-        features = (SUPPORT_TARGET_TEMPERATURE |
-                    SUPPORT_TARGET_TEMPERATURE_HIGH |
-                    SUPPORT_TARGET_TEMPERATURE_LOW)
+        features = SUPPORT_TARGET_TEMPERATURE
         if self._active_id:
             features = features | SUPPORT_ON_OFF
         return features
