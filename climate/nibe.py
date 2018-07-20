@@ -207,7 +207,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def unique_id(self):
-        return "nibe_{}_{}".format(self._system_id, self._current_id, self._target_id, self._adjust_id)
+        return "{}_{}".format(self._system_id, self._current_id, self._target_id, self._adjust_id)
 
     async def async_turn_on(self):
         return

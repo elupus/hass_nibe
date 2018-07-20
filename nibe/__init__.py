@@ -351,7 +351,7 @@ class NibeParameterEntity(NibeEntity):
     @property
     def unique_id(self):
         """Return a unique identifier for a this parameter"""
-        return "nibe_{}_{}".format(self._system_id, self._parameter_id)
+        return "{}_{}".format(self._system_id, self._parameter_id)
 
 
 class NibeAuthView(HomeAssistantView):
