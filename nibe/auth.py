@@ -2,6 +2,7 @@
 
 import logging
 
+from aiohttp.web import Request, Response
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import (
     HTTP_OK,
@@ -76,7 +77,7 @@ get redirected to in the below prompt.
     async def callback(self, data):
         await self.configure(data['url'])
 
-    async def get(self, request):
+    async def get(self, request: Request) -> Response:
         """Handle oauth token request."""
 
         try:
