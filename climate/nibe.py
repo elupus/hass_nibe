@@ -231,9 +231,9 @@ class NibeClimate(ClimateDevice):
 
         try:
             self._status = await self._uplink.put_parameter(self._system_id, parameter, data)
-        except:
+        except BaseException:
             self._status = 'ERROR'
-            pass
+            raise
         finally:
             _LOGGER.debug("Put parameter response {}".format(self._status))
 
