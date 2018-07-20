@@ -36,6 +36,7 @@ PLATFORM_SCHEMA.extend({
 
 discovered_entities = set()
 
+
 async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
 
     if (discovery_info):
@@ -85,7 +86,6 @@ class NibeSwitch(SwitchDevice):
             object_id,
             hass=hass
         )
-
 
     @property
     def name(self):
