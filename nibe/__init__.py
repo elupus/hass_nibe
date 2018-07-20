@@ -183,7 +183,6 @@ class NibeSystem(object):
             for x in discovery_info
         ]
 
-
     async def load_parameters(self, ids: List[str], data: dict = {}):
 
         discovery_info = [
@@ -220,9 +219,10 @@ class NibeSystem(object):
         data   = await self.uplink.get_categories(self.system_id, True, unit)
         data   = filter_list(data, 'categoryId', selected)
         tasks = [
-            self.load_parameter_group(x['name'],
-                                            '{}_{}'.format(unit, x['categoryId']),
-                                            x['parameters'])
+            self.load_parameter_group(
+                x['name'],
+                '{}_{}'.format(unit, x['categoryId']),
+                x['parameters'])
             for x in data
         ]
         return await asyncio.gather(*tasks)
@@ -230,9 +230,10 @@ class NibeSystem(object):
     async def load_status(self, unit: int):
         data   = await self.uplink.get_status(self.system_id, unit)
         tasks = [
-            self.load_parameter_group(x['title'],
-                                            '{}_{}'.format(unit, x['title']),
-                                            x['parameters'])
+            self.load_parameter_group(
+                x['title'],
+                '{}_{}'.format(unit, x['title']),
+                x['parameters'])
             for x in data
         ]
         return await asyncio.gather(*tasks)
@@ -408,9 +409,11 @@ get redirected to in the below prompt.
             self.hass.components.configurator.async_request_done(self.request_id)
             self.hass.async_add_job(async_setup_systems(self.hass, self.config[DOMAIN], self.uplink))
 
-        except:
-            self.hass.components.configurator.async_notify_errors(self.request_id,
-                "An error occured during nibe authorization. See logfile for more information.")
+        except BaseException:
+            self.hass.components.configurator.async_notify_errors(
+                self.request_id,
+                "An error occured during nibe authorization. See logfile for more information."
+            )
             raise
 
     async def callback(self, data):
@@ -421,7 +424,7 @@ get redirected to in the below prompt.
 
         try:
             await self.configure(str(request.url))
-        except:
+        except BaseException:
             msg = "An error occured during nibe authorization."
             _LOGGER.exception(msg)
             return self.json_message(msg, status_code =HTTP_BAD_REQUEST)
@@ -429,4 +432,3 @@ get redirected to in the below prompt.
             msg = "Nibe has been authorized! you can close this window, and restart Home Assistant."
             _LOGGER.info(msg)
             return self.json_message(msg, status_code =HTTP_OK)
-
