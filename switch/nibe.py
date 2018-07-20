@@ -19,6 +19,7 @@ from ..nibe import (
     CONF_PARAMETER,
     CONF_DATA,
     UNIT_ICON,
+    NibeParameterEntity,
 )
 
 DEPENDENCIES = ['nibe']
@@ -66,11 +67,10 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
     async_add_devices(sensors)
 
-class NibeSwitch(SwitchDevice):
-    def __init__(self, hass, system_id, parameter_id, name = None, object_id = None, data = None):
 
-        self._system_id    = system_id
-        self._parameter_id = parameter_id
+class NibeSwitch(NibeParameterEntity, SwitchDevice):
+    def __init__(self, hass, system_id, parameter_id, name = None, object_id = None, data = None):
+        super(NibeSwitch, self).__init__(system_id, parameter_id)
         self._name         = name
         self._unit         = None
         self._icon         = None
@@ -128,10 +128,6 @@ class NibeSwitch(SwitchDevice):
             return False
         else:
             return True
-
-    @property
-    def unique_id(self):
-        return "nibe_{}_{}".format(self._system_id, self._parameter_id)
 
     def parse_data(self, data):
         if data:

@@ -22,6 +22,7 @@ from ..nibe import (
     CONF_TARGET,
     CONF_ADJUST,
     CONF_ACTIVE,
+    NibeEntity,
 )
 
 DEPENDENCIES = ['nibe']
@@ -104,10 +105,10 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
     async_add_devices(sensors, True)
 
 
-class NibeClimate(ClimateDevice):
+class NibeClimate(NibeEntity, ClimateDevice):
     def __init__(self, hass, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str, object_id: str):
+        super(NibeClimate, self).__init__(system_id)
         self._name         = name
-        self._system_id    = system_id
         self._current_id   = current_id
         self._target_id    = target_id
         self._adjust_id    = adjust_id

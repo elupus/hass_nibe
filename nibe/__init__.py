@@ -14,6 +14,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import discovery
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.entity import Entity
 from homeassistant.components import persistent_notification
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import (
@@ -328,6 +329,29 @@ class NibeSystem(object):
             persistent_notification.async_dismiss(
                 'nibe:{}'.format(x['notificationId'])
             )
+
+
+class NibeEntity(Entity):
+    """Base class for all nibe sytem entities"""
+
+    def __init__(self, system_id):
+        """Initialize base class"""
+        self._system_id = system_id
+
+
+class NibeParameterEntity(NibeEntity):
+    """Base class with common attributes for parameter entities"""
+
+    def __init__(self, system_id, parameter_id):
+        """Initialize base class for parameters"""
+
+        super(NibeParameterEntity, self).__init__(system_id)
+        self._parameter_id = parameter_id
+
+    @property
+    def unique_id(self):
+        """Return a unique identifier for a this parameter"""
+        return "nibe_{}_{}".format(self._system_id, self._parameter_id)
 
 
 class NibeAuthView(HomeAssistantView):
