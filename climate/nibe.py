@@ -3,6 +3,7 @@ import asyncio
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import (async_generate_entity_id)
 from homeassistant.components.climate import (
     ClimateDevice,
@@ -49,6 +50,9 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
         configs = [PLATFORM_SCHEMA(x) for x in discovery_info]
     else:
         configs = [config]
+
+    if DATA_NIBE not in hass.data:
+        raise PlatformNotReady
 
     from nibeuplink import (PARAM_PUMP_SPEED, PARAM_CLIMATE_SYSTEMS)
 
