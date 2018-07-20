@@ -51,7 +51,7 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
         if object_id:
             if object_id in discovered_entities:
                 continue
-            discovered_entities.update(object_id)
+            discovered_entities.add(object_id)
 
         sensors.append(
             NibeSwitch(
