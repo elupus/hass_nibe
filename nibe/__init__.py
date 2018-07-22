@@ -194,9 +194,9 @@ class NibeSystem(object):
             for x in discovery_info
         ]
 
-    async def load_parameters(self,
-                              ids: List[str],
-                              data: dict = {}):
+    async def load_sensors(self,
+                           ids: List[str],
+                           data: dict = {}):
 
         discovery_info = [
             {
@@ -222,7 +222,7 @@ class NibeSystem(object):
             for x in parameters
         }
 
-        entity_ids = await self.load_parameters(list(data.keys()), data)
+        entity_ids = await self.load_sensors(list(data.keys()), data)
 
         group = self.hass.components.group
         entity = await group.Group.async_create_group(
@@ -305,7 +305,7 @@ class NibeSystem(object):
 
         if CONF_SENSORS in unit:
             entities.extend(
-                await self.load_parameters(
+                await self.load_sensors(
                     unit.get(CONF_SENSORS)))
 
         if CONF_CLIMATES in unit:
