@@ -72,8 +72,6 @@ class NibeSwitch(NibeParameterEntity, SwitchDevice):
                  data=None):
         super(NibeSwitch, self).__init__(uplink, system_id, parameter_id)
         self._name = name
-        self._unit = None
-        self._icon = None
 
         self.parse_data(data)
         if object_id:  # Forced id on discovery
