@@ -48,19 +48,12 @@ async def async_setup_platform(hass,
 
     sensors = []
     for entry in entries:
-
-        object_id = entry.get(CONF_OBJECTID)
-        if object_id:
-            if object_id in discovered_entities:
-                continue
-            discovered_entities.add(object_id)
-
         sensors.append(
             NibeSensor(
                 hass.data[DATA_NIBE]['uplink'],
                 entry.get(CONF_SYSTEM),
                 entry.get(CONF_PARAMETER),
-                object_id=object_id,
+                object_id=entry.get(CONF_OBJECTID),
                 data=entry.get(CONF_DATA),
                 name=entry.get(CONF_NAME)
             )

@@ -9,6 +9,7 @@ import asyncio
 import json
 import voluptuous as vol
 from typing import List
+from collections import defaultdict
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant.helpers import discovery
@@ -165,18 +166,29 @@ class NibeSystem(object):
         self.system = None
         self.uplink = uplink
         self.notice = []
+        self.discovered = defaultdict(set)
+
+    def filter_discovered(self, discovery_info, platform):
+        """Keep unique discovery list, to avoid duplicate loads"""
+        table = self.discovered[platform]
+        for entry in discovery_info:
+            object_id = entry.get(CONF_OBJECTID)
+            if object_id in table:
+                continue
+            table.add(object_id)
+            yield entry
 
     async def load_platform(self, discovery_info, platform):
+        """Load plaform avoding duplicates"""
+        load_info = list(self.filter_discovered(discovery_info, platform))
+        if load_info:
+            await discovery.async_load_platform(
+                self.hass,
+                platform,
+                DOMAIN,
+                load_info)
 
-        if not discovery_info:
-            return []
-
-        await discovery.async_load_platform(
-            self.hass,
-            platform,
-            DOMAIN,
-            discovery_info)
-
+        """Return entity id of all objects, even skipped"""
         return [
             '{}.{}'.format(platform, x[CONF_OBJECTID])
             for x in discovery_info
