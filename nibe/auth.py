@@ -12,7 +12,7 @@ from homeassistant.const import (
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_NAME = "Nibe Uplink authorization required"
-CONFIG_CAPTION = 'Manually set url'
+CONFIG_SUBMIT_CAPTION = 'Manually set url'
 CONFIG_DESCRIPTION = """
 Please authorize Home Assistant to access nibe
 uplink by following the authorization link.
@@ -29,6 +29,7 @@ If automatic configuration of home assistant fails,
 you can enter the url to the webpage you get redirected
 to in the below prompt.
 """
+CONFIG_LINK_NAME = "Authorize"
 
 
 class NibeAuthView(HomeAssistantView):
@@ -56,13 +57,13 @@ class NibeAuthView(HomeAssistantView):
             await self.configure(data['url'])
 
         self.request_id = self.configurator.async_request_config(
-            CONFIG_CAPTION,
+            CONFIG_NAME,
             callback=callback,
             description=CONFIG_DESCRIPTION,
-            link_name="Authorize",
+            link_name=CONFIG_LINK_NAME,
             link_url=auth_uri,
             fields=[{'id': 'url', 'name': 'Full url', 'type': ''}],
-            submit_caption=CONFIG_CAPTION
+            submit_caption=CONFIG_SUBMIT_CAPTION
         )
 
     async def configure(self, url):

@@ -34,7 +34,10 @@ PLATFORM_SCHEMA.extend({
 discovered_entities = set()
 
 
-async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def async_setup_platform(hass,
+                               config,
+                               async_add_devices,
+                               discovery_info=None):
 
     if (discovery_info):
         entries = [PLATFORM_SCHEMA(x) for x in discovery_info]
@@ -58,9 +61,9 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
                 hass,
                 entry.get(CONF_SYSTEM),
                 entry.get(CONF_PARAMETER),
-                object_id = object_id,
-                data      = entry.get(CONF_DATA),
-                name      = entry.get(CONF_NAME)
+                object_id=object_id,
+                data=entry.get(CONF_DATA),
+                name=entry.get(CONF_NAME)
             )
         )
 
@@ -68,19 +71,25 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
 
 class NibeSensor(NibeParameterEntity, Entity):
-    def __init__(self, hass, system_id, parameter_id, name = None, object_id = None, data = None):
+    def __init__(self,
+                 hass,
+                 system_id,
+                 parameter_id,
+                 name=None,
+                 object_id=None,
+                 data=None):
         """Initialize the Nibe sensor."""
         super(NibeSensor, self).__init__(system_id, parameter_id)
-        self._name         = name
-        self._unit         = None
-        self._icon         = None
+        self._name = name
+        self._unit = None
+        self._icon = None
 
         self.parse_data(data)
 
         if not object_id:
             object_id = 'nibe_{}_{}'.format(system_id, parameter_id)
 
-        self.entity_id     = async_generate_entity_id(
+        self.entity_id = async_generate_entity_id(
             ENTITY_ID_FORMAT,
             object_id,
             hass=hass
@@ -135,13 +144,13 @@ class NibeSensor(NibeParameterEntity, Entity):
         if data:
             if self._name is None:
                 self._name = data['title']
-            self._icon  = UNIT_ICON.get(data['unit'], None)
-            self._unit  = data['unit']
+            self._icon = UNIT_ICON.get(data['unit'], None)
+            self._unit = data['unit']
             self._state = data['value']
-            self._data  = data
+            self._data = data
 
         else:
-            self._data  = None
+            self._data = None
             self._state = None
 
     async def async_update(self):

@@ -78,8 +78,9 @@ NIBE_SCHEMA = vol.Schema({
     vol.Required(CONF_CLIENT_ID): cv.string,
     vol.Required(CONF_CLIENT_SECRET): cv.string,
     vol.Required(CONF_CLIENT_SECRET): cv.string,
-    vol.Optional(CONF_WRITEACCESS, default = False): cv.boolean,
-    vol.Optional(CONF_SYSTEMS, default = []): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
+    vol.Optional(CONF_WRITEACCESS, default=False): cv.boolean,
+    vol.Optional(CONF_SYSTEMS, default=[]):
+        vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
 })
 
 CONFIG_SCHEMA = vol.Schema({
@@ -105,7 +106,7 @@ async def async_setup_systems(hass, config, uplink):
 
     hass.data[DATA_NIBE] = {}
     hass.data[DATA_NIBE]['systems'] = systems
-    hass.data[DATA_NIBE]['uplink']  = uplink
+    hass.data[DATA_NIBE]['uplink'] = uplink
 
     tasks = [system.load() for system in systems]
 
@@ -129,12 +130,12 @@ async def async_setup(hass, config):
         scope = ['READSYSTEM']
 
     uplink = Uplink(
-        client_id            = config[DOMAIN].get(CONF_CLIENT_ID),
-        client_secret        = config[DOMAIN].get(CONF_CLIENT_SECRET),
-        redirect_uri         = config[DOMAIN].get(CONF_REDIRECT_URI),
-        access_data          = load_json(store),
-        access_data_write    = save_json_local,
-        scope                = scope
+        client_id=config[DOMAIN].get(CONF_CLIENT_ID),
+        client_secret=config[DOMAIN].get(CONF_CLIENT_SECRET),
+        redirect_uri=config[DOMAIN].get(CONF_REDIRECT_URI),
+        access_data=load_json(store),
+        access_data_write=save_json_local,
+        scope=scope
     )
 
     if not uplink.access_data:
@@ -157,13 +158,13 @@ def filter_list(data: List[dict], field: str, selected: List[str]):
 
 class NibeSystem(object):
     def __init__(self, hass, uplink, system_id, config):
-        self.hass       = hass
+        self.hass = hass
         self.parameters = {}
-        self.config     = config
-        self.system_id  = system_id
-        self.system     = None
-        self.uplink     = uplink
-        self.notice     = []
+        self.config = config
+        self.system_id = system_id
+        self.system = None
+        self.uplink = uplink
+        self.notice = []
 
     async def load_platform(self, discovery_info, platform):
 
@@ -181,22 +182,29 @@ class NibeSystem(object):
             for x in discovery_info
         ]
 
-    async def load_parameters(self, ids: List[str], data: dict = {}):
+    async def load_parameters(self,
+                              ids: List[str],
+                              data: dict = {}):
 
         discovery_info = [
             {
-                CONF_PLATFORM  : DOMAIN,
-                CONF_SYSTEM    : self.system['systemId'],
-                CONF_PARAMETER : x,
-                CONF_OBJECTID  : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
-                CONF_DATA      : data.get(x, None)
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_PARAMETER: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x)),
+                CONF_DATA: data.get(x, None)
             }
             for x in ids
             if str(x) != "0"  # we currently can't load parameters with no id
         ]
         return await self.load_platform(discovery_info, 'sensor')
 
-    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict]):
+    async def load_parameter_group(self,
+                                   name: str,
+                                   object_id: str,
+                                   parameters: List[dict]):
         data = {
             x['parameterId']: x
             for x in parameters
@@ -207,15 +215,17 @@ class NibeSystem(object):
         group = self.hass.components.group
         entity = await group.Group.async_create_group(
             self.hass,
-            name       = name,
-            control    = False,
-            entity_ids = entity_ids,
-            object_id  = '{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
+            name=name,
+            control=False,
+            entity_ids=entity_ids,
+            object_id='{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
         return entity.entity_id
 
-    async def load_categories(self, unit: int, selected):
-        data   = await self.uplink.get_categories(self.system_id, True, unit)
-        data   = filter_list(data, 'categoryId', selected)
+    async def load_categories(self,
+                              unit: int,
+                              selected):
+        data = await self.uplink.get_categories(self.system_id, True, unit)
+        data = filter_list(data, 'categoryId', selected)
         tasks = [
             self.load_parameter_group(
                 x['name'],
@@ -225,8 +235,9 @@ class NibeSystem(object):
         ]
         return await asyncio.gather(*tasks)
 
-    async def load_status(self, unit: int):
-        data   = await self.uplink.get_status(self.system_id, unit)
+    async def load_status(self,
+                          unit: int):
+        data = await self.uplink.get_status(self.system_id, unit)
         tasks = [
             self.load_parameter_group(
                 x['title'],
@@ -236,14 +247,17 @@ class NibeSystem(object):
         ]
         return await asyncio.gather(*tasks)
 
-    async def load_climate(self, selected):
+    async def load_climate(self,
+                           selected):
         _LOGGER.debug("Loading climate systems: {}".format(selected))
         discovery_info = [
             {
-                CONF_PLATFORM : DOMAIN,
-                CONF_SYSTEM   : self.system['systemId'],
-                CONF_CLIMATE  : x,
-                CONF_OBJECTID : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x))
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_CLIMATE: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x))
             }
             for x in selected
         ]
@@ -253,10 +267,12 @@ class NibeSystem(object):
         _LOGGER.debug("Loading switches: {}".format(selected))
         discovery_info = [
             {
-                CONF_PLATFORM  : DOMAIN,
-                CONF_SYSTEM    : self.system['systemId'],
-                CONF_PARAMETER : x,
-                CONF_OBJECTID  : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x))
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_PARAMETER: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x))
             }
             for x in selected
         ]
@@ -294,12 +310,14 @@ class NibeSystem(object):
         return await group.Group.async_create_group(
             self.hass,
             '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
-            user_defined = False,
-            control      = False,
-            view         = True,
-            icon         = 'mdi:thermostat',
-            object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
-            entity_ids   = entities)
+            user_defined=False,
+            control=False,
+            view=True,
+            icon='mdi:thermostat',
+            object_id='{}_{}_{}'.format(DOMAIN,
+                                        self.system_id,
+                                        unit.get(CONF_UNIT)),
+            entity_ids=entities)
 
     async def load(self):
         if not self.system:
@@ -311,9 +329,9 @@ class NibeSystem(object):
         await self.update()
         async_track_time_interval(self.hass, self.update, INTERVAL)
 
-    async def update(self, now = None):
+    async def update(self, now=None):
         notice = await self.uplink.get_notifications(self.system_id)
-        added   = [k for k in notice      if k not in self.notice]
+        added = [k for k in notice if k not in self.notice]
         removed = [k for k in self.notice if k not in notice]
         self.notice = notice
 
@@ -335,6 +353,7 @@ class NibeEntity(Entity):
 
     def __init__(self, system_id):
         """Initialize base class"""
+        super().__init__()
         self._system_id = system_id
 
 
@@ -343,12 +362,10 @@ class NibeParameterEntity(NibeEntity):
 
     def __init__(self, system_id, parameter_id):
         """Initialize base class for parameters"""
-
-        super(NibeParameterEntity, self).__init__(system_id)
+        super().__init__(system_id)
         self._parameter_id = parameter_id
 
     @property
     def unique_id(self):
         """Return a unique identifier for a this parameter"""
         return "{}_{}".format(self._system_id, self._parameter_id)
-
