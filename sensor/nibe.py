@@ -19,14 +19,14 @@ from ..nibe import (
 )
 
 DEPENDENCIES = ['nibe']
-_LOGGER      = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_SYSTEM)   : cv.positive_int,
+    vol.Required(CONF_SYSTEM): cv.positive_int,
     vol.Required(CONF_PARAMETER): cv.positive_int,
-    vol.Optional(CONF_NAME)     : cv.string,
-    vol.Optional(CONF_OBJECTID) : cv.string,
-    vol.Optional(CONF_DATA)     : vol.Any(None, dict),
+    vol.Optional(CONF_NAME): cv.string,
+    vol.Optional(CONF_OBJECTID): cv.string,
+    vol.Optional(CONF_DATA): vol.Any(None, dict),
 })
 
 discovered_entities = set()

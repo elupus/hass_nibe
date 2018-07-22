@@ -26,20 +26,23 @@ from ..nibe import (
 )
 
 DEPENDENCIES = ['nibe']
-_LOGGER      = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_SYSTEM) : cv.positive_int,
-    vol.Optional(CONF_NAME)   : cv.string,
+    vol.Required(CONF_SYSTEM): cv.positive_int,
+    vol.Optional(CONF_NAME): cv.string,
     vol.Optional(CONF_CLIMATE): cv.string,
     vol.Optional(CONF_CURRENT): cv.positive_int,
-    vol.Optional(CONF_TARGET) : cv.positive_int,
-    vol.Optional(CONF_ADJUST) : cv.positive_int,
-    vol.Optional(CONF_OBJECTID) : cv.string,
+    vol.Optional(CONF_TARGET): cv.positive_int,
+    vol.Optional(CONF_ADJUST): cv.positive_int,
+    vol.Optional(CONF_OBJECTID): cv.string,
 })
 
 
-async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
+async def async_setup_platform(hass,
+                               config,
+                               async_add_devices,
+                               discovery_info=None):
 
     sensors = []
     configs = []
@@ -107,23 +110,31 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
 
 class NibeClimate(NibeEntity, ClimateDevice):
-    def __init__(self, uplink, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str, object_id: str):
+    def __init__(self,
+                 uplink,
+                 name: str,
+                 system_id: int,
+                 current_id: str,
+                 target_id: str,
+                 adjust_id: str,
+                 active_id: str,
+                 object_id: str):
         super(NibeClimate, self).__init__(uplink, system_id)
-        self._name         = name
-        self._current_id   = current_id
-        self._target_id    = target_id
-        self._adjust_id    = adjust_id
-        self._active_id    = active_id
-        self._unit         = None
-        self._current      = None
-        self._target       = None
-        self._adjust       = None
-        self._active       = None
-        self._status       = 'DONE'
+        self._name = name
+        self._current_id = current_id
+        self._target_id = target_id
+        self._adjust_id = adjust_id
+        self._active_id = active_id
+        self._unit = None
+        self._current = None
+        self._target = None
+        self._adjust = None
+        self._active = None
+        self._status = 'DONE'
         if object_id:  # Forced id on discovery
             self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
-    def get_value(self, data, default = None):
+    def get_value(self, data, default=None):
         if data is None or data['value'] is None:
             return default
         else:
@@ -136,7 +147,8 @@ class NibeClimate(NibeEntity, ClimateDevice):
             return float(data['rawValue']) / float(data['value'])
 
     def get_target_base(self):
-        return self.get_value(self._target, 0)  - self.get_value(self._adjust, 0)
+        return self.get_value(self._target, 0) \
+            - self.get_value(self._adjust, 0)
 
     @property
     def name(self):
@@ -204,7 +216,10 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def unique_id(self):
-        return "{}_{}".format(self._system_id, self._current_id, self._target_id, self._adjust_id)
+        return "{}_{}".format(self._system_id,
+                              self._current_id,
+                              self._target_id,
+                              self._adjust_id)
 
     async def async_turn_on(self):
         return
@@ -219,16 +234,24 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
         if self._adjust_id:
             # calculate what offset was used to calculate the target
-            data = self.get_scale(self._adjust) * (data - self.get_target_base())
+            base = self.get_target_base()
+            scale = self.get_scale(self._adjust)
             parameter = self._adjust_id
         else:
-            data = self.get_scale(self._target) * data
+            base = 0.0
+            scale = self.get_scale(self._target)
             parameter = self._target_id
 
-        _LOGGER.debug("Set temperature on parameter {} to {}".format(parameter, data))
+        data = scale * (data - base)
+
+        _LOGGER.debug("Set temperature on parameter {} to {}".format(
+            parameter,
+            data))
 
         try:
-            self._status = await self._uplink.put_parameter(self._system_id, parameter, data)
+            self._status = await self._uplink.put_parameter(self._system_id,
+                                                            parameter,
+                                                            data)
         except BaseException:
             self._status = 'ERROR'
             raise
@@ -239,11 +262,15 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
         async def get_parameter(parameter_id):
             if parameter_id:
-                return await self._uplink.get_parameter(self._system_id, parameter_id)
+                return await self._uplink.get_parameter(self._system_id,
+                                                        parameter_id)
             else:
                 return None
 
-        self._current, self._target, self._adjust, self._active = await asyncio.gather(
+        (self._current,
+         self._target,
+         self._adjust,
+         self._active) = await asyncio.gather(
             get_parameter(self._current_id),
             get_parameter(self._target_id),
             get_parameter(self._adjust_id),
