@@ -3,7 +3,7 @@ import logging
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.entity import (Entity, async_generate_entity_id)
+from homeassistant.helpers.entity import Entity
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
     ENTITY_ID_FORMAT,
@@ -14,7 +14,6 @@ from ..nibe import (
     CONF_SYSTEM,
     CONF_PARAMETER,
     CONF_DATA,
-    UNIT_ICON,
     NibeParameterEntity,
 )
 
@@ -58,7 +57,7 @@ async def async_setup_platform(hass,
 
         sensors.append(
             NibeSensor(
-                hass,
+                hass.data[DATA_NIBE]['uplink'],
                 entry.get(CONF_SYSTEM),
                 entry.get(CONF_PARAMETER),
                 object_id=object_id,
@@ -72,38 +71,24 @@ async def async_setup_platform(hass,
 
 class NibeSensor(NibeParameterEntity, Entity):
     def __init__(self,
-                 hass,
+                 uplink,
                  system_id,
                  parameter_id,
                  name=None,
                  object_id=None,
                  data=None):
         """Initialize the Nibe sensor."""
-        super(NibeSensor, self).__init__(system_id, parameter_id)
+        super(NibeSensor, self).__init__(uplink, system_id, parameter_id)
         self._name = name
-        self._unit = None
-        self._icon = None
 
         self.parse_data(data)
-
-        if not object_id:
-            object_id = 'nibe_{}_{}'.format(system_id, parameter_id)
-
-        self.entity_id = async_generate_entity_id(
-            ENTITY_ID_FORMAT,
-            object_id,
-            hass=hass
-        )
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
+        if object_id:  # Forced id on discovery
+            self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        return self._value
 
     @property
     def unit_of_measurement(self):
@@ -112,51 +97,5 @@ class NibeSensor(NibeParameterEntity, Entity):
 
     @property
     def icon(self):
+        """Return a calculated icon for this data if known"""
         return self._icon
-
-    @property
-    def should_poll(self):
-        return True
-
-    @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        if self._data:
-            return {
-                'designation'  : self._data['designation'],
-                'parameter_id' : self._data['parameterId'],
-                'display_value': self._data['displayValue'],
-                'raw_value'    : self._data['rawValue'],
-                'display_unit' : self._data['unit'],
-            }
-        else:
-            return {}
-
-    @property
-    def available(self):
-        """Return True if entity is available."""
-        if self._state is None:
-            return False
-        else:
-            return True
-
-    def parse_data(self, data):
-        if data:
-            if self._name is None:
-                self._name = data['title']
-            self._icon = UNIT_ICON.get(data['unit'], None)
-            self._unit = data['unit']
-            self._state = data['value']
-            self._data = data
-
-        else:
-            self._data = None
-            self._state = None
-
-    async def async_update(self):
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
-
-        self.parse_data(await self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id))

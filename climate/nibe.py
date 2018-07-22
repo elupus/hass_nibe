@@ -93,7 +93,7 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
         sensors.append(
             NibeClimate(
-                hass,
+                hass.data[DATA_NIBE]['uplink'],
                 c.get(CONF_NAME, name),
                 c.get(CONF_SYSTEM),
                 current,
@@ -108,8 +108,8 @@ async def async_setup_platform(hass, config, async_add_devices, discovery_info=N
 
 
 class NibeClimate(NibeEntity, ClimateDevice):
-    def __init__(self, hass, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str, object_id: str):
-        super(NibeClimate, self).__init__(system_id)
+    def __init__(self, uplink, name: str, system_id: int, current_id: str, target_id: str, adjust_id: str, active_id: str, object_id: str):
+        super(NibeClimate, self).__init__(uplink, system_id)
         self._name         = name
         self._current_id   = current_id
         self._target_id    = target_id
@@ -121,10 +121,8 @@ class NibeClimate(NibeEntity, ClimateDevice):
         self._adjust       = None
         self._active       = None
         self._status       = 'DONE'
-        self._uplink       = hass.data[DATA_NIBE]['uplink']
-        if object_id is None:
-            object_id = 'nibe_{}_{}'.format(system_id, current_id)
-        self.entity_id     = async_generate_entity_id(ENTITY_ID_FORMAT, object_id, hass=hass)
+        if object_id:  # Forced id on discovery
+            self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     def get_value(self, data, default = None):
         if data is None or data['value'] is None:
