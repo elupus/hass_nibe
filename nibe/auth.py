@@ -52,9 +52,12 @@ class NibeAuthView(HomeAssistantView):
     def async_request_config(self):
         auth_uri = self.uplink.get_authorize_url()
 
+        async def callback(self, data):
+            await self.configure(data['url'])
+
         self.request_id = self.configurator.async_request_config(
             CONFIG_CAPTION,
-            callback=self.callback,
+            callback=callback,
             description=CONFIG_DESCRIPTION,
             link_name="Authorize",
             link_url=auth_uri,
@@ -84,9 +87,6 @@ class NibeAuthView(HomeAssistantView):
                    See logfile for more information."""
             )
             raise
-
-    async def callback(self, data):
-        await self.configure(data['url'])
 
     async def get(self, request: Request) -> Response:
         """Handle oauth token request."""
