@@ -356,6 +356,10 @@ class NibeEntity(Entity):
         super().__init__()
         self._system_id = system_id
 
+    async def async_added_to_hass(self):
+        """Store uplink reference."""
+        self._uplink = self.hass.data[DATA_NIBE]['uplink']
+
 
 class NibeParameterEntity(NibeEntity):
     """Base class with common attributes for parameter entities"""

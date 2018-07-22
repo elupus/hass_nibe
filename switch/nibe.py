@@ -78,7 +78,6 @@ class NibeSwitch(NibeParameterEntity, SwitchDevice):
         self._name         = name
         self._unit         = None
         self._icon         = None
-        self._uplink       = hass.data[DATA_NIBE]['uplink']
 
         self.parse_data(data)
 
@@ -146,5 +145,5 @@ class NibeSwitch(NibeParameterEntity, SwitchDevice):
             self._state = None
 
     async def async_update(self):
-        self.parse_data(await self.hass.data[DATA_NIBE]['uplink'].get_parameter(self._system_id, self._parameter_id))
+        self.parse_data(await self._uplink.get_parameter(self._system_id, self._parameter_id))
 
