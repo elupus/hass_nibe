@@ -14,13 +14,12 @@ from ..nibe import (
     CONF_SYSTEM,
     CONF_PARAMETER,
     CONF_DATA,
+    DATA_NIBE,
     NibeParameterEntity,
 )
 
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)
-
-DATA_NIBE      = 'nibe'
 
 PLATFORM_SCHEMA.extend({
     vol.Required(CONF_SYSTEM)   : cv.positive_int,
