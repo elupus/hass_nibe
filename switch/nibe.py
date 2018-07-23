@@ -17,8 +17,8 @@ from ..nibe import (
     CONF_PARAMETER,
     CONF_DATA,
     DATA_NIBE,
-    NibeParameterEntity,
 )
+from ..nibe.entity import NibeParameterEntity
 
 DEPENDENCIES = ['nibe']
 _LOGGER      = logging.getLogger(__name__)

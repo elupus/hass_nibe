@@ -4,7 +4,6 @@ import asyncio
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.entity import (async_generate_entity_id)
 from homeassistant.components.climate import (
     ClimateDevice,
     ENTITY_ID_FORMAT,
@@ -22,8 +21,8 @@ from ..nibe import (
     CONF_ADJUST,
     CONF_ACTIVE,
     DATA_NIBE,
-    NibeEntity,
 )
+from ..nibe.entity import NibeEntity
 
 DEPENDENCIES = ['nibe']
 _LOGGER = logging.getLogger(__name__)
