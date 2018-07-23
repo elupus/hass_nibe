@@ -8,7 +8,7 @@ import logging
 import asyncio
 import json
 import voluptuous as vol
-from typing import List
+from typing import (List, Iterable)
 from collections import defaultdict
 import homeassistant.helpers.config_validation as cv
 
@@ -53,6 +53,8 @@ CONF_SWITCHES       = 'switches'
 CONF_BINARY_SENSORS = 'binary_sensors'
 
 SIGNAL_UPDATE       = 'nibe_update'
+
+BINARY_SENSOR_VALUES = ('off', 'on', 'yes', 'no')
 
 UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
@@ -189,8 +191,8 @@ class NibeSystem(object):
             for x in discovery_info
         ]
 
-    async def load_sensors(self,
-                           ids: List[str],
+    async def load_sensor(self,
+                           ids: Iterable[str],
                            data: dict = {}):
 
         discovery_info = [
@@ -204,7 +206,6 @@ class NibeSystem(object):
                 CONF_DATA: data.get(x, None)
             }
             for x in ids
-            if str(x) != "0"  # we currently can't load parameters with no id
         ]
         return await self.load_platform(discovery_info, 'sensor')
 
@@ -212,12 +213,24 @@ class NibeSystem(object):
                                    name: str,
                                    object_id: str,
                                    parameters: List[dict]):
-        data = {
-            x['parameterId']: x
-            for x in parameters
-        }
 
-        entity_ids = await self.load_sensors(list(data.keys()), data)
+        sensors = {}
+        binary_sensors = {}
+        for x in parameters:
+            if str(x['value']).lower() in BINARY_SENSOR_VALUES:
+                binary_sensors[x['parameterId']] = x
+            else:
+                sensors[x['parameterId']] = x
+
+        entity_ids = []
+        entity_ids.extend(
+            await self.load_sensor(sensors.keys(),
+                                   sensors)
+        )
+        entity_ids.extend(
+            await self.load_binary_sensor(binary_sensors.keys(),
+                                          binary_sensors)
+        )
 
         group = self.hass.components.group
         entity = await group.Group.async_create_group(
@@ -270,8 +283,10 @@ class NibeSystem(object):
         ]
         return await self.load_platform(discovery_info, 'climate')
 
-    async def load_switch(self, selected):
-        _LOGGER.debug("Loading switches: {}".format(selected))
+    async def load_switch(self,
+                          ids: Iterable[str],
+                          data: dict = {}):
+        _LOGGER.debug("Loading switches: {}".format(ids))
         discovery_info = [
             {
                 CONF_PLATFORM: DOMAIN,
@@ -279,14 +294,17 @@ class NibeSystem(object):
                 CONF_PARAMETER: x,
                 CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
                                                  self.system_id,
-                                                 str(x))
+                                                 str(x)),
+                CONF_DATA: data.get(x, None)
             }
-            for x in selected
+            for x in ids
         ]
         return await self.load_platform(discovery_info, 'switch')
 
-    async def load_binary_sensor(self, selected):
-        _LOGGER.debug("Loading binary_sensors: {}".format(selected))
+    async def load_binary_sensor(self,
+                                 ids: Iterable[str],
+                                 data: dict = {}):
+        _LOGGER.debug("Loading binary_sensors: {}".format(ids))
         discovery_info = [
             {
                 CONF_PLATFORM: DOMAIN,
@@ -294,9 +312,10 @@ class NibeSystem(object):
                 CONF_PARAMETER: x,
                 CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
                                                  self.system_id,
-                                                 str(x))
+                                                 str(x)),
+                CONF_DATA: data.get(x, None)
             }
-            for x in selected
+            for x in ids
         ]
         return await self.load_platform(discovery_info, 'binary_sensor')
 
@@ -315,7 +334,7 @@ class NibeSystem(object):
 
         if CONF_SENSORS in unit:
             entities.extend(
-                await self.load_sensors(
+                await self.load_sensor(
                     unit.get(CONF_SENSORS)))
 
         if CONF_CLIMATES in unit:
