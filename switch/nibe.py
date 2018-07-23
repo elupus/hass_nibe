@@ -58,7 +58,7 @@ async def async_setup_platform(hass,
                 name=entry.get(CONF_NAME)
             )
         )
-        if CONF_DATA not in entry:
+        if entry.get(CONF_DATA) is None:
             update = True
 
     async_add_devices(sensors, update)
