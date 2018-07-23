@@ -51,6 +51,7 @@ CONF_TARGET         = 'target'
 CONF_ADJUST         = 'adjust'
 CONF_ACTIVE         = 'active'
 CONF_SWITCHES       = 'switches'
+CONF_BINARY_SENSORS = 'binary_sensors'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
@@ -67,6 +68,7 @@ UNIT_SCHEMA = vol.Schema({
     vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_SWITCHES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_BINARY_SENSORS): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
@@ -290,6 +292,21 @@ class NibeSystem(object):
         ]
         return await self.load_platform(discovery_info, 'switch')
 
+    async def load_binary_sensor(self, selected):
+        _LOGGER.debug("Loading binary_sensors: {}".format(selected))
+        discovery_info = [
+            {
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_PARAMETER: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x))
+            }
+            for x in selected
+        ]
+        return await self.load_platform(discovery_info, 'binary_sensor')
+
     async def load_unit(self, unit):
         entities = []
         if CONF_CATEGORIES in unit:
@@ -317,6 +334,11 @@ class NibeSystem(object):
             entities.extend(
                 await self.load_switch(
                     unit.get(CONF_SWITCHES)))
+
+        if CONF_BINARY_SENSORS in unit:
+            entities.extend(
+                await self.load_binary_sensor(
+                    unit.get(CONF_BINARY_SENSORS)))
 
         group = self.hass.components.group
         return await group.Group.async_create_group(
