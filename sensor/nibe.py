@@ -46,6 +46,7 @@ async def async_setup_platform(hass,
         raise PlatformNotReady
 
     sensors = []
+    update = False
     for entry in entries:
         sensors.append(
             NibeSensor(
@@ -57,8 +58,10 @@ async def async_setup_platform(hass,
                 name=entry.get(CONF_NAME)
             )
         )
+        if CONF_DATA not in entry:
+            update = True
 
-    async_add_devices(sensors)
+    async_add_devices(sensors, update)
 
 
 class NibeSensor(NibeParameterEntity, Entity):
