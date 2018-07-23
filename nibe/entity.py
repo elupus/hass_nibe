@@ -65,7 +65,7 @@ class NibeParameterEntity(NibeEntity):
     @property
     def available(self):
         """Return True if entity is available."""
-        if self._data is None:
+        if self._value is None:
             return False
         else:
             return True
