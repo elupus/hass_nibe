@@ -257,7 +257,7 @@ class NibeSystem(object):
 
     async def load_status(self,
                           unit: int):
-        data = await self.uplink.get_status(self.system_id, unit)
+        data = await self.uplink.get_unit_status(self.system_id, unit)
         tasks = [
             self.load_parameter_group(
                 x['title'],
