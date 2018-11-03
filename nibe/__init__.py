@@ -183,7 +183,8 @@ class NibeSystem(object):
                 self.hass,
                 platform,
                 DOMAIN,
-                load_info)
+                load_info,
+                self.config)
 
         """Return entity id of all objects, even skipped"""
         return [
