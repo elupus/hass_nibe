@@ -3,12 +3,14 @@ import logging
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.entity import Entity
-from homeassistant.components.sensor import (
+from homeassistant.components.switch import (
     PLATFORM_SCHEMA,
     ENTITY_ID_FORMAT,
+    SwitchDevice,
 )
-from homeassistant.const import (CONF_NAME)
+from homeassistant.const import (
+    CONF_NAME
+)
 from ..nibe import (
     CONF_OBJECTID,
     CONF_SYSTEM,
@@ -19,17 +21,15 @@ from ..nibe import (
 from ..nibe.entity import NibeParameterEntity
 
 DEPENDENCIES = ['nibe']
-_LOGGER = logging.getLogger(__name__)
+_LOGGER      = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_SYSTEM): cv.positive_int,
+    vol.Required(CONF_SYSTEM)   : cv.positive_int,
     vol.Required(CONF_PARAMETER): cv.positive_int,
-    vol.Optional(CONF_NAME): cv.string,
-    vol.Optional(CONF_OBJECTID): cv.string,
-    vol.Optional(CONF_DATA): vol.Any(None, dict),
+    vol.Optional(CONF_NAME)     : cv.string,
+    vol.Optional(CONF_OBJECTID) : cv.string,
+    vol.Optional(CONF_DATA)     : vol.Any(None, dict),
 })
-
-discovered_entities = set()
 
 
 async def async_setup_platform(hass,
@@ -49,7 +49,7 @@ async def async_setup_platform(hass,
     update = False
     for entry in entries:
         sensors.append(
-            NibeSensor(
+            NibeSwitch(
                 hass.data[DATA_NIBE]['uplink'],
                 entry.get(CONF_SYSTEM),
                 entry.get(CONF_PARAMETER),
@@ -64,7 +64,7 @@ async def async_setup_platform(hass,
     async_add_devices(sensors, update)
 
 
-class NibeSensor(NibeParameterEntity, Entity):
+class NibeSwitch(NibeParameterEntity, SwitchDevice):
     def __init__(self,
                  uplink,
                  system_id,
@@ -72,8 +72,7 @@ class NibeSensor(NibeParameterEntity, Entity):
                  name=None,
                  object_id=None,
                  data=None):
-        """Initialize the Nibe sensor."""
-        super(NibeSensor, self).__init__(uplink, system_id, parameter_id)
+        super(NibeSwitch, self).__init__(uplink, system_id, parameter_id)
         self._name = name
 
         self.parse_data(data)
@@ -81,16 +80,22 @@ class NibeSensor(NibeParameterEntity, Entity):
             self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._value
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit
-
-    @property
     def icon(self):
-        """Return a calculated icon for this data if known"""
         return self._icon
+
+    @property
+    def is_on(self):
+        if self._data:
+            return self._data['rawValue'] == "1"
+        else:
+            return None
+
+    async def async_turn_on(self, **kwargs):
+        await self._uplink.put_parameter(self._system_id,
+                                         self._parameter_id,
+                                         '1')
+
+    async def async_turn_off(self, **kwargs):
+        await self._uplink.put_parameter(self._system_id,
+                                         self._parameter_id,
+                                         '0')

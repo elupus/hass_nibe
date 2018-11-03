@@ -8,18 +8,18 @@ import logging
 import asyncio
 import json
 import voluptuous as vol
-from typing import List
+from typing import (List, Iterable)
+from collections import defaultdict
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant.helpers import discovery
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
-from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import (
-    HTTP_OK,
-    HTTP_BAD_REQUEST,
+    CONF_PLATFORM,
 )
+from .auth import NibeAuthView
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,20 +34,36 @@ CONF_CLIENT_SECRET  = 'client_secret'
 CONF_REDIRECT_URI   = 'redirect_uri'
 CONF_WRITEACCESS    = 'writeaccess'
 CONF_CATEGORIES     = 'categories'
-CONF_PARAMETERS     = 'parameters'
+CONF_SENSORS        = 'sensors'
 CONF_STATUSES       = 'statuses'
 CONF_SYSTEMS        = 'systems'
 CONF_SYSTEM         = 'system'
 CONF_UNITS          = 'units'
 CONF_UNIT           = 'unit'
+CONF_CLIMATES       = 'climates'
+CONF_PARAMETER      = 'parameter'
+CONF_OBJECTID       = 'object_id'
+CONF_DATA           = 'data'
+CONF_CLIMATE        = 'climate'
+CONF_CURRENT        = 'current'
+CONF_TARGET         = 'target'
+CONF_ADJUST         = 'adjust'
+CONF_ACTIVE         = 'active'
+CONF_SWITCHES       = 'switches'
+CONF_BINARY_SENSORS = 'binary_sensors'
 
 SIGNAL_UPDATE       = 'nibe_update'
+
+BINARY_SENSOR_VALUES = ('off', 'on', 'yes', 'no')
 
 UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
     vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_PARAMETERS): vol.All(cv.ensure_list, [cv.positive_int])
+    vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SWITCHES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_BINARY_SENSORS): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
@@ -60,8 +76,9 @@ NIBE_SCHEMA = vol.Schema({
     vol.Required(CONF_CLIENT_ID): cv.string,
     vol.Required(CONF_CLIENT_SECRET): cv.string,
     vol.Required(CONF_CLIENT_SECRET): cv.string,
-    vol.Optional(CONF_WRITEACCESS, default = False): cv.boolean,
-    vol.Optional(CONF_SYSTEMS, default = []): vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
+    vol.Optional(CONF_WRITEACCESS, default=False): cv.boolean,
+    vol.Optional(CONF_SYSTEMS, default=[]):
+        vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
 })
 
 CONFIG_SCHEMA = vol.Schema({
@@ -87,7 +104,7 @@ async def async_setup_systems(hass, config, uplink):
 
     hass.data[DATA_NIBE] = {}
     hass.data[DATA_NIBE]['systems'] = systems
-    hass.data[DATA_NIBE]['uplink']  = uplink
+    hass.data[DATA_NIBE]['uplink'] = uplink
 
     tasks = [system.load() for system in systems]
 
@@ -111,16 +128,16 @@ async def async_setup(hass, config):
         scope = ['READSYSTEM']
 
     uplink = Uplink(
-        client_id            = config[DOMAIN].get(CONF_CLIENT_ID),
-        client_secret        = config[DOMAIN].get(CONF_CLIENT_SECRET),
-        redirect_uri         = config[DOMAIN].get(CONF_REDIRECT_URI),
-        access_data          = load_json(store),
-        access_data_write    = save_json_local,
-        scope                = scope
+        client_id=config[DOMAIN].get(CONF_CLIENT_ID),
+        client_secret=config[DOMAIN].get(CONF_CLIENT_SECRET),
+        redirect_uri=config[DOMAIN].get(CONF_REDIRECT_URI),
+        access_data=load_json(store),
+        access_data_write=save_json_local,
+        scope=scope
     )
 
     if not uplink.access_data:
-        view = NibeAuthView(hass, uplink, config)
+        view = NibeAuthView(hass, uplink, config[DOMAIN], async_setup_systems)
         hass.http.register_view(view)
         view.async_request_config()
     else:
@@ -139,78 +156,169 @@ def filter_list(data: List[dict], field: str, selected: List[str]):
 
 class NibeSystem(object):
     def __init__(self, hass, uplink, system_id, config):
-        self.hass       = hass
+        self.hass = hass
         self.parameters = {}
-        self.config     = config
-        self.system_id  = system_id
-        self.system     = None
-        self.uplink     = uplink
-        self.notice     = []
+        self.config = config
+        self.system_id = system_id
+        self.system = None
+        self.uplink = uplink
+        self.notice = []
+        self.discovered = defaultdict(set)
 
-    async def load_parameters(self, ids: List[str], data: dict = {}):
+    def filter_discovered(self, discovery_info, platform):
+        """Keep unique discovery list, to avoid duplicate loads"""
+        table = self.discovered[platform]
+        for entry in discovery_info:
+            object_id = entry.get(CONF_OBJECTID)
+            if object_id in table:
+                continue
+            table.add(object_id)
+            yield entry
 
-        discovery_info = [
-            {
-                'system_id'   : self.system['systemId'],
-                'parameter_id': x,
-                'object_id'   : '{}_{}_{}'.format(DOMAIN, self.system_id, str(x)),
-                'data'        : data.get(x, None)
-            }
-            for x in ids
-            if str(x) != "0"  # we currently can't load parameters with no id
-        ]
+    async def load_platform(self, discovery_info, platform):
+        """Load plaform avoding duplicates"""
+        load_info = list(self.filter_discovered(discovery_info, platform))
+        if load_info:
+            await discovery.async_load_platform(
+                self.hass,
+                platform,
+                DOMAIN,
+                load_info,
+                self.config)
 
-        if not discovery_info:
-            return []
-
-        await discovery.async_load_platform(
-            self.hass,
-            'sensor',
-            DOMAIN,
-            discovery_info)
-
+        """Return entity id of all objects, even skipped"""
         return [
-            'sensor.{}'.format(x['object_id'])
+            '{}.{}'.format(platform, x[CONF_OBJECTID])
             for x in discovery_info
         ]
 
-    async def load_parameter_group(self, name: str, object_id: str, parameters: List[dict]):
-        data = {
-            x['parameterId']: x
-            for x in parameters
-        }
+    async def load_sensor(self,
+                           ids: Iterable[str],
+                           data: dict = {}):
 
-        entity_ids = await self.load_parameters(list(data.keys()), data)
+        discovery_info = [
+            {
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_PARAMETER: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x)),
+                CONF_DATA: data.get(x, None)
+            }
+            for x in ids
+        ]
+        return await self.load_platform(discovery_info, 'sensor')
+
+    async def load_parameter_group(self,
+                                   name: str,
+                                   object_id: str,
+                                   parameters: List[dict]):
+
+        sensors = {}
+        binary_sensors = {}
+        for x in parameters:
+            if str(x['value']).lower() in BINARY_SENSOR_VALUES:
+                binary_sensors[x['parameterId']] = x
+            else:
+                sensors[x['parameterId']] = x
+
+        entity_ids = []
+        entity_ids.extend(
+            await self.load_sensor(sensors.keys(),
+                                   sensors)
+        )
+        entity_ids.extend(
+            await self.load_binary_sensor(binary_sensors.keys(),
+                                          binary_sensors)
+        )
 
         group = self.hass.components.group
         entity = await group.Group.async_create_group(
             self.hass,
-            name       = name,
-            control    = False,
-            entity_ids = entity_ids,
-            object_id  = '{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
+            name=name,
+            control=False,
+            entity_ids=entity_ids,
+            object_id='{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
         return entity.entity_id
 
-    async def load_categories(self, unit: int, selected):
-        data   = await self.uplink.get_categories(self.system_id, True, unit)
-        data   = filter_list(data, 'categoryId', selected)
+    async def load_categories(self,
+                              unit: int,
+                              selected):
+        data = await self.uplink.get_categories(self.system_id, True, unit)
+        data = filter_list(data, 'categoryId', selected)
         tasks = [
-            self.load_parameter_group(x['name'],
-                                            '{}_{}'.format(unit, x['categoryId']),
-                                            x['parameters'])
+            self.load_parameter_group(
+                x['name'],
+                '{}_{}'.format(unit, x['categoryId']),
+                x['parameters'])
             for x in data
         ]
         return await asyncio.gather(*tasks)
 
-    async def load_status(self, unit: int):
-        data   = await self.uplink.get_status(self.system_id, unit)
+    async def load_status(self,
+                          unit: int):
+        data = await self.uplink.get_unit_status(self.system_id, unit)
         tasks = [
-            self.load_parameter_group(x['title'],
-                                            '{}_{}'.format(unit, x['title']),
-                                            x['parameters'])
+            self.load_parameter_group(
+                x['title'],
+                '{}_{}'.format(unit, x['title']),
+                x['parameters'])
             for x in data
         ]
         return await asyncio.gather(*tasks)
+
+    async def load_climate(self,
+                           selected):
+        _LOGGER.debug("Loading climate systems: {}".format(selected))
+        discovery_info = [
+            {
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_CLIMATE: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x))
+            }
+            for x in selected
+        ]
+        return await self.load_platform(discovery_info, 'climate')
+
+    async def load_switch(self,
+                          ids: Iterable[str],
+                          data: dict = {}):
+        _LOGGER.debug("Loading switches: {}".format(ids))
+        discovery_info = [
+            {
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_PARAMETER: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x)),
+                CONF_DATA: data.get(x, None)
+            }
+            for x in ids
+        ]
+        return await self.load_platform(discovery_info, 'switch')
+
+    async def load_binary_sensor(self,
+                                 ids: Iterable[str],
+                                 data: dict = {}):
+        _LOGGER.debug("Loading binary_sensors: {}".format(ids))
+        discovery_info = [
+            {
+                CONF_PLATFORM: DOMAIN,
+                CONF_SYSTEM: self.system['systemId'],
+                CONF_PARAMETER: x,
+                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
+                                                 self.system_id,
+                                                 str(x)),
+                CONF_DATA: data.get(x, None)
+            }
+            for x in ids
+        ]
+        return await self.load_platform(discovery_info, 'binary_sensor')
 
     async def load_unit(self, unit):
         entities = []
@@ -225,21 +333,38 @@ class NibeSystem(object):
                 await self.load_status(
                     unit.get(CONF_UNIT)))
 
-        if CONF_PARAMETERS in unit:
+        if CONF_SENSORS in unit:
             entities.extend(
-                await self.load_parameters(
-                    unit.get(CONF_PARAMETERS)))
+                await self.load_sensor(
+                    unit.get(CONF_SENSORS)))
+
+        if CONF_CLIMATES in unit:
+            entities.extend(
+                await self.load_climate(
+                    unit.get(CONF_CLIMATES)))
+
+        if CONF_SWITCHES in unit:
+            entities.extend(
+                await self.load_switch(
+                    unit.get(CONF_SWITCHES)))
+
+        if CONF_BINARY_SENSORS in unit:
+            entities.extend(
+                await self.load_binary_sensor(
+                    unit.get(CONF_BINARY_SENSORS)))
 
         group = self.hass.components.group
         return await group.Group.async_create_group(
             self.hass,
             '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
-            user_defined = False,
-            control      = False,
-            view         = True,
-            icon         = 'mdi:thermostat',
-            object_id    = '{}_{}_{}'.format(DOMAIN, self.system_id, unit.get(CONF_UNIT)),
-            entity_ids   = entities)
+            user_defined=False,
+            control=False,
+            view=True,
+            icon='mdi:thermostat',
+            object_id='{}_{}_{}'.format(DOMAIN,
+                                        self.system_id,
+                                        unit.get(CONF_UNIT)),
+            entity_ids=entities)
 
     async def load(self):
         if not self.system:
@@ -251,9 +376,9 @@ class NibeSystem(object):
         await self.update()
         async_track_time_interval(self.hass, self.update, INTERVAL)
 
-    async def update(self, now = None):
+    async def update(self, now=None):
         notice = await self.uplink.get_notifications(self.system_id)
-        added   = [k for k in notice      if k not in self.notice]
+        added = [k for k in notice if k not in self.notice]
         removed = [k for k in self.notice if k not in notice]
         self.notice = notice
 
@@ -268,81 +393,3 @@ class NibeSystem(object):
             persistent_notification.async_dismiss(
                 'nibe:{}'.format(x['notificationId'])
             )
-
-
-class NibeAuthView(HomeAssistantView):
-    """Handle nibe  authentication callbacks."""
-
-    url  = '/api/nibe/auth'
-    name = 'api:nibe:auth'
-
-    requires_auth = False
-
-    def __init__(self, hass, uplink, config) -> None:
-        """Initialize instance of the view."""
-        super().__init__()
-        self.hass           = hass
-        self.uplink         = uplink
-        self.config         = config
-        self.request_id     = None
-
-    def async_request_config(self):
-        auth_uri    = self.uplink.get_authorize_url()
-
-        description = """
-Please authorize Home Assistant to access nibe uplink by following the authorization link.
-
-Automatic configuration will only work if your configured redirect url is set to
-a url that will match the access url of Home Assistant. If for example you access
-Home Assisant on http://localhost:8123 you should set your callback url, both on Nibe
-Uplink and in Home Assistant configuration, to http://localhost:8123/api/nibe/auth.
-
-If automatic configuration of home assistant fails, you can enter the url to the webpage you
-get redirected to in the below prompt.
-"""
-
-        self.request_id = self.hass.components.configurator.async_request_config(
-            "Nibe Uplink authorization required",
-            callback    = self.callback,
-            description = description,
-            link_name   = "Authorize",
-            link_url    = auth_uri,
-            fields      = [{'id': 'url', 'name': 'Full url', 'type': ''}],
-            submit_caption = 'Manually set url'
-        )
-
-    async def configure(self, url):
-
-        if not self.request_id:
-            raise Exception('No Nibe configuration in progress!')
-
-        try:
-            code = self.uplink.get_code_from_url(url)
-
-            await self.uplink.get_access_token(code)
-
-            self.hass.components.configurator.async_request_done(self.request_id)
-            self.hass.async_add_job(async_setup_systems(self.hass, self.config[DOMAIN], self.uplink))
-
-        except:
-            self.hass.components.configurator.async_notify_errors(self.request_id,
-                "An error occured during nibe authorization. See logfile for more information.")
-            raise
-
-    async def callback(self, data):
-        await self.configure(data['url'])
-
-    async def get(self, request):
-        """Handle oauth token request."""
-
-        try:
-            await self.configure(str(request.url))
-        except:
-            msg = "An error occured during nibe authorization."
-            _LOGGER.exception(msg)
-            return self.json_message(msg, status_code =HTTP_BAD_REQUEST)
-        else:
-            msg = "Nibe has been authorized! you can close this window, and restart Home Assistant."
-            _LOGGER.info(msg)
-            return self.json_message(msg, status_code =HTTP_OK)
-

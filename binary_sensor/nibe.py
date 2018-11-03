@@ -3,12 +3,14 @@ import logging
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.entity import Entity
-from homeassistant.components.sensor import (
+from homeassistant.components.binary_sensor import (
     PLATFORM_SCHEMA,
     ENTITY_ID_FORMAT,
+    BinarySensorDevice,
 )
-from homeassistant.const import (CONF_NAME)
+from homeassistant.const import (
+    CONF_NAME
+)
 from ..nibe import (
     CONF_OBJECTID,
     CONF_SYSTEM,
@@ -17,6 +19,7 @@ from ..nibe import (
     DATA_NIBE,
 )
 from ..nibe.entity import NibeParameterEntity
+
 
 DEPENDENCIES = ['nibe']
 _LOGGER = logging.getLogger(__name__)
@@ -28,8 +31,6 @@ PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_OBJECTID): cv.string,
     vol.Optional(CONF_DATA): vol.Any(None, dict),
 })
-
-discovered_entities = set()
 
 
 async def async_setup_platform(hass,
@@ -49,7 +50,7 @@ async def async_setup_platform(hass,
     update = False
     for entry in entries:
         sensors.append(
-            NibeSensor(
+            NibeBinarySensor(
                 hass.data[DATA_NIBE]['uplink'],
                 entry.get(CONF_SYSTEM),
                 entry.get(CONF_PARAMETER),
@@ -64,7 +65,7 @@ async def async_setup_platform(hass,
     async_add_devices(sensors, update)
 
 
-class NibeSensor(NibeParameterEntity, Entity):
+class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
     def __init__(self,
                  uplink,
                  system_id,
@@ -72,8 +73,7 @@ class NibeSensor(NibeParameterEntity, Entity):
                  name=None,
                  object_id=None,
                  data=None):
-        """Initialize the Nibe sensor."""
-        super(NibeSensor, self).__init__(uplink, system_id, parameter_id)
+        super().__init__(uplink, system_id, parameter_id)
         self._name = name
 
         self.parse_data(data)
@@ -81,16 +81,8 @@ class NibeSensor(NibeParameterEntity, Entity):
             self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._value
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit
-
-    @property
-    def icon(self):
-        """Return a calculated icon for this data if known"""
-        return self._icon
+    def is_on(self):
+        if self._data:
+            return self._data['rawValue'] == "1"
+        else:
+            return None

@@ -43,10 +43,14 @@ nibe:
               # retrieve status parameters, remove tag for none
               statuses:
 
-          # optional list of additional parameters to retrieve, can be done here or on the sensor platform
-              parameters:
+              # optional list of additional parameters to retrieve, can be done here or on the sensor platform
+              sensors:
                 - <parameter identifier>
                 - <parameter identifier>
+
+              # optional list of switches (note, for ability to change, you need to use writeaccess and have payed license)
+              switches:
+                - hot_water_boost
 
 ```
 
@@ -90,6 +94,14 @@ Optional explicit sensor setup
 ```yaml
 sensor:
   - platform: nibe
+    system   : <required system identifier>
+    parameter: <required parameter identifier>
+```
+
+Optional explicit switch setup
+```yaml
+switch:
+  - platform: switch
     system   : <required system identifier>
     parameter: <required parameter identifier>
 ```
