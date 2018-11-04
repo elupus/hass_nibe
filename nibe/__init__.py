@@ -12,6 +12,7 @@ from typing import (List, Iterable)
 from collections import defaultdict
 import homeassistant.helpers.config_validation as cv
 
+from homeassistant import config_entries
 from homeassistant.helpers import discovery
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
@@ -20,37 +21,17 @@ from homeassistant.const import (
     CONF_PLATFORM,
 )
 from .auth import NibeAuthView
+from .const import *
+from .config import configured_hosts
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN              = 'nibe'
-DATA_NIBE           = 'nibe'
+config_entries.FLOWS.append(DOMAIN)
+
 INTERVAL            = timedelta(minutes=1)
 
 REQUIREMENTS        = ['nibeuplink==0.4.3']
 
-CONF_CLIENT_ID      = 'client_id'
-CONF_CLIENT_SECRET  = 'client_secret'
-CONF_REDIRECT_URI   = 'redirect_uri'
-CONF_WRITEACCESS    = 'writeaccess'
-CONF_CATEGORIES     = 'categories'
-CONF_SENSORS        = 'sensors'
-CONF_STATUSES       = 'statuses'
-CONF_SYSTEMS        = 'systems'
-CONF_SYSTEM         = 'system'
-CONF_UNITS          = 'units'
-CONF_UNIT           = 'unit'
-CONF_CLIMATES       = 'climates'
-CONF_PARAMETER      = 'parameter'
-CONF_OBJECTID       = 'object_id'
-CONF_DATA           = 'data'
-CONF_CLIMATE        = 'climate'
-CONF_CURRENT        = 'current'
-CONF_TARGET         = 'target'
-CONF_ADJUST         = 'adjust'
-CONF_ACTIVE         = 'active'
-CONF_SWITCHES       = 'switches'
-CONF_BINARY_SENSORS = 'binary_sensors'
 
 SIGNAL_UPDATE       = 'nibe_update'
 
@@ -72,11 +53,10 @@ SYSTEM_SCHEMA = vol.Schema({
 })
 
 NIBE_SCHEMA = vol.Schema({
-    vol.Required(CONF_REDIRECT_URI): cv.string,
-    vol.Required(CONF_CLIENT_ID): cv.string,
-    vol.Required(CONF_CLIENT_SECRET): cv.string,
-    vol.Required(CONF_CLIENT_SECRET): cv.string,
-    vol.Optional(CONF_WRITEACCESS, default=False): cv.boolean,
+#    vol.Required(CONF_REDIRECT_URI): cv.string,
+#    vol.Required(CONF_CLIENT_ID): cv.string,
+#    vol.Required(CONF_CLIENT_SECRET): cv.string,
+#    vol.Optional(CONF_WRITEACCESS, default=False): cv.boolean,
     vol.Optional(CONF_SYSTEMS, default=[]):
         vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
 })
@@ -86,7 +66,8 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
-async def async_setup_systems(hass, config, uplink):
+async def async_setup_systems(hass, uplink):
+    config = hass.data[DATA_NIBE]['config']
 
     if not len(config.get(CONF_SYSTEMS)):
         systems = await uplink.get_systems()
@@ -102,7 +83,6 @@ async def async_setup_systems(hass, config, uplink):
         for config in config.get(CONF_SYSTEMS)
     ]
 
-    hass.data[DATA_NIBE] = {}
     hass.data[DATA_NIBE]['systems'] = systems
     hass.data[DATA_NIBE]['uplink'] = uplink
 
@@ -113,37 +93,39 @@ async def async_setup_systems(hass, config, uplink):
 
 async def async_setup(hass, config):
     """Setup nibe uplink component"""
+    hass.data[DATA_NIBE] = {}
+    hass.data[DATA_NIBE]['config'] = config[DOMAIN]
+    return True
 
-    store = hass.config.path('nibe.json')
 
-    def save_json_local(data):
-        save_json(store, data)
+async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
+    """Set up an access point from a config entry."""
+    _LOGGER.debug("Setup nibe entry")
 
     from nibeuplink import Uplink
 
     scope = None
-    if config[DOMAIN].get(CONF_WRITEACCESS):
+    if entry.data.get(CONF_WRITEACCESS):
         scope = ['READSYSTEM', 'WRITESYSTEM']
     else:
         scope = ['READSYSTEM']
 
     uplink = Uplink(
-        client_id=config[DOMAIN].get(CONF_CLIENT_ID),
-        client_secret=config[DOMAIN].get(CONF_CLIENT_SECRET),
-        redirect_uri=config[DOMAIN].get(CONF_REDIRECT_URI),
-        access_data=load_json(store),
-        access_data_write=save_json_local,
-        scope=scope
+        client_id = entry.data.get(CONF_CLIENT_ID),
+        client_secret = entry.data.get(CONF_CLIENT_SECRET),
+        redirect_uri = entry.data.get(CONF_REDIRECT_URI),
+        refresh_token = entry.data.get(CONF_REFRESH_TOKEN),
+        scope = scope
     )
 
-    if not uplink.access_data:
-        view = NibeAuthView(hass, uplink, config[DOMAIN], async_setup_systems)
-        hass.http.register_view(view)
-        view.async_request_config()
-    else:
-        hass.async_add_job(async_setup_systems(hass, config[DOMAIN], uplink))
+    await uplink.refresh_access_token()
+    hass.async_add_job(async_setup_systems(hass, uplink))
 
     return True
+
+
+async def async_unload_entry(hass, entry):
+    pass
 
 
 def filter_list(data: List[dict], field: str, selected: List[str]):

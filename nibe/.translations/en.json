@@ -1,0 +1,29 @@
+{
+    "config": {
+        "title": "Nibe Uplink",
+        "step": {
+            "user": {
+                "title": "Configure uplink parameters",
+                "data": {
+                    "redirect_uri": "Returning redirect url",
+                    "client_id": "Client Id",
+                    "client_secret": "Client Secret",
+                    "writeaccess": "Write Access (requires subscription)"
+                }
+            },
+            "auth": {
+                "title": "Authorize home assistant for nibe",
+                "description": "Please navigate to nibe uplinks authorization page [Authorize]({url})",
+                "data": {
+                    "code": "Code included in redirect uri"
+                }
+            }
+        },
+        "error": {
+            "code": "Couldn't get an access token from code"
+        },
+        "abort": {
+            "already_configured": "Uplink is already configured"
+        }
+    }
+}
