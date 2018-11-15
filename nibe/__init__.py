@@ -13,13 +13,16 @@ from collections import defaultdict
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant import config_entries
+from homeassistant.core import split_entity_id
+from homeassistant.components.group import (
+    ATTR_ADD_ENTITIES, ATTR_OBJECT_ID,
+    DOMAIN as DOMAIN_GROUP, SERVICE_SET)
+from homeassistant.loader import bind_hass
 from homeassistant.helpers import discovery
 from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
-from homeassistant.const import (
-    CONF_PLATFORM,
-)
+
 from .auth import NibeAuthView
 from .const import *
 from .config import configured_hosts
@@ -30,6 +33,7 @@ config_entries.FLOWS.append(DOMAIN)
 
 INTERVAL            = timedelta(minutes=1)
 
+DEPENDENCIES = ['group']
 REQUIREMENTS        = ['nibeuplink==0.4.3']
 
 
@@ -41,15 +45,16 @@ UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
     vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_SENSORS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_SWITCHES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_BINARY_SENSORS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
     vol.Required(CONF_SYSTEM): cv.positive_int,
-    vol.Optional(CONF_UNITS): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
+    vol.Optional(CONF_UNITS, default=[]):
+        vol.All(cv.ensure_list, [UNIT_SCHEMA]),
 })
 
 NIBE_SCHEMA = vol.Schema({
@@ -66,7 +71,7 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
-async def async_setup_systems(hass, uplink):
+async def async_setup_systems(hass, uplink, entry):
     config = hass.data[DATA_NIBE]['config']
 
     if not len(config.get(CONF_SYSTEMS)):
@@ -89,6 +94,10 @@ async def async_setup_systems(hass, uplink):
     tasks = [system.load() for system in systems]
 
     await asyncio.gather(*tasks)
+
+    for platform in ('climate', 'switch', 'sensor', 'binary_sensor'):
+        hass.async_add_job(hass.config_entries.async_forward_entry_setup(
+            entry, platform))
 
 
 async def async_setup(hass, config):
@@ -119,7 +128,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     )
 
     await uplink.refresh_access_token()
-    hass.async_add_job(async_setup_systems(hass, uplink))
+    await async_setup_systems(hass, uplink, entry)
 
     return True
 
@@ -136,6 +145,10 @@ def filter_list(data: List[dict], field: str, selected: List[str]):
         return data
 
 
+def gen_dict():
+    return {'groups': [], 'data': None}
+
+
 class NibeSystem(object):
     def __init__(self, hass, uplink, system_id, config):
         self.hass = hass
@@ -146,6 +159,10 @@ class NibeSystem(object):
         self.uplink = uplink
         self.notice = []
         self.discovered = defaultdict(set)
+        self.switches = defaultdict(gen_dict)
+        self.sensors = defaultdict(gen_dict)
+        self.binary_sensors = defaultdict(gen_dict)
+        self.climates = defaultdict(gen_dict)
 
     def filter_discovered(self, discovery_info, platform):
         """Keep unique discovery list, to avoid duplicate loads"""
@@ -157,71 +174,31 @@ class NibeSystem(object):
             table.add(object_id)
             yield entry
 
-    async def load_platform(self, discovery_info, platform):
-        """Load plaform avoding duplicates"""
-        load_info = list(self.filter_discovered(discovery_info, platform))
-        if load_info:
-            await discovery.async_load_platform(
-                self.hass,
-                platform,
-                DOMAIN,
-                load_info,
-                self.config)
-
-        """Return entity id of all objects, even skipped"""
-        return [
-            '{}.{}'.format(platform, x[CONF_OBJECTID])
-            for x in discovery_info
-        ]
-
-    async def load_sensor(self,
-                           ids: Iterable[str],
-                           data: dict = {}):
-
-        discovery_info = [
-            {
-                CONF_PLATFORM: DOMAIN,
-                CONF_SYSTEM: self.system['systemId'],
-                CONF_PARAMETER: x,
-                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
-                                                 self.system_id,
-                                                 str(x)),
-                CONF_DATA: data.get(x, None)
-            }
-            for x in ids
-        ]
-        return await self.load_platform(discovery_info, 'sensor')
-
     async def load_parameter_group(self,
                                    name: str,
                                    object_id: str,
                                    parameters: List[dict]):
-
-        sensors = {}
-        binary_sensors = {}
-        for x in parameters:
-            if str(x['value']).lower() in BINARY_SENSOR_VALUES:
-                binary_sensors[x['parameterId']] = x
-            else:
-                sensors[x['parameterId']] = x
-
-        entity_ids = []
-        entity_ids.extend(
-            await self.load_sensor(sensors.keys(),
-                                   sensors)
-        )
-        entity_ids.extend(
-            await self.load_binary_sensor(binary_sensors.keys(),
-                                          binary_sensors)
-        )
 
         group = self.hass.components.group
         entity = await group.Group.async_create_group(
             self.hass,
             name=name,
             control=False,
-            entity_ids=entity_ids,
             object_id='{}_{}_{}'.format(DOMAIN, self.system_id, object_id))
+
+        _, group_id = split_entity_id(entity.entity_id)
+
+        for x in parameters:
+            if str(x['value']).lower() in BINARY_SENSOR_VALUES:
+                list_object = self.binary_sensors
+            else:
+                list_object = self.sensors
+
+            entry = list_object[x['parameterId']]
+            entry['data'] = x
+            entry['groups'].append(group_id)
+            _LOGGER.debug("Entry {}".format(entry))
+
         return entity.entity_id
 
     async def load_categories(self,
@@ -250,103 +227,88 @@ class NibeSystem(object):
         ]
         return await asyncio.gather(*tasks)
 
-    async def load_climate(self,
-                           selected):
-        _LOGGER.debug("Loading climate systems: {}".format(selected))
-        discovery_info = [
-            {
-                CONF_PLATFORM: DOMAIN,
-                CONF_SYSTEM: self.system['systemId'],
-                CONF_CLIMATE: x,
-                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
-                                                 self.system_id,
-                                                 str(x))
-            }
-            for x in selected
-        ]
-        return await self.load_platform(discovery_info, 'climate')
+    async def load_climates(self, selected, group_id):
+        from nibeuplink import (PARAM_CLIMATE_SYSTEMS)
 
-    async def load_switch(self,
-                          ids: Iterable[str],
-                          data: dict = {}):
-        _LOGGER.debug("Loading switches: {}".format(ids))
-        discovery_info = [
-            {
-                CONF_PLATFORM: DOMAIN,
-                CONF_SYSTEM: self.system['systemId'],
-                CONF_PARAMETER: x,
-                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
-                                                 self.system_id,
-                                                 str(x)),
-                CONF_DATA: data.get(x, None)
-            }
-            for x in ids
-        ]
-        return await self.load_platform(discovery_info, 'switch')
+        async def get_active(id):
+            if selected and id not in selected:
+                return None
 
-    async def load_binary_sensor(self,
-                                 ids: Iterable[str],
-                                 data: dict = {}):
-        _LOGGER.debug("Loading binary_sensors: {}".format(ids))
-        discovery_info = [
-            {
-                CONF_PLATFORM: DOMAIN,
-                CONF_SYSTEM: self.system['systemId'],
-                CONF_PARAMETER: x,
-                CONF_OBJECTID: '{}_{}_{}'.format(DOMAIN,
-                                                 self.system_id,
-                                                 str(x)),
-                CONF_DATA: data.get(x, None)
-            }
-            for x in ids
-        ]
-        return await self.load_platform(discovery_info, 'binary_sensor')
+            climate = PARAM_CLIMATE_SYSTEMS[id]
+            if climate.active_accessory is None:
+                return id
+
+            active_accessory = await self.uplink.get_parameter(
+                self.system_id,
+                climate.active_accessory)
+
+            _LOGGER.debug("Accessory status for {} is {}".format(
+                climate.name,
+                active_accessory))
+
+            if active_accessory and active_accessory['rawValue']:
+                return id
+
+            return None
+
+        climates = await asyncio.gather(*[
+            get_active(climate)
+            for climate in PARAM_CLIMATE_SYSTEMS.keys()
+        ])
+
+        for climate in climates:
+            if climate:
+                self.climates[climate]['groups'].append(group_id)
 
     async def load_unit(self, unit):
-        entities = []
-        if CONF_CATEGORIES in unit:
-            entities.extend(
-                await self.load_categories(
-                    unit.get(CONF_UNIT),
-                    unit.get(CONF_CATEGORIES)))
-
-        if CONF_STATUSES in unit:
-            entities.extend(
-                await self.load_status(
-                    unit.get(CONF_UNIT)))
-
-        if CONF_SENSORS in unit:
-            entities.extend(
-                await self.load_sensor(
-                    unit.get(CONF_SENSORS)))
-
-        if CONF_CLIMATES in unit:
-            entities.extend(
-                await self.load_climate(
-                    unit.get(CONF_CLIMATES)))
-
-        if CONF_SWITCHES in unit:
-            entities.extend(
-                await self.load_switch(
-                    unit.get(CONF_SWITCHES)))
-
-        if CONF_BINARY_SENSORS in unit:
-            entities.extend(
-                await self.load_binary_sensor(
-                    unit.get(CONF_BINARY_SENSORS)))
 
         group = self.hass.components.group
-        return await group.Group.async_create_group(
+        entity = await group.Group.async_create_group(
             self.hass,
-            '{} - Unit {}'.format(self.system['productName'], unit.get(CONF_UNIT)),
+            '{} - Unit {}'.format(self.system['productName'],
+                                  unit.get(CONF_UNIT)),
             user_defined=False,
             control=False,
             view=True,
             icon='mdi:thermostat',
             object_id='{}_{}_{}'.format(DOMAIN,
                                         self.system_id,
-                                        unit.get(CONF_UNIT)),
-            entity_ids=entities)
+                                        unit.get(CONF_UNIT)))
+
+        _, object_id = split_entity_id(entity.entity_id)
+
+        for parameter in unit[CONF_SWITCHES]:
+            self.switches[parameter]['groups'] = [object_id]
+
+        for parameter in unit[CONF_SENSORS]:
+            self.sensors[parameter]['groups'] = [object_id]
+
+        for parameter in unit[CONF_BINARY_SENSORS]:
+            self.binary_sensors[parameter]['groups'] = [object_id]
+
+        if CONF_CLIMATES in unit:
+            await self.load_climates(
+                unit[CONF_CLIMATES],
+                object_id)
+
+        entity_ids = []
+        if CONF_CATEGORIES in unit:
+            entity_ids.extend(
+                await self.load_categories(
+                    unit.get(CONF_UNIT),
+                    unit.get(CONF_CATEGORIES)))
+
+        if CONF_STATUSES in unit:
+            entity_ids.extend(
+                await self.load_status(
+                    unit.get(CONF_UNIT)))
+
+        self.hass.async_add_job(
+            self.hass.services.async_call(
+                DOMAIN_GROUP, SERVICE_SET, {
+                    ATTR_OBJECT_ID: object_id,
+                    ATTR_ADD_ENTITIES: entity_ids})
+        )
 
     async def load(self):
         if not self.system:

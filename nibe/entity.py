@@ -1,5 +1,12 @@
 import logging
 from homeassistant.helpers.entity import Entity
+from homeassistant.components.group import (
+    ATTR_ADD_ENTITIES, ATTR_OBJECT_ID,
+    DOMAIN as DOMAIN_GROUP, SERVICE_SET)
+
+from .const import (
+    DOMAIN as DOMAIN_NIBE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,25 +20,57 @@ UNIT_ICON = {
 class NibeEntity(Entity):
     """Base class for all nibe sytem entities"""
 
-    def __init__(self, uplink, system_id):
+    def __init__(self, uplink, system_id, groups):
         """Initialize base class"""
         super().__init__()
         self._uplink = uplink
         self._system_id = system_id
+        self._groups = groups
+
+    async def async_added_to_hass(self):
+        """Once registed ad this entity to member groups"""
+        for group in self._groups:
+            _LOGGER.debug("Adding entity {} to group {}".format(
+                self.entity_id,
+                group))
+            self.hass.async_add_job(
+                self.hass.services.async_call(
+                    DOMAIN_GROUP, SERVICE_SET, {
+                        ATTR_OBJECT_ID: group,
+                        ATTR_ADD_ENTITIES: [self.entity_id]
+                    }
+                )
+            )
 
 
 class NibeParameterEntity(NibeEntity):
     """Base class with common attributes for parameter entities"""
 
-    def __init__(self, uplink, system_id, parameter_id):
+    def __init__(self,
+                 uplink,
+                 system_id,
+                 parameter_id,
+                 data=None,
+                 groups=[],
+                 entity_id_format=None
+                 ):
         """Initialize base class for parameters"""
-        super().__init__(uplink, system_id)
+        super().__init__(uplink, system_id, groups)
         self._parameter_id = parameter_id
         self._name = None
         self._unit = None
         self._icon = None
         self._value = None
-        self._data = None
+        self.parse_data(data)
+
+        if entity_id_format:
+            self.entity_id = entity_id_format.format(
+                '{}_{}_{}'.format(
+                    DOMAIN_NIBE,
+                    system_id,
+                    str(parameter_id)
+                )
+            )
 
     @property
     def name(self):
@@ -69,6 +108,16 @@ class NibeParameterEntity(NibeEntity):
             return False
         else:
             return True
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        return self._unit
+
+    @property
+    def icon(self):
+        """Return a calculated icon for this data if known"""
+        return self._icon
 
     def parse_data(self, data):
         """Parse dat to update internal variables"""

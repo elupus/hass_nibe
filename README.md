@@ -68,28 +68,6 @@ Minimal configuration
               categories:
 ```
 
-
-Optional climate system setup with standard id's. climate field should be in the format of
-`[1-4](h|c)(a?)` as an example `1h` for system 1 heating, `2ca` for system 2 cooling flow adjust
-```yaml
-climate:
-  - platform: nibe
-    system : <required system identifier>
-    climate: <required climate identifier as per above>
-```
-
-Optional explicit climate system setup with fixed id
-```yaml
-climate:
-  - platform: nibe
-    name: 'Climate System 1'
-    system : <required system identifier>
-    current: <parameter id of current temperature>
-    target : <parameter id of target temperature>
-    adjust : <parameter id of the parallel adjustment, leave out if target should be updated>
-```
-
-
 Optional explicit sensor setup
 ```yaml
 sensor:

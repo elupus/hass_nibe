@@ -1,137 +1,91 @@
 import logging
 import asyncio
+from collections import OrderedDict
 
-import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.climate import (
     ClimateDevice,
-    ENTITY_ID_FORMAT,
-    PLATFORM_SCHEMA,
     SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_ON_OFF
+    STATE_HEAT,
+    STATE_COOL,
+    STATE_IDLE,
+    ENTITY_ID_FORMAT
 )
-from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME)
-from ..nibe import (
-    CONF_OBJECTID,
-    CONF_SYSTEM,
-    CONF_CLIMATE,
-    CONF_CURRENT,
-    CONF_TARGET,
-    CONF_ADJUST,
-    CONF_ACTIVE,
-    DATA_NIBE,
+from homeassistant.const import (ATTR_TEMPERATURE)
+from ..nibe.const import (
+    DOMAIN as DOMAIN_NIBE,
+    DATA_NIBE
 )
 from ..nibe.entity import NibeEntity
 
 DEPENDENCIES = ['nibe']
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_SYSTEM): cv.positive_int,
-    vol.Optional(CONF_NAME): cv.string,
-    vol.Optional(CONF_CLIMATE): cv.string,
-    vol.Optional(CONF_CURRENT): cv.positive_int,
-    vol.Optional(CONF_TARGET): cv.positive_int,
-    vol.Optional(CONF_ADJUST): cv.positive_int,
-    vol.Optional(CONF_OBJECTID): cv.string,
-})
-
 
 async def async_setup_platform(hass,
                                config,
                                async_add_devices,
                                discovery_info=None):
+    """Old setyp, not used"""
+    pass
 
-    sensors = []
-    configs = []
-    if (discovery_info):
-        configs = [PLATFORM_SCHEMA(x) for x in discovery_info]
-    else:
-        configs = [config]
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Set up the climate device based on a config entry."""
 
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    from nibeuplink import (PARAM_PUMP_SPEED, PARAM_CLIMATE_SYSTEMS)
+    uplink = hass.data[DATA_NIBE]['uplink']
+    systems = hass.data[DATA_NIBE]['systems']
 
-    for c in configs:
-        index   = c.get(CONF_CLIMATE, '0')[0]
-        variant = c.get(CONF_CLIMATE, '0')[1:]
-        climate = PARAM_CLIMATE_SYSTEMS.get(index)
-        if climate:
-            name = climate.name
-            if variant == 'h':
-                name    = '{} Heat (room)'.format(index)
-                current = climate.room_temp
-                target  = climate.room_setpoint_heat
-                adjust  = None
-                active  = PARAM_PUMP_SPEED
-            elif variant == 'c':
-                name    = '{} Cool (room)'.format(index)
-                current = climate.room_temp
-                target  = climate.room_setpoint_cool
-                adjust  = None
-                active  = None
-            elif variant == 'ha':
-                name    = '{} Heat (flow)'.format(index)
-                current = climate.supply_temp
-                target  = climate.calc_supply_temp_heat
-                adjust  = climate.offset_heat
-                active  = PARAM_PUMP_SPEED
-            elif variant == 'ca':
-                name    = '{} Cool (flow)'.format(index)
-                current = climate.supply_temp
-                target  = climate.calc_supply_temp_cool
-                adjust  = climate.offset_cool
-                active  = None
-        else:
-            name    = 'System'
-            current = c.get(CONF_CURRENT)
-            target  = c.get(CONF_TARGET)
-            adjust  = c.get(CONF_ADJUST)
-            active  = c.get(CONF_ACTIVE)
+    from nibeuplink import (PARAM_CLIMATE_SYSTEMS)
 
-        sensors.append(
-            NibeClimate(
-                hass.data[DATA_NIBE]['uplink'],
-                c.get(CONF_NAME, name),
-                c.get(CONF_SYSTEM),
-                current,
-                target,
-                adjust,
-                active,
-                c.get(CONF_OBJECTID),
-            )
+    entities = [
+        NibeClimate(
+            uplink,
+            system.system_id,
+            PARAM_CLIMATE_SYSTEMS[climate],
+            config.get('groups')
         )
+        for system in systems
+        for climate, config in system.climates.items()
+    ]
 
-    async_add_devices(sensors, True)
+    async_add_entities(entities, True)
 
 
 class NibeClimate(NibeEntity, ClimateDevice):
     def __init__(self,
                  uplink,
-                 name: str,
                  system_id: int,
-                 current_id: str,
-                 target_id: str,
-                 adjust_id: str,
-                 active_id: str,
-                 object_id: str):
-        super(NibeClimate, self).__init__(uplink, system_id)
-        self._name = name
-        self._current_id = current_id
-        self._target_id = target_id
-        self._adjust_id = adjust_id
-        self._active_id = active_id
-        self._unit = None
+                 climate: ClimateDevice,
+                 groups):
+        super(NibeClimate, self).__init__(
+            uplink,
+            system_id,
+            groups)
+
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            '{}_{}_{}'.format(
+                DOMAIN_NIBE,
+                system_id,
+                str(climate.name)
+            )
+        )
+
+
+        self._climate = climate
+        self._adjust_id = None
+        self._target_id = None
         self._current = None
         self._target = None
         self._adjust = None
         self._active = None
         self._status = 'DONE'
-        if object_id:  # Forced id on discovery
-            self.entity_id = ENTITY_ID_FORMAT.format(object_id)
+        self._current_operation = None
+        self._current_mode = STATE_HEAT
+        self._attributes = OrderedDict()
 
     def get_value(self, data, default=None):
         if data is None or data['value'] is None:
@@ -151,7 +105,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def name(self):
-        return self._name
+        return self._climate.name
 
     @property
     def current_temperature(self):
@@ -193,6 +147,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
     def state_attributes(self):
         data = super().state_attributes
         data['status'] = self._status
+        data.update(self._attributes)
         return data
 
     @property
@@ -201,24 +156,21 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def supported_features(self):
-        features = SUPPORT_TARGET_TEMPERATURE
-        if self._active_id:
-            features = features | SUPPORT_ON_OFF
-        return features
+        return SUPPORT_TARGET_TEMPERATURE
 
     @property
     def is_on(self):
-        if self._active_id:
-            return self._active is not None and bool(self._active['value'])
-        else:
-            return None
+        return True
+
+    @property
+    def current_operation(self):
+        """Return current operation ie. heat, cool, idle."""
+        return self._current_operation
 
     @property
     def unique_id(self):
         return "{}_{}".format(self._system_id,
-                              self._current_id,
-                              self._target_id,
-                              self._adjust_id)
+                              self._climate.name)
 
     async def async_turn_on(self):
         return
@@ -264,12 +216,69 @@ class NibeClimate(NibeEntity, ClimateDevice):
             else:
                 return None
 
-        (self._current,
-         self._target,
-         self._adjust,
-         self._active) = await asyncio.gather(
-            get_parameter(self._current_id),
-            get_parameter(self._target_id),
-            get_parameter(self._adjust_id),
-            get_parameter(self._active_id),
+        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
+                                PARAM_STATUS_COOLING,
+                                PARAM_COMPRESSOR_FREQUENCY)
+
+        climate = self._climate._asdict()
+        data = OrderedDict()
+
+        async def fill(key, parameter_id):
+            if type(parameter_id) == int:
+                data[key] = await get_parameter(parameter_id)
+            elif parameter_id is None:
+                data[key] = None
+
+        await asyncio.gather(
+            *[
+                fill(key, parameter_id)
+                for key, parameter_id in climate.items()
+            ],
+            fill('pump_speed_heating_medium', PARAM_PUMP_SPEED_HEATING_MEDIUM),
+            fill('compressor_frequency', PARAM_COMPRESSOR_FREQUENCY),
+            fill('status_cooling', PARAM_STATUS_COOLING)
         )
+
+        if data['status_cooling']['value']:
+            self._current_operation = STATE_COOL
+            self._current_mode = STATE_COOL
+        else:
+            self._current_mode = STATE_HEAT
+            if data['pump_speed_heating_medium']['value'] and \
+               data['compressor_frequency']['value']:
+                self._current_operation = STATE_HEAT
+            else:
+                self._current_operation = STATE_IDLE
+
+        for key, value in data.items():
+            if value:
+                self._attributes[key] = value['value']
+            else:
+                self._attributes[key] = None
+
+        if data['use_room_sensor']['rawValue']:
+            self._adjust  = None
+            self._adjust_id = None
+            if self._current_mode == STATE_HEAT:
+                self._current = data['room_temp']
+                self._target  = data['room_setpoint_heat']
+                self._target_id = self._climate.room_setpoint_heat
+            else:
+                self._current = data['room_temp']
+                self._target  = data['room_setpoint_cool']
+                self._target_id = self._climate.room_setpoint_cool
+        else:
+            self._current = data['supply_temp']
+            self._active  = data['compressor_frequency']
+            if self._current_mode == STATE_HEAT:
+                self._target  = data['calc_supply_temp_heat']
+                self._target_id = self._climate.calc_supply_temp_heat
+
+                self._adjust  = data['offset_heat']
+                self._adjust_id = self._climate.offset_heat
+            else:
+                self._target  = data['calc_supply_temp_cool']
+                self._target_id = self._climate.calc_supply_temp_cool
+
+                self._adjust  = data['offset_cool']
+                self._adjust_id = self._climate.offset_cool
