@@ -27,6 +27,18 @@ class NibeEntity(Entity):
         self._system_id = system_id
         self._groups = groups
 
+    def get_value(self, data, default=None):
+        if data is None or data['value'] is None:
+            return default
+        else:
+            return float(data['value'])
+
+    def get_scale(self, data):
+        if data is None or data['value'] is None:
+            return 1.0
+        else:
+            return float(data['rawValue']) / float(data['value'])
+
     async def async_added_to_hass(self):
         """Once registed ad this entity to member groups"""
         for group in self._groups:

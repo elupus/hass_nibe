@@ -111,18 +111,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
             )
         )
 
-    def get_value(self, data, default=None):
-        if data is None or data['value'] is None:
-            return default
-        else:
-            return float(data['value'])
-
-    def get_scale(self, data):
-        if data is None or data['value'] is None:
-            return 1.0
-        else:
-            return float(data['rawValue']) / float(data['value'])
-
     @property
     def name(self):
         return self._name
