@@ -11,7 +11,6 @@ from homeassistant.components.water_heater import (
     STATE_OFF,
     ENTITY_ID_FORMAT
 )
-from homeassistant.const import (ATTR_TEMPERATURE)
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
     DATA_NIBE
@@ -39,6 +38,7 @@ NIBE_STATE_TO_HA = {
         'stop': 'start_temperature_water_luxary',
     }
 }
+
 
 async def async_setup_platform(hass,
                                config,
