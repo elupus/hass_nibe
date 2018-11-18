@@ -41,16 +41,26 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     from nibeuplink import (PARAM_CLIMATE_SYSTEMS)
 
-    entities = [
-        NibeClimate(
-            uplink,
-            system.system_id,
-            PARAM_CLIMATE_SYSTEMS[climate],
-            config.get('groups')
-        )
-        for system in systems
-        for climate, config in system.climates.items()
-    ]
+    entities = []
+
+    for system in systems:
+        for climate, config in system.climates.items():
+            entities.append(
+                NibeClimateSupply(
+                    uplink,
+                    system.system_id,
+                    PARAM_CLIMATE_SYSTEMS[climate],
+                    config.get('groups')
+                )
+            )
+            entities.append(
+                NibeClimateRoom(
+                    uplink,
+                    system.system_id,
+                    PARAM_CLIMATE_SYSTEMS[climate],
+                    config.get('groups')
+                )
+            )
 
     async_add_entities(entities, True)
 
@@ -66,26 +76,24 @@ class NibeClimate(NibeEntity, ClimateDevice):
             system_id,
             groups)
 
-        self.entity_id = ENTITY_ID_FORMAT.format(
-            '{}_{}_{}'.format(
-                DOMAIN_NIBE,
-                system_id,
-                str(climate.name)
-            )
-        )
-
+        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
+                                PARAM_STATUS_COOLING,
+                                PARAM_COMPRESSOR_FREQUENCY)
 
         self._climate = climate
-        self._adjust_id = None
-        self._target_id = None
         self._current = None
-        self._target = None
-        self._adjust = None
         self._active = None
         self._status = 'DONE'
         self._current_operation = None
         self._current_mode = STATE_HEAT
-        self._attributes = OrderedDict()
+        self._data = OrderedDict()
+        self._select = OrderedDict()
+        self._select['pump_speed_heating_medium'] = \
+            PARAM_PUMP_SPEED_HEATING_MEDIUM
+        self._select['compressor_frequency'] = \
+            PARAM_COMPRESSOR_FREQUENCY
+        self._select['status_cooling'] = \
+            PARAM_STATUS_COOLING
 
     def get_value(self, data, default=None):
         if data is None or data['value'] is None:
@@ -99,21 +107,9 @@ class NibeClimate(NibeEntity, ClimateDevice):
         else:
             return float(data['rawValue']) / float(data['value'])
 
-    def get_target_base(self):
-        return self.get_value(self._target, 0) \
-            - self.get_value(self._adjust, 0)
-
     @property
     def name(self):
         return self._climate.name
-
-    @property
-    def current_temperature(self):
-        return self.get_value(self._current)
-
-    @property
-    def target_temperature(self):
-        return self.get_value(self._target)
 
     @property
     def temperature_unit(self):
@@ -123,31 +119,15 @@ class NibeClimate(NibeEntity, ClimateDevice):
             return None
 
     @property
-    def target_temperature_step(self):
-        if self._adjust_id:
-            return 1.0
-        else:
-            return 0.5
-
-    @property
-    def max_temp(self):
-        if self._adjust_id:
-            return self.get_target_base() + 10.0
-        else:
-            return 35.0
-
-    @property
-    def min_temp(self):
-        if self._adjust_id:
-            return self.get_target_base() - 10.0
-        else:
-            return 5.0
-
-    @property
     def state_attributes(self):
         data = super().state_attributes
         data['status'] = self._status
-        data.update(self._attributes)
+
+        for key, value in self._data.items():
+            if value:
+                data[key] = value['value']
+            else:
+                data[key] = None
         return data
 
     @property
@@ -178,20 +158,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
     async def async_turn_off(self):
         return
 
-    async def async_set_temperature(self, **kwargs):
-        data = kwargs.get(ATTR_TEMPERATURE)
-        if data is None:
-            return
-
-        if self._adjust_id:
-            # calculate what offset was used to calculate the target
-            base = self.get_target_base()
-            parameter = self._adjust_id
-        else:
-            base = 0.0
-            parameter = self._target_id
-
-        data = data - base
+    async def async_set_temperature_internal(self, parameter, data):
 
         _LOGGER.debug("Set temperature on parameter {} to {}".format(
             parameter,
@@ -209,6 +176,8 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     async def async_update(self):
 
+        _LOGGER.debug("Update climate {}".format(self.name))
+
         async def get_parameter(parameter_id):
             if parameter_id:
                 return await self._uplink.get_parameter(self._system_id,
@@ -216,29 +185,24 @@ class NibeClimate(NibeEntity, ClimateDevice):
             else:
                 return None
 
-        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
-                                PARAM_STATUS_COOLING,
-                                PARAM_COMPRESSOR_FREQUENCY)
-
-        climate = self._climate._asdict()
         data = OrderedDict()
 
         async def fill(key, parameter_id):
-            if type(parameter_id) == int:
-                data[key] = await get_parameter(parameter_id)
-            elif parameter_id is None:
+            if parameter_id is None:
                 data[key] = None
+            else:
+                data[key] = await get_parameter(parameter_id)
 
         await asyncio.gather(
             *[
                 fill(key, parameter_id)
-                for key, parameter_id in climate.items()
+                for key, parameter_id in self._select.items()
             ],
-            fill('pump_speed_heating_medium', PARAM_PUMP_SPEED_HEATING_MEDIUM),
-            fill('compressor_frequency', PARAM_COMPRESSOR_FREQUENCY),
-            fill('status_cooling', PARAM_STATUS_COOLING)
         )
 
+        self._data = data
+
+        self._active  = self._data['compressor_frequency']
         if data['status_cooling']['value']:
             self._current_operation = STATE_COOL
             self._current_mode = STATE_COOL
@@ -250,35 +214,172 @@ class NibeClimate(NibeEntity, ClimateDevice):
             else:
                 self._current_operation = STATE_IDLE
 
-        for key, value in data.items():
-            if value:
-                self._attributes[key] = value['value']
-            else:
-                self._attributes[key] = None
 
-        if data['use_room_sensor']['rawValue']:
-            self._adjust  = None
-            self._adjust_id = None
-            if self._current_mode == STATE_HEAT:
-                self._current = data['room_temp']
-                self._target  = data['room_setpoint_heat']
-                self._target_id = self._climate.room_setpoint_heat
-            else:
-                self._current = data['room_temp']
-                self._target  = data['room_setpoint_cool']
-                self._target_id = self._climate.room_setpoint_cool
+class NibeClimateRoom(NibeClimate):
+    def __init__(self,
+                 uplink,
+                 system_id: int,
+                 climate: ClimateDevice,
+                 groups):
+        super().__init__(
+            uplink,
+            system_id,
+            climate,
+            groups
+        )
+        self._target_id = None
+        self._target = None
+
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            '{}_{}_{}_room'.format(
+                DOMAIN_NIBE,
+                system_id,
+                str(climate.name)
+            )
+        )
+
+        self._select['room_temp'] = \
+            self._climate.room_temp
+        self._select['room_setpoint_heat'] = \
+            self._climate.room_setpoint_heat
+        self._select['room_setpoint_cool'] = \
+            self._climate.room_setpoint_cool
+
+    @property
+    def name(self):
+        return "{} Room".format(self._climate.name)
+
+    @property
+    def unique_id(self):
+        return "{}_{}".format(super().unique_id, "room")
+
+    @property
+    def max_temp(self):
+        return 35.0
+
+    @property
+    def min_temp(self):
+        return 5.0
+
+    @property
+    def current_temperature(self):
+        return self.get_value(self._current)
+
+    @property
+    def target_temperature(self):
+        return self.get_value(self._target)
+
+    @property
+    def target_temperature_step(self):
+        return 0.5
+
+    async def async_set_temperature(self, **kwargs):
+        data = kwargs.get(ATTR_TEMPERATURE)
+        if data is None:
+            return
+
+        await self.async_set_temperature_internal(self._target_id, data)
+
+    async def async_update(self):
+        await super().async_update()
+
+        self._current = self._data['room_temp']
+        if self._current_mode == STATE_HEAT:
+            self._target  = self._data['room_setpoint_heat']
+            self._target_id = self._climate.room_setpoint_heat
         else:
-            self._current = data['supply_temp']
-            self._active  = data['compressor_frequency']
-            if self._current_mode == STATE_HEAT:
-                self._target  = data['calc_supply_temp_heat']
-                self._target_id = self._climate.calc_supply_temp_heat
+            self._target  = self._data['room_setpoint_cool']
+            self._target_id = self._climate.room_setpoint_cool
 
-                self._adjust  = data['offset_heat']
-                self._adjust_id = self._climate.offset_heat
-            else:
-                self._target  = data['calc_supply_temp_cool']
-                self._target_id = self._climate.calc_supply_temp_cool
 
-                self._adjust  = data['offset_cool']
-                self._adjust_id = self._climate.offset_cool
+class NibeClimateSupply(NibeClimate):
+    def __init__(self,
+                 uplink,
+                 system_id: int,
+                 climate: ClimateDevice,
+                 groups):
+        super().__init__(
+            uplink,
+            system_id,
+            climate,
+            groups
+        )
+        self._adjust_id = None
+        self._adjust = None
+        self._target = None
+
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            '{}_{}_{}_supply'.format(
+                DOMAIN_NIBE,
+                system_id,
+                str(climate.name)
+            )
+        )
+
+        self._select['supply_temp'] = \
+            self._climate.supply_temp
+        self._select['calc_supply_temp_heat'] = \
+            self._climate.calc_supply_temp_heat
+        self._select['calc_supply_temp_cool'] = \
+            self._climate.calc_supply_temp_cool
+        self._select['offset_heat'] = \
+            self._climate.offset_heat
+        self._select['offset_cool'] = \
+            self._climate.offset_cool
+
+    @property
+    def name(self):
+        return "{} Supply".format(self._climate.name)
+
+    @property
+    def unique_id(self):
+        return "{}_{}".format(super().unique_id, "supply")
+
+    def get_target_base(self):
+        return self.get_value(self._target, 0) \
+            - self.get_value(self._adjust, 0)
+
+    @property
+    def max_temp(self):
+        return self.get_target_base() + 10.0
+
+    @property
+    def min_temp(self):
+        return self.get_target_base() - 10.0
+
+    @property
+    def current_temperature(self):
+        return self.get_value(self._current)
+
+    @property
+    def target_temperature(self):
+        return self.get_value(self._target)
+
+    @property
+    def target_temperature_step(self):
+        return 1.0
+
+    async def async_set_temperature(self, **kwargs):
+        data = kwargs.get(ATTR_TEMPERATURE)
+        if data is None:
+            return
+
+        # calculate what offset was used to calculate the target
+        base = self.get_target_base()
+        data = data - base
+
+        await self.async_set_temperature_internal(self._adjust_id, data)
+
+    async def async_update(self):
+        await super().async_update()
+
+        self._current = self._data['supply_temp']
+        if self._current_mode == STATE_HEAT:
+            self._target  = self._data['calc_supply_temp_heat']
+            self._adjust  = self._data['offset_heat']
+            self._adjust_id = self._climate.offset_heat
+        else:
+            self._target  = self._data['calc_supply_temp_cool']
+            self._adjust  = self._data['offset_cool']
+            self._adjust_id = self._climate.offset_cool
+
