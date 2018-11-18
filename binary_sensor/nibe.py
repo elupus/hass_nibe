@@ -33,7 +33,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
     update = False
-    for system in systems:
+    for system in systems.values():
         parameter = system.binary_sensors
         for parameter_id, config in parameter.items():
             data = config.get('data')

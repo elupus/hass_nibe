@@ -43,7 +43,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    for system in systems:
+    for system in systems.values():
         for climate, config in system.climates.items():
             entities.append(
                 NibeClimateSupply(
@@ -110,6 +110,10 @@ class NibeClimate(NibeEntity, ClimateDevice):
     @property
     def name(self):
         return self._climate.name
+
+    @property
+    def device_info(self):
+        return self.hass.data[DATA_NIBE]['systems'][self._system_id].device_info
 
     @property
     def temperature_unit(self):

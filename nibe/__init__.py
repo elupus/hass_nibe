@@ -76,18 +76,19 @@ async def async_setup_systems(hass, uplink, entry):
         persistent_notification.async_create(hass, 'No systems selected, please configure one system id of:<br/><br/><pre>{}</pre>'.format(msg) , 'Invalid nibe config', 'invalid_config')
         return
 
-    systems = [
-        NibeSystem(hass,
-                   uplink,
-                   config[CONF_SYSTEM],
-                   config)
+    systems = {
+        config[CONF_SYSTEM]:
+            NibeSystem(hass,
+                       uplink,
+                       config[CONF_SYSTEM],
+                       config)
         for config in config.get(CONF_SYSTEMS)
-    ]
+    }
 
     hass.data[DATA_NIBE]['systems'] = systems
     hass.data[DATA_NIBE]['uplink'] = uplink
 
-    tasks = [system.load() for system in systems]
+    tasks = [system.load() for system in systems.values()]
 
     await asyncio.gather(*tasks)
 
@@ -124,6 +125,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     )
 
     await uplink.refresh_access_token()
+
     await async_setup_systems(hass, uplink, entry)
 
     return True
@@ -159,6 +161,7 @@ class NibeSystem(object):
         self.sensors = defaultdict(gen_dict)
         self.binary_sensors = defaultdict(gen_dict)
         self.climates = defaultdict(gen_dict)
+        self._device_info = {}
 
     def filter_discovered(self, discovery_info, platform):
         """Keep unique discovery list, to avoid duplicate loads"""
@@ -169,6 +172,11 @@ class NibeSystem(object):
                 continue
             table.add(object_id)
             yield entry
+
+    @property
+    def device_info(self):
+        """Return a device description for device registry."""
+        return self._device_info
 
     async def load_parameter_group(self,
                                    name: str,
@@ -309,6 +317,14 @@ class NibeSystem(object):
     async def load(self):
         if not self.system:
             self.system = await self.uplink.get_system(self.system_id)
+            _LOGGER.debug("Loading system: {}".format(self.system))
+
+            self._device_info = {
+                'identifiers': {("system_id", self.system_id)},
+                'manufacturer': "NIBE Energy Systems",
+                'model': self.system.get('productName'),
+                'name': self.system.get('name'),
+            }
 
         for unit in self.config.get(CONF_UNITS):
             await self.load_unit(unit)
