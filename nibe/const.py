@@ -25,5 +25,6 @@ CONF_ACTIVE         = 'active'
 CONF_SWITCHES       = 'switches'
 CONF_BINARY_SENSORS = 'binary_sensors'
 CONF_CODE           = 'code'
+CONF_WATER_HEATERS  = 'water_heaters'
 
 CONF_REDIRECT_URI_DEFAULT = "http://localhost:8123/api/nibe/auth"

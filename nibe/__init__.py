@@ -17,9 +17,6 @@ from homeassistant.core import split_entity_id
 from homeassistant.components.group import (
     ATTR_ADD_ENTITIES, ATTR_OBJECT_ID,
     DOMAIN as DOMAIN_GROUP, SERVICE_SET)
-from homeassistant.loader import bind_hass
-from homeassistant.helpers import discovery
-from homeassistant.util.json import load_json, save_json
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
 
@@ -47,6 +44,7 @@ UNIT_SCHEMA = vol.Schema({
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_WATER_HEATERS): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
@@ -92,7 +90,7 @@ async def async_setup_systems(hass, uplink, entry):
 
     await asyncio.gather(*tasks)
 
-    for platform in ('climate', 'switch', 'sensor', 'binary_sensor'):
+    for platform in ('climate', 'switch', 'sensor', 'binary_sensor', 'water_heater'):
         hass.async_add_job(hass.config_entries.async_forward_entry_setup(
             entry, platform))
 
@@ -161,6 +159,7 @@ class NibeSystem(object):
         self.sensors = defaultdict(gen_dict)
         self.binary_sensors = defaultdict(gen_dict)
         self.climates = defaultdict(gen_dict)
+        self.water_heaters = defaultdict(gen_dict)
         self._device_info = {}
 
     def filter_discovered(self, discovery_info, platform):
@@ -264,6 +263,9 @@ class NibeSystem(object):
             if climate:
                 self.climates[climate]['groups'].append(group_id)
 
+    async def load_water_heaters(self, group_id):
+        self.water_heaters['40014']['groups'].append(group_id)
+
     async def load_unit(self, unit):
 
         group = self.hass.components.group
@@ -289,6 +291,10 @@ class NibeSystem(object):
 
         for parameter in unit[CONF_BINARY_SENSORS]:
             self.binary_sensors[parameter]['groups'] = [object_id]
+
+        if CONF_WATER_HEATERS in unit:
+            await self.load_water_heaters(
+                object_id)
 
         if CONF_CLIMATES in unit:
             await self.load_climates(
