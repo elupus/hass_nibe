@@ -58,10 +58,6 @@ SYSTEM_SCHEMA = vol.Schema({
 })
 
 NIBE_SCHEMA = vol.Schema({
-#    vol.Required(CONF_REDIRECT_URI): cv.string,
-#    vol.Required(CONF_CLIENT_ID): cv.string,
-#    vol.Required(CONF_CLIENT_SECRET): cv.string,
-#    vol.Optional(CONF_WRITEACCESS, default=False): cv.boolean,
     vol.Optional(CONF_SYSTEMS, default=[]):
         vol.All(cv.ensure_list, [SYSTEM_SCHEMA]),
 })
