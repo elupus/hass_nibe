@@ -1,10 +1,8 @@
 import attr
 import logging
 import asyncio
+import aiohttp
 from collections import OrderedDict
-from datetime import timedelta
-
-from homeassistant.util import Throttle
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.water_heater import (
     WaterHeaterDevice,
@@ -12,7 +10,8 @@ from homeassistant.components.water_heater import (
     STATE_ECO,
     STATE_HIGH_DEMAND,
     STATE_OFF,
-    ENTITY_ID_FORMAT
+    ENTITY_ID_FORMAT,
+    SUPPORT_OPERATION_MODE
 )
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
@@ -41,6 +40,8 @@ NIBE_STATE_TO_HA = {
         'stop': 'stop_temperature_water_luxary',
     }
 }
+
+HA_STATE_TO_NIBE = {v['state']: k for k, v in NIBE_STATE_TO_HA.items()}
 
 
 async def async_setup_platform(hass,
@@ -142,12 +143,31 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def supported_features(self):
-        return 0
+        return SUPPORT_OPERATION_MODE
 
     @property
     def current_operation(self):
         """Return current operation ie. heat, cool, idle."""
         return self._current_operation
+
+    @property
+    def operation_list(self):
+        """Return the list of available operation modes."""
+        return [x['state'] for x in NIBE_STATE_TO_HA.values()]
+
+    async def async_set_operation_mode(self, operation_mode):
+        """Set new target operation mode."""
+        if operation_mode not in HA_STATE_TO_NIBE:
+            _LOGGER.error("Operation mode %s not supported", operation_mode)
+            return
+
+        try:
+            await self._uplink.put_parameter(
+                self._system_id,
+                self._hwsys.hot_water_comfort_mode,
+                HA_STATE_TO_NIBE[operation_mode])
+        except aiohttp.client_exceptions.ClientResponseError as e:
+            _LOGGER.error("Error trying to set mode %s", str(e))
 
     @property
     def current_temperature(self):
