@@ -183,22 +183,16 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
         _LOGGER.debug("Update water heater {}".format(self.name))
 
-        async def get_parameter(parameter_id):
-            if parameter_id:
-                return await self._uplink.get_parameter(self._system_id,
-                                                        parameter_id)
-            else:
-                return None
-
-        parameters = attr.asdict(self._hwsys)
-
         async def fill(key, src=None):
             if src is None:
                 src = key
-            if parameters[src] is None:
+            parameter_id = getattr(self._hwsys, src, None)
+            if parameter_id is None:
                 self._data[key] = None
             else:
-                self._data[key] = await get_parameter(parameters[src])
+                self._data[key] = await self._uplink.get_parameter(
+                    self._system_id,
+                    parameter_id)
 
         await asyncio.gather(
             fill('hot_water_charging'),
