@@ -31,7 +31,7 @@ config_entries.FLOWS.append(DOMAIN)
 INTERVAL            = timedelta(minutes=1)
 
 DEPENDENCIES = ['group']
-REQUIREMENTS        = ['nibeuplink==0.4.3']
+REQUIREMENTS        = ['nibeuplink==0.5.0']
 
 
 SIGNAL_UPDATE       = 'nibe_update'
@@ -114,11 +114,18 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     else:
         scope = ['READSYSTEM']
 
+    def access_data_write(data):
+        hass.config_entries.async_update_entry(
+            entry, data={
+                **entry.data, CONF_ACCESS_DATA: data
+            })
+
     uplink = Uplink(
         client_id = entry.data.get(CONF_CLIENT_ID),
         client_secret = entry.data.get(CONF_CLIENT_SECRET),
         redirect_uri = entry.data.get(CONF_REDIRECT_URI),
-        refresh_token = entry.data.get(CONF_REFRESH_TOKEN),
+        access_data = entry.data.get(CONF_ACCESS_DATA),
+        access_data_write = access_data_write,
         scope = scope
     )
 

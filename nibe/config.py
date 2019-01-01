@@ -75,7 +75,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 _LOGGER.exception('Error on converting code')
                 errors['base'] = 'code'
             else:
-                self.user_data[CONF_REFRESH_TOKEN] = self.uplink.refresh_token
+                self.user_data[CONF_ACCESS_DATA] = self.uplink.access_data
                 return self.async_create_entry(
                     title="Nibe Uplink",
                     data= self.user_data
