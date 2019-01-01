@@ -206,7 +206,8 @@ class NibeSystem(object):
 
     async def load_categories(self,
                               unit: int,
-                              selected):
+                              selected,
+                              group_id):
         data = await self.uplink.get_categories(self.system_id, True, unit)
         data = filter_list(data, 'categoryId', selected)
         tasks = [
@@ -216,10 +217,18 @@ class NibeSystem(object):
                 x['parameters'])
             for x in data
         ]
-        return await asyncio.gather(*tasks)
+        entity_ids = await asyncio.gather(*tasks)
+
+        self.hass.async_add_job(
+            self.hass.services.async_call(
+                DOMAIN_GROUP, SERVICE_SET, {
+                    ATTR_OBJECT_ID: group_id,
+                    ATTR_ADD_ENTITIES: entity_ids})
+        )
 
     async def load_status(self,
-                          unit: int):
+                          unit: int,
+                          group_id):
         data = await self.uplink.get_unit_status(self.system_id, unit)
         tasks = [
             self.load_parameter_group(
@@ -228,7 +237,14 @@ class NibeSystem(object):
                 x['parameters'])
             for x in data
         ]
-        return await asyncio.gather(*tasks)
+        entity_ids = await asyncio.gather(*tasks)
+
+        self.hass.async_add_job(
+            self.hass.services.async_call(
+                DOMAIN_GROUP, SERVICE_SET, {
+                    ATTR_OBJECT_ID: group_id,
+                    ATTR_ADD_ENTITIES: entity_ids})
+        )
 
     async def load_climates(self, selected, group_id):
         from nibeuplink import (PARAM_CLIMATE_SYSTEMS)
@@ -264,7 +280,24 @@ class NibeSystem(object):
                 self.climates[climate]['groups'].append(group_id)
 
     async def load_water_heaters(self, group_id):
-        self.water_heaters['40014']['groups'].append(group_id)
+        from nibeuplink import (PARAM_HOTWATER_SYSTEMS)
+
+        async def get_active(id, hwsys):
+            available = await self.uplink.get_parameter(
+                self.system_id,
+                hwsys.hot_water_production)
+            if available and available['rawValue']:
+                return id
+            return None
+
+        ids = await asyncio.gather(*[
+            get_active(key, value)
+            for key, value in PARAM_HOTWATER_SYSTEMS.items()
+        ])
+
+        for id in ids:
+            if id:
+                self.water_heaters[id]['groups'].append(group_id)
 
     async def load_unit(self, unit):
 
@@ -292,33 +325,29 @@ class NibeSystem(object):
         for parameter in unit[CONF_BINARY_SENSORS]:
             self.binary_sensors[parameter]['groups'] = [object_id]
 
+        tasks = []
+
         if CONF_WATER_HEATERS in unit:
-            await self.load_water_heaters(
-                object_id)
+            tasks.append(self.load_water_heaters(
+                object_id))
 
         if CONF_CLIMATES in unit:
-            await self.load_climates(
+            tasks.append(self.load_climates(
                 unit[CONF_CLIMATES],
-                object_id)
+                object_id))
 
-        entity_ids = []
         if CONF_CATEGORIES in unit:
-            entity_ids.extend(
-                await self.load_categories(
-                    unit.get(CONF_UNIT),
-                    unit.get(CONF_CATEGORIES)))
+            tasks.append(self.load_categories(
+                unit.get(CONF_UNIT),
+                unit.get(CONF_CATEGORIES),
+                object_id))
 
         if CONF_STATUSES in unit:
-            entity_ids.extend(
-                await self.load_status(
-                    unit.get(CONF_UNIT)))
+            tasks.append(self.load_status(
+                unit.get(CONF_UNIT),
+                object_id))
 
-        self.hass.async_add_job(
-            self.hass.services.async_call(
-                DOMAIN_GROUP, SERVICE_SET, {
-                    ATTR_OBJECT_ID: object_id,
-                    ATTR_ADD_ENTITIES: entity_ids})
-        )
+        await asyncio.gather(*tasks)
 
     async def load(self):
         if not self.system:

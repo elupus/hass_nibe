@@ -1,7 +1,10 @@
+import attr
 import logging
 import asyncio
 from collections import OrderedDict
+from datetime import timedelta
 
+from homeassistant.util import Throttle
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.water_heater import (
     WaterHeaterDevice,
@@ -30,12 +33,12 @@ NIBE_STATE_TO_HA = {
     'normal' : {
         'state': STATE_HEAT_PUMP,
         'start': 'start_temperature_water_normal',
-        'stop': 'start_temperature_water_normal',
+        'stop': 'stop_temperature_water_normal',
     },
     'luxuary': {
         'state': STATE_HIGH_DEMAND,
         'start': 'start_temperature_water_luxary',
-        'stop': 'start_temperature_water_luxary',
+        'stop': 'stop_temperature_water_luxary',
     }
 }
 
@@ -77,37 +80,30 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     def __init__(self,
                  uplink,
                  system_id: int,
-                 parameter_id,
+                 hwsys,
                  groups):
         super().__init__(
             uplink,
             system_id,
             groups)
 
-        self._name = "Hot Water"
+        from nibeuplink import PARAM_HOTWATER_SYSTEMS
+
+        sys = PARAM_HOTWATER_SYSTEMS[hwsys]
+
+        self._name = sys.name
         self._current = None
-        self._current_id = parameter_id
+        self._current_id = sys.hot_water_charging
         self._current_operation = None
-        self._attributes = OrderedDict()
+        self._data = OrderedDict()
         self._select = OrderedDict()
-        self._select['hot_water_charging'] = parameter_id
-        self._select['hot_water_top'] = 40013
-        self._select['hot_water_comfort_mode'] = 47041
-        self._select['hot_water_production'] = 47387
-        self._select['periodic_hot_water'] = 47050
-        self._select['stop_temperature_water_normal'] = 47048
-        self._select['start_temperature_water_normal'] = 47048
-        self._select['stop_temperature_water_luxary'] = 47047
-        self._select['start_temperature_water_luxary'] = 47043
-        self._select['stop_temperature_water_economy'] = 47049
-        self._select['start_temperature_water_economy'] = 47045
-        self._select['total_hot_water_compressor_time'] = 43424
+        self._hwsys = sys
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             '{}_{}_{}'.format(
                 DOMAIN_NIBE,
                 system_id,
-                parameter_id,
+                self._current_id,
             )
         )
 
@@ -122,33 +118,41 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def temperature_unit(self):
-        if self._current:
-            return self._current['unit']
+        if 'hot_water_charging' in self._data:
+            return self._data['hot_water_charging']['unit']
         else:
             return None
 
     @property
     def state_attributes(self):
         data = super().state_attributes
-        data.update(self._attributes)
+        for key, value in self._data.items():
+            if value:
+                data[key] = value['value']
+            else:
+                data[key] = None
         return data
 
     @property
     def available(self):
-        return self.get_value(self._current) is not None
+        if 'hot_water_charging' in self._data:
+            return self.get_value(self._data['hot_water_charging']) is not None
+        else:
+            return False
 
     @property
     def supported_features(self):
         return 0
 
     @property
-    def current_temperature(self):
-        return self.get_value(self._current)
-
-    @property
     def current_operation(self):
         """Return current operation ie. heat, cool, idle."""
         return self._current_operation
+
+    @property
+    def current_temperature(self):
+        """Return the current temperature."""
+        return self._data['hot_water_charging']
 
     @property
     def unique_id(self):
@@ -166,42 +170,40 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
             else:
                 return None
 
-        data = OrderedDict()
+        parameters = attr.asdict(self._hwsys)
 
-        async def fill(key, parameter_id):
-            if parameter_id is None:
-                data[key] = None
+        async def fill(key, src=None):
+            if src is None:
+                src = key
+            if parameters[src] is None:
+                self._data[key] = None
             else:
-                data[key] = await get_parameter(parameter_id)
+                self._data[key] = await get_parameter(parameters[src])
 
         await asyncio.gather(
-            *[
-                fill(key, parameter_id)
-                for key, parameter_id in self._select.items()
-            ],
+            fill('hot_water_charging'),
+            fill('hot_water_comfort_mode'),
+            fill('hot_water_top'),
         )
 
-        _LOGGER.debug("Update water heater {}: {}".format(self.name, data))
-
-        self._data = data
-
-        for key, value in data.items():
-            if value:
-                self._attributes[key] = value['value']
-            else:
-                self._attributes[key] = None
-
-        mode = data['hot_water_comfort_mode']
+        mode = self._data['hot_water_comfort_mode']
         if mode['value'] in NIBE_STATE_TO_HA:
             conf = NIBE_STATE_TO_HA[mode['value']]
-            self._current_operation = conf['state']
-            self._attributes['target_temp_low'] = \
-                self.get_value(data[conf['start']])
-            self._attributes['target_temp_high'] = \
-                self.get_value(data[conf['stop']])
+        else:
+            conf = None
+
+        if conf:
+            if self._current_operation != conf['state']:
+                self._current_operation = conf['state']
+                _LOGGER.debug("Operation mode change {}".format(conf['state']))
+
+                await asyncio.gather(
+                    fill('target_temp_low', conf['start']),
+                    fill('target_temp_high', conf['stop'])
+                )
         else:
             self._current_operation = STATE_OFF
-            self._attributes['target_temp_low'] = None
-            self._attributes['target_temp_high'] = None
+            self._data['target_temp_low'] = None
+            self._data['target_temp_high'] = None
 
-        self._current = data['hot_water_charging']
+        _LOGGER.debug("Update water heater {}".format(self._data))
