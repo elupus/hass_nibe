@@ -93,18 +93,14 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         sys = PARAM_HOTWATER_SYSTEMS[hwsys]
 
         self._name = sys.name
-        self._current = None
-        self._current_id = sys.hot_water_charging
         self._current_operation = None
         self._data = OrderedDict()
-        self._select = OrderedDict()
         self._hwsys = sys
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            '{}_{}_{}'.format(
+            '{}_{}'.format(
                 DOMAIN_NIBE,
-                system_id,
-                self._current_id,
+                self.unique_id
             )
         )
 
@@ -119,8 +115,8 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def temperature_unit(self):
-        if 'hot_water_charging' in self._data:
-            return self._data['hot_water_charging']['unit']
+        if 'current_temperature' in self._data:
+            return self._data['current_temperature']['unit']
         else:
             return None
 
@@ -132,13 +128,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
                 data[key] = value['value']
             else:
                 data[key] = None
-        data['current_temperature'] = self.current_temperature
         return data
 
     @property
     def available(self):
-        if 'hot_water_charging' in self._data:
-            return self.get_value(self._data['hot_water_charging']) is not None
+        if 'current_temperature' in self._data:
+            return self.get_value(self._data['current_temperature']) is not None
         else:
             return False
 
@@ -171,17 +166,9 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
             _LOGGER.error("Error trying to set mode %s", str(e))
 
     @property
-    def current_temperature(self):
-        """Return the current temperature."""
-        if 'hot_water_charging' in self._data:
-            return self.get_value(self._data['hot_water_charging'])
-        else:
-            return None
-
-    @property
     def unique_id(self):
         return "{}_{}".format(self._system_id,
-                              self._current_id)
+                              self._hwsys.hot_water_charging)
 
     async def async_update(self):
 
@@ -199,7 +186,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
                     parameter_id)
 
         await asyncio.gather(
-            fill('hot_water_charging'),
+            fill('current_temperature', 'hot_water_charging'),
             fill('hot_water_comfort_mode'),
             fill('hot_water_top'),
         )
