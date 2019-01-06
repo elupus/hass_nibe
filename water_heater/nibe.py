@@ -132,6 +132,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
                 data[key] = value['value']
             else:
                 data[key] = None
+        data['current_temperature'] = self.current_temperature
         return data
 
     @property
@@ -172,7 +173,10 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     @property
     def current_temperature(self):
         """Return the current temperature."""
-        return self._data['hot_water_charging']
+        if 'hot_water_charging' in self._data:
+            return self.get_value(self._data['hot_water_charging'])
+        else:
+            return None
 
     @property
     def unique_id(self):
