@@ -161,23 +161,12 @@ class NibeSystem(object):
         self.system = None
         self.uplink = uplink
         self.notice = []
-        self.discovered = defaultdict(set)
         self.switches = defaultdict(gen_dict)
         self.sensors = defaultdict(gen_dict)
         self.binary_sensors = defaultdict(gen_dict)
         self.climates = defaultdict(gen_dict)
         self.water_heaters = defaultdict(gen_dict)
         self._device_info = {}
-
-    def filter_discovered(self, discovery_info, platform):
-        """Keep unique discovery list, to avoid duplicate loads"""
-        table = self.discovered[platform]
-        for entry in discovery_info:
-            object_id = entry.get(CONF_OBJECTID)
-            if object_id in table:
-                continue
-            table.add(object_id)
-            yield entry
 
     @property
     def device_info(self):
