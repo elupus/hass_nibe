@@ -2,8 +2,6 @@ import voluptuous as vol
 import logging
 
 from homeassistant import config_entries
-from homeassistant.core import callback
-from urllib.parse import urlsplit, parse_qs
 from .const import *
 
 from aiohttp.web import Request, Response
@@ -16,11 +14,6 @@ from homeassistant.data_entry_flow import UnknownFlow, RESULT_TYPE_ABORT
 
 _LOGGER = logging.getLogger(__name__)
 _view = None
-
-@callback
-def configured_hosts(hass):
-    """Return a set of the configured hosts."""
-    return set()
 
 
 @config_entries.HANDLERS.register(DOMAIN)
@@ -98,6 +91,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             }),
             errors=errors
         )
+
 
 class NibeAuthView(HomeAssistantView):
     """Handle nibe  authentication callbacks."""

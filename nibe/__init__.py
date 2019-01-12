@@ -22,7 +22,7 @@ from homeassistant.components import persistent_notification
 
 from .auth import NibeAuthView
 from .const import *
-from .config import configured_hosts
+from .config import NibeConfigFlow  # noqa
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,7 +90,8 @@ async def async_setup_systems(hass, uplink, entry):
 
     await asyncio.gather(*tasks)
 
-    for platform in ('climate', 'switch', 'sensor', 'binary_sensor', 'water_heater'):
+    for platform in ('climate', 'switch', 'sensor',
+                     'binary_sensor', 'water_heater'):
         hass.async_add_job(hass.config_entries.async_forward_entry_setup(
             entry, platform))
 

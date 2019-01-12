@@ -1,4 +1,3 @@
-import attr
 import logging
 import asyncio
 import aiohttp
@@ -133,7 +132,8 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     @property
     def available(self):
         if 'current_temperature' in self._data:
-            return self.get_value(self._data['current_temperature']) is not None
+            value = self.get_value(self._data['current_temperature'])
+            return value is not None
         else:
             return False
 
