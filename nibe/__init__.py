@@ -20,7 +20,6 @@ from homeassistant.components.group import (
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
 
-from .auth import NibeAuthView
 from .const import *
 from .config import NibeConfigFlow  # noqa
 
