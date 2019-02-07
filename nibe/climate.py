@@ -373,4 +373,3 @@ class NibeClimateSupply(NibeClimate):
             self._target  = self._data['calc_supply_temp_cool']
             self._adjust  = self._data['offset_cool']
             self._adjust_id = self._climate.offset_cool
-
