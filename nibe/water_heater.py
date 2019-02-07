@@ -14,7 +14,7 @@ from homeassistant.components.water_heater import (
 )
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
-    DATA_NIBE
+    DATA_NIBE,
 )
 from ..nibe.entity import NibeEntity
 
@@ -120,8 +120,8 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
             return None
 
     @property
-    def state_attributes(self):
-        data = super().state_attributes
+    def device_state_attributes(self):
+        data = {}
         for key, value in self._data.items():
             if value:
                 data[key] = value['value']
@@ -145,6 +145,19 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     def current_operation(self):
         """Return current operation ie. heat, cool, idle."""
         return self._current_operation
+
+    @property
+    def current_temperature(self):
+        """Returrn current temperature."""
+        return self.get_value(self._data['current_temperature'])
+
+    @property
+    def target_temperature_high(self):
+        return self.get_value(self._data['target_temp_high'])
+
+    @property
+    def target_temperature_low(self):
+        return self.get_value(self._data['target_temp_low'])
 
     @property
     def operation_list(self):

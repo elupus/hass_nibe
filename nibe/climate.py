@@ -111,10 +111,9 @@ class NibeClimate(NibeEntity, ClimateDevice):
             return None
 
     @property
-    def state_attributes(self):
-        data = super().state_attributes
+    def device_state_attributes(self):
+        data = {}
         data['status'] = self._status
-
         for key, value in self._data.items():
             if value:
                 data[key] = value['value']
@@ -355,7 +354,7 @@ class NibeClimateSupply(NibeClimate):
         data = kwargs.get(ATTR_TEMPERATURE)
         if data is None:
             return
-
+        print(self._adjust)
         # calculate what offset was used to calculate the target
         base = self.get_target_base()
         data = data - base
