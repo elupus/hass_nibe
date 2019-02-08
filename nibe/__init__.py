@@ -41,17 +41,17 @@ UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
     vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_STATUSES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_WATER_HEATERS): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
 
 SYSTEM_SCHEMA = vol.Schema({
     vol.Required(CONF_SYSTEM): cv.positive_int,
     vol.Optional(CONF_UNITS, default=[]):
         vol.All(cv.ensure_list, [UNIT_SCHEMA]),
+    vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_CLIMATES): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_WATER_HEATERS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
 
 NIBE_SCHEMA = vol.Schema({
@@ -295,53 +295,20 @@ class NibeSystem(object):
             if id:
                 self.water_heaters[id]['groups'].append(group_id)
 
-    async def load_unit(self, unit):
-
-        group = self.hass.components.group
-        entity = await group.Group.async_create_group(
-            self.hass,
-            '{} - Unit {}'.format(self.system['productName'],
-                                  unit.get(CONF_UNIT)),
-            user_defined=False,
-            control=False,
-            view=True,
-            icon='mdi:thermostat',
-            object_id='{}_{}_{}'.format(DOMAIN,
-                                        self.system_id,
-                                        unit.get(CONF_UNIT)))
-
-        _, object_id = split_entity_id(entity.entity_id)
-
-        for parameter in unit[CONF_SWITCHES]:
-            self.switches[parameter]['groups'] = [object_id]
-
-        for parameter in unit[CONF_SENSORS]:
-            self.sensors[parameter]['groups'] = [object_id]
-
-        for parameter in unit[CONF_BINARY_SENSORS]:
-            self.binary_sensors[parameter]['groups'] = [object_id]
+    async def load_unit(self, unit, group_id):
 
         tasks = []
-
-        if CONF_WATER_HEATERS in unit:
-            tasks.append(self.load_water_heaters(
-                object_id))
-
-        if CONF_CLIMATES in unit:
-            tasks.append(self.load_climates(
-                unit[CONF_CLIMATES],
-                object_id))
 
         if CONF_CATEGORIES in unit:
             tasks.append(self.load_categories(
                 unit.get(CONF_UNIT),
                 unit.get(CONF_CATEGORIES),
-                object_id))
+                group_id))
 
         if CONF_STATUSES in unit:
             tasks.append(self.load_status(
                 unit.get(CONF_UNIT),
-                object_id))
+                group_id))
 
         await asyncio.gather(*tasks)
 
@@ -357,8 +324,43 @@ class NibeSystem(object):
                 'name': self.system.get('name'),
             }
 
+        group = self.hass.components.group
+        entity = await group.Group.async_create_group(
+            self.hass,
+            '{}'.format(self.system['productName']),
+            user_defined=False,
+            control=False,
+            view=True,
+            icon='mdi:thermostat',
+            object_id='{}_{}'.format(DOMAIN,
+                                     self.system_id))
+
+        _, object_id = split_entity_id(entity.entity_id)
+
+        tasks = []
+
         for unit in self.config.get(CONF_UNITS):
-            await self.load_unit(unit)
+            tasks.append(self.load_unit(unit, object_id))
+
+        if CONF_WATER_HEATERS in self.config:
+            tasks.append(self.load_water_heaters(
+                object_id))
+
+        if CONF_CLIMATES in self.config:
+            tasks.append(self.load_climates(
+                self.config[CONF_CLIMATES],
+                object_id))
+
+        for parameter in self.config[CONF_SWITCHES]:
+            self.switches[parameter]['groups'] = [object_id]
+
+        for parameter in self.config[CONF_SENSORS]:
+            self.sensors[parameter]['groups'] = [object_id]
+
+        for parameter in self.config[CONF_BINARY_SENSORS]:
+            self.binary_sensors[parameter]['groups'] = [object_id]
+
+        await asyncio.gather(*tasks)
 
         await self.update()
         async_track_time_interval(self.hass, self.update, INTERVAL)
