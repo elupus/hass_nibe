@@ -234,14 +234,12 @@ class NibeClimate(NibeEntity, ClimateDevice):
         if self._adjust_id:
             # calculate what offset was used to calculate the target
             base = self.get_target_base()
-            scale = 1.0
             parameter = self._adjust_id
         else:
             base = 0.0
-            scale = self.get_scale(self._target)
             parameter = self._target_id
 
-        data = scale * (data - base)
+        data = data - base
 
         _LOGGER.debug("Set temperature on parameter {} to {}".format(
             parameter,
