@@ -6,6 +6,7 @@ from homeassistant.components.group import (
 
 from .const import (
     DOMAIN as DOMAIN_NIBE,
+    DATA_NIBE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class NibeEntity(Entity):
         self._uplink = uplink
         self._system_id = system_id
         self._groups = groups
+        self._device_info = None
 
     def get_value(self, data, default=None):
         if data is None or data['value'] is None:
@@ -38,6 +40,12 @@ class NibeEntity(Entity):
             return 1.0
         else:
             return float(data['rawValue']) / float(data['value'])
+
+    @property
+    def device_info(self):
+        return {
+            'identifiers': {(DOMAIN_NIBE, self._system_id)},
+        }
 
     async def async_added_to_hass(self):
         """Once registed ad this entity to member groups"""

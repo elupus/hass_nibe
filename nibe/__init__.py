@@ -78,7 +78,8 @@ async def async_setup_systems(hass, uplink, entry):
             NibeSystem(hass,
                        uplink,
                        config[CONF_SYSTEM],
-                       config)
+                       config,
+                       entry.entry_id)
         for config in config.get(CONF_SYSTEMS)
     }
 
@@ -153,11 +154,12 @@ def gen_dict():
 
 
 class NibeSystem(object):
-    def __init__(self, hass, uplink, system_id, config):
+    def __init__(self, hass, uplink, system_id, config, entry_id):
         self.hass = hass
         self.parameters = {}
         self.config = config
         self.system_id = system_id
+        self.entry_id = entry_id
         self.system = None
         self.uplink = uplink
         self.notice = []
@@ -313,16 +315,22 @@ class NibeSystem(object):
         await asyncio.gather(*tasks)
 
     async def load(self):
-        if not self.system:
-            self.system = await self.uplink.get_system(self.system_id)
-            _LOGGER.debug("Loading system: {}".format(self.system))
+        self.system = await self.uplink.get_system(self.system_id)
+        _LOGGER.debug("Loading system: {}".format(self.system))
 
-            self._device_info = {
-                'identifiers': {("system_id", self.system_id)},
-                'manufacturer': "NIBE Energy Systems",
-                'model': self.system.get('productName'),
-                'name': self.system.get('name'),
-            }
+        self._device_info = {
+            'identifiers': {(DOMAIN, self.system_id)},
+            'manufacturer': "NIBE Energy Systems",
+            'model': self.system.get('productName'),
+            'name': self.system.get('name'),
+        }
+
+        device_registry = await \
+            self.hass.helpers.device_registry.async_get_registry()
+        device_registry.async_get_or_create(
+            config_entry_id=self.entry_id,
+            **self._device_info
+        )
 
         group = self.hass.components.group
         entity = await group.Group.async_create_group(

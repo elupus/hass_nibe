@@ -96,12 +96,20 @@ class NibeClimate(NibeEntity, ClimateDevice):
             PARAM_STATUS_COOLING
 
     @property
-    def name(self):
-        return self._climate.name
+    def device_info(self):
+        return {
+            'identifiers': {(DOMAIN_NIBE,
+                             self._system_id,
+                             self._climate.supply_temp)},
+            'via_hub': (DOMAIN_NIBE, self._system_id),
+            'name': self._climate.name,
+            'model': 'Climate System',
+            'manufacturer': "NIBE Energy Systems",
+        }
 
     @property
-    def device_info(self):
-        return self.hass.data[DATA_NIBE]['systems'][self._system_id].device_info
+    def name(self):
+        return self._climate.name
 
     @property
     def temperature_unit(self):
