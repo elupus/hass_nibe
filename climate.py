@@ -5,11 +5,13 @@ from collections import OrderedDict
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.climate import (
     ClimateDevice,
+    ENTITY_ID_FORMAT,
+)
+from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     STATE_HEAT,
     STATE_COOL,
-    STATE_IDLE,
-    ENTITY_ID_FORMAT
+    STATE_IDLE
 )
 from homeassistant.const import (ATTR_TEMPERATURE)
 from ..nibe.const import (
