@@ -15,6 +15,7 @@ from homeassistant.components.water_heater import (
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
     DATA_NIBE,
+    CONF_WATER_HEATERS,
 )
 from ..nibe.entity import NibeEntity
 
@@ -62,16 +63,34 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    for system in systems.values():
-        for heater, config in system.water_heaters.items():
+    from nibeuplink import (PARAM_HOTWATER_SYSTEMS)
+
+    async def is_active(system, hwsys):
+        if CONF_WATER_HEATERS not in system.config:
+            return False
+
+        available = await uplink.get_parameter(
+            system.system_id,
+            hwsys.hot_water_production)
+        if available and available['rawValue']:
+            return True
+        return False
+
+    async def add_active(system, hwsys):
+        if await is_active(system, hwsys):
             entities.append(
                 NibeWaterHeater(
                     uplink,
                     system.system_id,
-                    heater,
-                    config.get('groups')
+                    hwsys,
                 )
             )
+
+    await asyncio.gather(*[
+        add_active(system, hwsys)
+        for hwsys in PARAM_HOTWATER_SYSTEMS.values()
+        for system in systems.values()
+    ])
 
     async_add_entities(entities, True)
 
@@ -80,21 +99,16 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     def __init__(self,
                  uplink,
                  system_id: int,
-                 hwsys,
-                 groups):
+                 hwsys):
         super().__init__(
             uplink,
             system_id,
-            groups)
+            [])
 
-        from nibeuplink import PARAM_HOTWATER_SYSTEMS
-
-        sys = PARAM_HOTWATER_SYSTEMS[hwsys]
-
-        self._name = sys.name
+        self._name = hwsys.name
         self._current_operation = None
         self._data = OrderedDict()
-        self._hwsys = sys
+        self._hwsys = hwsys
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             '{}_{}'.format(

@@ -166,7 +166,6 @@ class NibeSystem(object):
         self.switches = defaultdict(gen_dict)
         self.sensors = defaultdict(gen_dict)
         self.binary_sensors = defaultdict(gen_dict)
-        self.water_heaters = defaultdict(gen_dict)
         self._device_info = {}
 
     @property
@@ -243,26 +242,6 @@ class NibeSystem(object):
                     ATTR_ADD_ENTITIES: entity_ids})
         )
 
-    async def load_water_heaters(self, group_id):
-        from nibeuplink import (PARAM_HOTWATER_SYSTEMS)
-
-        async def get_active(id, hwsys):
-            available = await self.uplink.get_parameter(
-                self.system_id,
-                hwsys.hot_water_production)
-            if available and available['rawValue']:
-                return id
-            return None
-
-        ids = await asyncio.gather(*[
-            get_active(key, value)
-            for key, value in PARAM_HOTWATER_SYSTEMS.items()
-        ])
-
-        for id in ids:
-            if id:
-                self.water_heaters[id]['groups'].append(group_id)
-
     async def load_unit(self, unit, group_id):
 
         tasks = []
@@ -315,10 +294,6 @@ class NibeSystem(object):
 
         for unit in self.config.get(CONF_UNITS):
             tasks.append(self.load_unit(unit, object_id))
-
-        if CONF_WATER_HEATERS in self.config:
-            tasks.append(self.load_water_heaters(
-                object_id))
 
         for parameter in self.config[CONF_SWITCHES]:
             self.switches[parameter]['groups'] = [object_id]
