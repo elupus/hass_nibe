@@ -104,18 +104,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         )
 
     @property
-    def device_info(self):
-        return {
-            'identifiers': {(DOMAIN_NIBE,
-                             self._system_id,
-                             self._climate.supply_temp)},
-            'via_hub': (DOMAIN_NIBE, self._system_id),
-            'name': self._climate.name,
-            'model': 'Water Heater',
-            'manufacturer': "NIBE Energy Systems",
-        }
-
-    @property
     def name(self):
         return self._name
 
