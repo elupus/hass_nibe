@@ -16,7 +16,8 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import (ATTR_TEMPERATURE)
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
-    DATA_NIBE
+    DATA_NIBE,
+    CONF_CLIMATES,
 )
 from ..nibe.entity import NibeEntity
 
@@ -45,12 +46,15 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    async def is_active(system_id, climate):
+    async def is_active(system, climate):
+        if CONF_CLIMATES not in system.config:
+            return False
+
         if climate.active_accessory is None:
             return True
 
         active_accessory = await uplink.get_parameter(
-            system_id,
+            system.system_id,
             climate.active_accessory)
 
         _LOGGER.debug("Accessory status for {} is {}".format(
@@ -62,25 +66,25 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
         return False
 
-    async def add_active(system_id, climate):
-        if await is_active(system_id, climate):
+    async def add_active(system, climate):
+        if await is_active(system, climate):
             entities.append(
                 NibeClimateSupply(
                     uplink,
-                    system_id,
+                    system,
                     climate
                 )
             )
             entities.append(
                 NibeClimateRoom(
                     uplink,
-                    system_id,
+                    system,
                     climate
                 )
             )
 
     await asyncio.gather(*[
-        add_active(system.system_id, climate)
+        add_active(system, climate)
         for climate in PARAM_CLIMATE_SYSTEMS.values()
         for system in systems.values()
     ])
