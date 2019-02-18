@@ -201,8 +201,7 @@ class NibeSystem(object):
 
     async def load_categories(self,
                               unit: int,
-                              selected,
-                              group_id):
+                              selected):
         data = await self.uplink.get_categories(self.system_id, True, unit)
         data = filter_list(data, 'categoryId', selected)
         tasks = [
@@ -212,18 +211,10 @@ class NibeSystem(object):
                 x['parameters'])
             for x in data
         ]
-        entity_ids = await asyncio.gather(*tasks)
-
-        self.hass.async_add_job(
-            self.hass.services.async_call(
-                DOMAIN_GROUP, SERVICE_SET, {
-                    ATTR_OBJECT_ID: group_id,
-                    ATTR_ADD_ENTITIES: entity_ids})
-        )
+        await asyncio.gather(*tasks)
 
     async def load_status(self,
-                          unit: int,
-                          group_id):
+                          unit: int):
         data = await self.uplink.get_unit_status(self.system_id, unit)
         tasks = [
             self.load_parameter_group(
@@ -232,29 +223,20 @@ class NibeSystem(object):
                 x['parameters'])
             for x in data
         ]
-        entity_ids = await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
 
-        self.hass.async_add_job(
-            self.hass.services.async_call(
-                DOMAIN_GROUP, SERVICE_SET, {
-                    ATTR_OBJECT_ID: group_id,
-                    ATTR_ADD_ENTITIES: entity_ids})
-        )
-
-    async def load_unit(self, unit, group_id):
+    async def load_unit(self, unit):
 
         tasks = []
 
         if CONF_CATEGORIES in unit:
             tasks.append(self.load_categories(
                 unit.get(CONF_UNIT),
-                unit.get(CONF_CATEGORIES),
-                group_id))
+                unit.get(CONF_CATEGORIES)))
 
         if CONF_STATUSES in unit:
             tasks.append(self.load_status(
-                unit.get(CONF_UNIT),
-                group_id))
+                unit.get(CONF_UNIT)))
 
         await asyncio.gather(*tasks)
 
@@ -276,29 +258,10 @@ class NibeSystem(object):
             **self._device_info
         )
 
-        group = self.hass.components.group
-        entity = await group.Group.async_create_group(
-            self.hass,
-            '{}'.format(self.system['productName']),
-            user_defined=False,
-            control=False,
-            view=True,
-            icon='mdi:thermostat',
-            object_id='{}_{}'.format(DOMAIN,
-                                     self.system_id))
-
-        _, object_id = split_entity_id(entity.entity_id)
-
         tasks = []
 
         for unit in self.config.get(CONF_UNITS):
-            tasks.append(self.load_unit(unit, object_id))
-
-        for parameter in self.config[CONF_SENSORS]:
-            self.sensors[parameter]['groups'] = [object_id]
-
-        for parameter in self.config[CONF_BINARY_SENSORS]:
-            self.binary_sensors[parameter]['groups'] = [object_id]
+            tasks.append(self.load_unit(unit))
 
         await asyncio.gather(*tasks)
 
