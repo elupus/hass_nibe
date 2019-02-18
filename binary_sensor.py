@@ -7,7 +7,8 @@ from homeassistant.components.binary_sensor import (
 )
 from ..nibe.entity import NibeParameterEntity
 from ..nibe.const import (
-    DATA_NIBE
+    DATA_NIBE,
+    CONF_BINARY_SENSORS,
 )
 
 DEPENDENCIES = ['nibe']
@@ -32,26 +33,18 @@ async def async_setup_entry(hass, entry, async_add_entities):
     systems = hass.data[DATA_NIBE]['systems']
 
     entities = []
-    update = False
     for system in systems.values():
-        parameter = system.binary_sensors
-        for parameter_id, config in parameter.items():
-            data = config.get('data')
-            if data is None:
-                update = True
-
+        for parameter_id in system.config[CONF_BINARY_SENSORS]:
             entities.append(
                 NibeBinarySensor(
                     uplink,
                     system.system_id,
                     parameter_id,
-                    entry,
-                    data = data,
-                    groups = config.get('groups', [])
+                    entry
                 )
             )
 
-    async_add_entities(entities, update)
+    async_add_entities(entities, True)
 
 
 class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
@@ -59,15 +52,13 @@ class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
                  uplink,
                  system_id,
                  parameter_id,
-                 entry,
-                 data,
-                 groups):
+                 entry):
         super(NibeBinarySensor, self).__init__(
             uplink,
             system_id,
             parameter_id,
-            data,
-            groups,
+            None,
+            [],
             ENTITY_ID_FORMAT)
 
     @property
@@ -76,4 +67,3 @@ class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
             return self._data['rawValue'] == "1"
         else:
             return None
-

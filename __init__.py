@@ -162,7 +162,6 @@ class NibeSystem(object):
         self.uplink = uplink
         self.notice = []
         self.sensors = defaultdict(gen_dict)
-        self.binary_sensors = defaultdict(gen_dict)
         self._device_info = {}
 
     @property
