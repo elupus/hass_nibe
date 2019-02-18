@@ -21,11 +21,6 @@ Configuration
 Configuration description
 ```yaml
 nibe:
-    client_id: <client id from nibe uplink>
-    client_secret: <client secret from nibe uplink>
-    redirect_uri: <the redirect url you have entered at nibe uplink configuration>
-    writeaccess: false # set to true to support climate write (needs new tokens)
-
     systems:
         # required system identifier
         - system: <identifier>
@@ -43,24 +38,25 @@ nibe:
               # retrieve status parameters, remove tag for none
               statuses:
 
-              # optional list of additional parameters to retrieve, can be done here or on the sensor platform
-              sensors:
-                - <parameter identifier>
-                - <parameter identifier>
+          # Optional list of additional parameters to retrieve, can be done here or on the sensor platform.
+          sensors:
+            - <parameter identifier>
+            - <parameter identifier>
 
-              # optional list of switches (note, for ability to change, you need to use writeaccess and have payed license)
-              switches:
-                - hot_water_boost
+          # Optional list of switches (note, for ability to change, you need to use writeaccess and have payed license).
+          switches:
+            - hot_water_boost
 
+          # Optional climate entities. Leave empty for all, remove tag for none.
+          climates:
+
+          # Optional water_heaters entities. Leave empty for all, remove tag for none.
+          water_heaters:
 ```
 
 Minimal configuration
 ```yaml
-    client_id: <client id from nibe uplink>
-    client_secret: <client secret from nibe uplink>
-    redirect_uri: <the redirect url you have entered at nibe uplink configuration>
-    writeaccess: false # set to true to support climate write (needs new tokens)
-
+nibe
     systems:
         - system: <required system identifier>
           units:
