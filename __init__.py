@@ -163,7 +163,6 @@ class NibeSystem(object):
         self.system = None
         self.uplink = uplink
         self.notice = []
-        self.switches = defaultdict(gen_dict)
         self.sensors = defaultdict(gen_dict)
         self.binary_sensors = defaultdict(gen_dict)
         self._device_info = {}
@@ -294,9 +293,6 @@ class NibeSystem(object):
 
         for unit in self.config.get(CONF_UNITS):
             tasks.append(self.load_unit(unit, object_id))
-
-        for parameter in self.config[CONF_SWITCHES]:
-            self.switches[parameter]['groups'] = [object_id]
 
         for parameter in self.config[CONF_SENSORS]:
             self.sensors[parameter]['groups'] = [object_id]
