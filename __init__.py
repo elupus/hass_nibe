@@ -166,7 +166,6 @@ class NibeSystem(object):
         self.switches = defaultdict(gen_dict)
         self.sensors = defaultdict(gen_dict)
         self.binary_sensors = defaultdict(gen_dict)
-        self.climates = defaultdict(gen_dict)
         self.water_heaters = defaultdict(gen_dict)
         self._device_info = {}
 
@@ -244,39 +243,6 @@ class NibeSystem(object):
                     ATTR_ADD_ENTITIES: entity_ids})
         )
 
-    async def load_climates(self, selected, group_id):
-        from nibeuplink import (PARAM_CLIMATE_SYSTEMS)
-
-        async def get_active(id):
-            if selected and id not in selected:
-                return None
-
-            climate = PARAM_CLIMATE_SYSTEMS[id]
-            if climate.active_accessory is None:
-                return id
-
-            active_accessory = await self.uplink.get_parameter(
-                self.system_id,
-                climate.active_accessory)
-
-            _LOGGER.debug("Accessory status for {} is {}".format(
-                climate.name,
-                active_accessory))
-
-            if active_accessory and active_accessory['rawValue']:
-                return id
-
-            return None
-
-        climates = await asyncio.gather(*[
-            get_active(climate)
-            for climate in PARAM_CLIMATE_SYSTEMS.keys()
-        ])
-
-        for climate in climates:
-            if climate:
-                self.climates[climate]['groups'].append(group_id)
-
     async def load_water_heaters(self, group_id):
         from nibeuplink import (PARAM_HOTWATER_SYSTEMS)
 
@@ -352,11 +318,6 @@ class NibeSystem(object):
 
         if CONF_WATER_HEATERS in self.config:
             tasks.append(self.load_water_heaters(
-                object_id))
-
-        if CONF_CLIMATES in self.config:
-            tasks.append(self.load_climates(
-                self.config[CONF_CLIMATES],
                 object_id))
 
         for parameter in self.config[CONF_SWITCHES]:

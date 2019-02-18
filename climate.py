@@ -45,24 +45,45 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    for system in systems.values():
-        for climate, config in system.climates.items():
+    async def is_active(system_id, climate):
+        if climate.active_accessory is None:
+            return True
+
+        active_accessory = await uplink.get_parameter(
+            system_id,
+            climate.active_accessory)
+
+        _LOGGER.debug("Accessory status for {} is {}".format(
+            climate.name,
+            active_accessory))
+
+        if active_accessory and active_accessory['rawValue']:
+            return True
+
+        return False
+
+    async def add_active(system_id, climate):
+        if await is_active(system_id, climate):
             entities.append(
                 NibeClimateSupply(
                     uplink,
-                    system.system_id,
-                    PARAM_CLIMATE_SYSTEMS[climate],
-                    config.get('groups')
+                    system_id,
+                    climate
                 )
             )
             entities.append(
                 NibeClimateRoom(
                     uplink,
-                    system.system_id,
-                    PARAM_CLIMATE_SYSTEMS[climate],
-                    config.get('groups')
+                    system_id,
+                    climate
                 )
             )
+
+    await asyncio.gather(*[
+        add_active(system.system_id, climate)
+        for climate in PARAM_CLIMATE_SYSTEMS.values()
+        for system in systems.values()
+    ])
 
     async_add_entities(entities, True)
 
@@ -71,12 +92,11 @@ class NibeClimate(NibeEntity, ClimateDevice):
     def __init__(self,
                  uplink,
                  system_id: int,
-                 climate: ClimateDevice,
-                 groups):
+                 climate: ClimateDevice):
         super(NibeClimate, self).__init__(
             uplink,
             system_id,
-            groups)
+            [])
 
         from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
                                 PARAM_STATUS_COOLING,
@@ -220,13 +240,11 @@ class NibeClimateRoom(NibeClimate):
     def __init__(self,
                  uplink,
                  system_id: int,
-                 climate: ClimateDevice,
-                 groups):
+                 climate: ClimateDevice):
         super().__init__(
             uplink,
             system_id,
-            climate,
-            groups
+            climate
         )
         self._target_id = None
         self._target = None
@@ -297,13 +315,11 @@ class NibeClimateSupply(NibeClimate):
     def __init__(self,
                  uplink,
                  system_id: int,
-                 climate: ClimateDevice,
-                 groups):
+                 climate: ClimateDevice):
         super().__init__(
             uplink,
             system_id,
-            climate,
-            groups
+            climate
         )
         self._adjust_id = None
         self._adjust = None
