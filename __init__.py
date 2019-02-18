@@ -35,8 +35,6 @@ REQUIREMENTS        = ['nibeuplink==0.5.0']
 
 SIGNAL_UPDATE       = 'nibe_update'
 
-BINARY_SENSOR_VALUES = ('off', 'on', 'yes', 'no')
-
 UNIT_SCHEMA = vol.Schema({
     vol.Required(CONF_UNIT): cv.positive_int,
     vol.Optional(CONF_CATEGORIES): vol.All(cv.ensure_list, [cv.string]),
@@ -187,12 +185,7 @@ class NibeSystem(object):
         _, group_id = split_entity_id(entity.entity_id)
 
         for x in parameters:
-            if str(x['value']).lower() in BINARY_SENSOR_VALUES:
-                list_object = self.binary_sensors
-            else:
-                list_object = self.sensors
-
-            entry = list_object[x['parameterId']]
+            entry = self.sensors[x['parameterId']]
             entry['data'] = x
             entry['groups'].append(group_id)
             _LOGGER.debug("Entry {}".format(entry))
