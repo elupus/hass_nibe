@@ -30,13 +30,11 @@ nibe:
               # unit to retrieve data for (0 is the master unit and should always exist)
             - unit: <identifier>
 
-              # retrieve categories, leave empty for all, remove tag for none
-              categories:
-                - <identifer>  # category identifier like 'SYSTEM_1'
-                - <identifer>
+             # Optional load of status entities
+              categories: True
 
-              # retrieve status parameters, remove tag for none
-              statuses:
+              # Optional load of status entities
+              statuses: True
 
           # Optional list of additional parameters to retrieve, can be done here or on the sensor platform.
           sensors:
@@ -47,11 +45,11 @@ nibe:
           switches:
             - hot_water_boost
 
-          # Optional climate entities. Leave empty for all, remove tag for none.
-          climates:
+          # Optional load climate entities
+          climates: True
 
-          # Optional water_heaters entities. Leave empty for all, remove tag for none.
-          water_heaters:
+          # Optional load water_heaters entities
+          water_heaters: True
 ```
 
 Minimal configuration
