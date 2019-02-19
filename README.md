@@ -59,7 +59,7 @@ nibe
         - system: <required system identifier>
           units:
             - unit: 0
-              categories:
+              statuses:
 ```
 
 Optional explicit sensor setup
