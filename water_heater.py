@@ -44,14 +44,6 @@ NIBE_STATE_TO_HA = {
 HA_STATE_TO_NIBE = {v['state']: k for k, v in NIBE_STATE_TO_HA.items()}
 
 
-async def async_setup_platform(hass,
-                               config,
-                               async_add_devices,
-                               discovery_info=None):
-    """Old setyp, not used"""
-    pass
-
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
 

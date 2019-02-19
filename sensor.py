@@ -24,14 +24,6 @@ DEPENDENCIES = ['nibe']
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(hass,
-                               config,
-                               async_add_devices,
-                               discovery_info=None):
-    """Old setyp, not used"""
-    pass
-
-
 def gen_dict():
     return {'groups': [], 'data': None}
 
