@@ -71,14 +71,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
             entities.append(
                 NibeClimateSupply(
                     uplink,
-                    system,
+                    system.system_id,
                     climate
                 )
             )
             entities.append(
                 NibeClimateRoom(
                     uplink,
-                    system,
+                    system.system_id,
                     climate
                 )
             )
