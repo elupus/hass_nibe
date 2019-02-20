@@ -99,14 +99,10 @@ class NibeClimate(NibeEntity, ClimateDevice):
             system_id,
             [])
 
-        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
-                                PARAM_STATUS_COOLING,
-                                PARAM_COMPRESSOR_FREQUENCY)
+        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM)
 
         self.get_parameters([
             PARAM_PUMP_SPEED_HEATING_MEDIUM,
-            PARAM_STATUS_COOLING,
-            PARAM_COMPRESSOR_FREQUENCY,
         ])
 
         self._climate = climate
@@ -133,18 +129,12 @@ class NibeClimate(NibeEntity, ClimateDevice):
     @property
     def device_state_attributes(self):
 
-        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
-                                PARAM_STATUS_COOLING,
-                                PARAM_COMPRESSOR_FREQUENCY)
+        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM)
 
         data = OrderedDict()
         data['status'] = self._status
         data['pump_speed_heating_medium'] = \
             self.get_float(PARAM_PUMP_SPEED_HEATING_MEDIUM)
-        data['compressor_frequency'] = \
-            self.get_float(PARAM_COMPRESSOR_FREQUENCY)
-        data['status_cooling'] = \
-            self.get_value(PARAM_STATUS_COOLING)
 
         return data
 
