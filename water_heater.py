@@ -197,7 +197,10 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         return self.get_float(parameter_id)
 
     def get_float_operation(self, name):
-        state = HA_STATE_TO_NIBE.get(self._current_operation)
+        if self._current_operation in HA_BOOST_TO_NIBE:
+            state = HA_STATE_TO_NIBE.get(STATE_HIGH_DEMAND)
+        else:
+            state = HA_STATE_TO_NIBE.get(self._current_operation)
         if state:
             return self.get_float_named(NIBE_STATE_TO_HA[state][name])
         else:
