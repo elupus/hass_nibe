@@ -55,8 +55,9 @@ class NibeSwitch(NibeParameterEntity, SwitchDevice):
 
     @property
     def is_on(self):
-        if self._data:
-            return self._data['rawValue'] == "1"
+        data = self._parameters[self._parameter_id]
+        if data:
+            return data['rawValue'] == "1"
         else:
             return None
 

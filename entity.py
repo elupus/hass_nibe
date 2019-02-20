@@ -1,4 +1,8 @@
+import asyncio
+from collections import OrderedDict
 import logging
+from typing import (Dict, Any, List)
+
 from homeassistant.helpers.entity import Entity
 from homeassistant.components.group import (
     ATTR_ADD_ENTITIES, ATTR_OBJECT_ID,
@@ -6,7 +10,7 @@ from homeassistant.components.group import (
 
 from .const import (
     DOMAIN as DOMAIN_NIBE,
-    DATA_NIBE
+    SIGNAL_PARAMETERS_UPDATED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,21 +25,45 @@ UNIT_ICON = {
 class NibeEntity(Entity):
     """Base class for all nibe sytem entities"""
 
-    def __init__(self, uplink, system_id, groups):
+    def __init__(self, uplink, system_id, groups, parameters=None):
         """Initialize base class"""
         super().__init__()
         self._uplink = uplink
         self._system_id = system_id
         self._groups = groups
         self._device_info = None
+        self._parameters = OrderedDict()
+        if parameters:
+            self._parameters.update(parameters)
 
-    def get_value(self, data, default=None):
+    def get_parameters(self, parameter_ids: List[str]):
+        for parameter_id in parameter_ids:
+            if parameter_id not in self._parameters:
+                self._parameters[parameter_id] = None
+
+    def get_bool(self, parameter_id):
+        data = self._parameters[parameter_id]
+        if data is None or data['value'] is None:
+            return False
+        else:
+            return bool(data['value'])
+
+    def get_float(self, parameter_id, default=None):
+        data = self._parameters[parameter_id]
         if data is None or data['value'] is None:
             return default
         else:
             return float(data['value'])
 
-    def get_scale(self, data):
+    def get_value(self, parameter_id, default=None):
+        data = self._parameters[parameter_id]
+        if data is None or data['value'] is None:
+            return default
+        else:
+            return data['value']
+
+    def get_scale(self, parameter_id):
+        data = self._parameters[parameter_id]
         if data is None or data['value'] is None:
             return 1.0
         else:
@@ -62,6 +90,22 @@ class NibeEntity(Entity):
                 )
             )
 
+    async def async_update(self):
+        async def get(parameter_id):
+            if parameter_id:
+                data = await self._uplink.get_parameter(self._system_id,
+                                                        parameter_id)
+            else:
+                data = None
+            self._parameters[parameter_id] = data
+
+        await asyncio.gather(
+            *[
+                get(parameter_id)
+                for parameter_id in self._parameters.keys()
+            ],
+        )
+
 
 class NibeParameterEntity(NibeEntity):
     """Base class with common attributes for parameter entities"""
@@ -75,13 +119,17 @@ class NibeParameterEntity(NibeEntity):
                  entity_id_format=None
                  ):
         """Initialize base class for parameters"""
-        super().__init__(uplink, system_id, groups)
+        super().__init__(uplink,
+                         system_id,
+                         groups,
+                         parameters={parameter_id: data})
         self._parameter_id = parameter_id
         self._name = None
         self._unit = None
         self._icon = None
         self._value = None
-        self.parse_data(data)
+        if data:
+            self.parse_data()
 
         if entity_id_format:
             self.entity_id = entity_id_format.format(
@@ -110,13 +158,14 @@ class NibeParameterEntity(NibeEntity):
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        if self._data:
+        data = self._parameters[self._parameter_id]
+        if data:
             return {
-                'designation': self._data['designation'],
-                'parameter_id': self._data['parameterId'],
-                'display_value': self._data['displayValue'],
-                'raw_value': self._data['rawValue'],
-                'display_unit': self._data['unit'],
+                'designation': data['designation'],
+                'parameter_id': data['parameterId'],
+                'display_value': data['displayValue'],
+                'raw_value': data['rawValue'],
+                'display_unit': data['unit'],
             }
         else:
             return {}
@@ -139,25 +188,19 @@ class NibeParameterEntity(NibeEntity):
         """Return a calculated icon for this data if known"""
         return self._icon
 
-    def parse_data(self, data):
+    def parse_data(self):
         """Parse dat to update internal variables"""
+        data = self._parameters[self._parameter_id]
         if data:
             if self._name is None:
                 self._name = data['title']
             self._icon = UNIT_ICON.get(data['unit'], None)
             self._unit = data['unit']
             self._value = data['value']
-            self._data = data
         else:
             self._value = None
-            self._data = None
 
     async def async_update(self):
         """Fetch new state data for the sensor."""
-        try:
-            data = await self._uplink.get_parameter(self._system_id,
-                                                    self._parameter_id)
-            self.parse_data(data)
-        except BaseException:
-            self.parse_data(None)
-            raise
+        await super().async_update()
+        self.parse_data()

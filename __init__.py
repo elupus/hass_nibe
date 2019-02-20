@@ -151,6 +151,7 @@ class NibeSystem(object):
         self.system = None
         self.uplink = uplink
         self.notice = []
+        self._status_icons = []
         self._device_info = {}
 
     @property
@@ -179,7 +180,7 @@ class NibeSystem(object):
         await self.update()
         async_track_time_interval(self.hass, self.update, INTERVAL)
 
-    async def update(self, now=None):
+    async def update_notifications(self):
         notice = await self.uplink.get_notifications(self.system_id)
         added = [k for k in notice if k not in self.notice]
         removed = [k for k in self.notice if k not in notice]
@@ -196,3 +197,6 @@ class NibeSystem(object):
             persistent_notification.async_dismiss(
                 'nibe:{}'.format(x['notificationId'])
             )
+
+    async def update(self, now=None):
+        await self.update_notifications()
