@@ -21,13 +21,8 @@ _LOGGER = logging.getLogger(__name__)
 
 config_entries.FLOWS.append(DOMAIN)
 
-INTERVAL            = timedelta(minutes=1)
-
 DEPENDENCIES = ['group']
 REQUIREMENTS        = ['nibeuplink==0.5.0']
-
-
-SIGNAL_UPDATE       = 'nibe_update'
 
 
 def none_as_true(data):
@@ -178,7 +173,26 @@ class NibeSystem(object):
         )
 
         await self.update()
-        async_track_time_interval(self.hass, self.update, INTERVAL)
+        async_track_time_interval(
+            self.hass,
+            self.update,
+            timedelta(seconds=SCAN_INTERVAL))
+
+    async def update_status(self):
+        self._status_icons = await self.uplink.get_status(self.system_id)
+        parameters = {}
+        titles = set()
+        for status_icon in self._status_icons:
+            titles.add(status_icon['title'])
+            for parameter in status_icon['parameters']:
+                parameters[parameter['parameterId']] = parameter
+
+        _LOGGER.debug("Statuses: %s", titles)
+        self.hass.helpers.dispatcher.async_dispatcher_send(
+            SIGNAL_PARAMETERS_UPDATED, parameters)
+
+        self.hass.helpers.dispatcher.async_dispatcher_send(
+            SIGNAL_STATUSES_UPDATED, titles)
 
     async def update_notifications(self):
         notice = await self.uplink.get_notifications(self.system_id)
@@ -200,3 +214,4 @@ class NibeSystem(object):
 
     async def update(self, now=None):
         await self.update_notifications()
+        await self.update_status()

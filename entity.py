@@ -1,6 +1,7 @@
 import asyncio
 from collections import OrderedDict
 import logging
+from datetime import datetime, timedelta
 from typing import (Dict, Any, List)
 
 from homeassistant.helpers.entity import Entity
@@ -11,6 +12,7 @@ from homeassistant.components.group import (
 from .const import (
     DOMAIN as DOMAIN_NIBE,
     SIGNAL_PARAMETERS_UPDATED,
+    SCAN_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,8 +77,23 @@ class NibeEntity(Entity):
             'identifiers': {(DOMAIN_NIBE, self._system_id)},
         }
 
+    async def async_parameters_updated(self,
+                                       data: Dict[str, Dict[str, Any]]):
+        """Called whenever core get an updated parameter"""
+        for key, value in data.items():
+            if key in self._parameters:
+                data = dict(value)
+                data['timeout'] = (datetime.now() +
+                                   timedelta(seconds=(SCAN_INTERVAL * 2)))
+                _LOGGER.debug("Data changed for %s %s",
+                              self.entity_id, key)
+                self._parameters[key] = data
+
     async def async_added_to_hass(self):
         """Once registed ad this entity to member groups"""
+        self.hass.helpers.dispatcher.async_dispatcher_connect(
+            SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated)
+
         for group in self._groups:
             _LOGGER.debug("Adding entity {} to group {}".format(
                 self.entity_id,
@@ -91,18 +108,27 @@ class NibeEntity(Entity):
             )
 
     async def async_update(self):
+        _LOGGER.debug("Update %s", self.entity_id)
+
+        def timedout(data):
+            if data:
+                timeout = data.get('timeout')
+                if timeout and datetime.now() < timeout:
+                    _LOGGER.debug("Skipping update for %s %s",
+                                  self.entity_id, data['parameterId'])
+                    return False
+            return True
+
         async def get(parameter_id):
-            if parameter_id:
-                data = await self._uplink.get_parameter(self._system_id,
-                                                        parameter_id)
-            else:
-                data = None
-            self._parameters[parameter_id] = data
+            self._parameters[parameter_id] = await self._uplink.get_parameter(
+                self._system_id,
+                parameter_id)
 
         await asyncio.gather(
             *[
                 get(parameter_id)
-                for parameter_id in self._parameters.keys()
+                for parameter_id, data in self._parameters.items()
+                if timedout(data)
             ],
         )
 

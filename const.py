@@ -1,3 +1,4 @@
+
 DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
 
@@ -31,3 +32,5 @@ CONF_REDIRECT_URI_DEFAULT = "http://localhost:8123/api/nibe/auth"
 
 SIGNAL_PARAMETERS_UPDATED = 'nibe.parameters_updated'
 SIGNAL_STATUSES_UPDATED = 'nibe.statuses_updated'
+
+SCAN_INTERVAL       = 60
