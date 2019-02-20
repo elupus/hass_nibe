@@ -27,9 +27,9 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 STATE_BOOST_ONE_TIME = 'boost_one_time'
-STATE_BOOST_ONE_HOUR = 'boost_one_hour'
-STATE_BOOST_TWO_HOURS = 'boost_two_hours'
 STATE_BOOST_THREE_HOURS = 'boost_three_hours'
+STATE_BOOST_SIX_HOUR = 'boost_six_hours'
+STATE_BOOST_TWELVE_HOURS = 'boost_twelve_hours'
 
 NIBE_STATE_TO_HA = {
     'economy': {
@@ -50,9 +50,9 @@ NIBE_STATE_TO_HA = {
 }
 
 NIBE_BOOST_TO_STATE = {
-    1: STATE_BOOST_ONE_HOUR,
-    2: STATE_BOOST_TWO_HOURS,
-    3: STATE_BOOST_THREE_HOURS,
+    1: STATE_BOOST_THREE_HOURS,
+    2: STATE_BOOST_SIX_HOUR,
+    3: STATE_BOOST_TWELVE_HOURS,
     4: STATE_BOOST_ONE_TIME
 }
 
