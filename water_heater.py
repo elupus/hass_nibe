@@ -158,7 +158,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         data = OrderedDict()
         data['current_temperature'] = self.current_temperature
         data['target_temp_low'] = self.target_temperature_low
-        data['target_temp_hight'] = self.target_temperature_high
+        data['target_temp_high'] = self.target_temperature_high
         return data
 
     @property
