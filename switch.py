@@ -12,6 +12,7 @@ from ..nibe.const import (
 )
 
 DEPENDENCIES = ['nibe']
+PARALLEL_UPDATES = 0
 _LOGGER      = logging.getLogger(__name__)
 
 

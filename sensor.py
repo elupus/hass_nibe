@@ -21,6 +21,7 @@ from ..nibe.const import (
 from ..nibe.entity import NibeParameterEntity
 
 DEPENDENCIES = ['nibe']
+PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
