@@ -81,6 +81,7 @@ class NibeEntity(Entity):
     async def async_parameters_updated(self,
                                        data: Dict[str, Dict[str, Any]]):
         """Called whenever core get an updated parameter"""
+        changed = False
         for key, value in data.items():
             if key in self._parameters:
                 data = dict(value)
@@ -88,9 +89,13 @@ class NibeEntity(Entity):
                                    timedelta(seconds=(SCAN_INTERVAL * 2)))
                 _LOGGER.debug("Data changed for %s %s",
                               self.entity_id, key)
+                changed = True
                 self._parameters[key] = data
 
-    async def async_statuses_updated(self, data):
+        if changed:
+            self.async_schedule_update_ha_state()
+
+    async def statuses_updated(self, data):
         pass
 
     async def async_added_to_hass(self):

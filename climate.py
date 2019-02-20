@@ -195,6 +195,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     async def async_statuses_updated(self, statuses: Set[str]):
         self.parse_statuses(statuses)
+        self.async_schedule_update_ha_state()
 
     def parse_statuses(self, statuses: Set[str]):
         if 'Heating' in statuses:
