@@ -39,7 +39,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = []
 
     async def is_active(system, climate):
-        if CONF_CLIMATES not in system.config:
+        if not system.config[CONF_CLIMATES]:
             return False
 
         if climate.active_accessory is None:

@@ -58,7 +58,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     from nibeuplink import (PARAM_HOTWATER_SYSTEMS)
 
     async def is_active(system, hwsys):
-        if CONF_WATER_HEATERS not in system.config:
+        if not system.config[CONF_WATER_HEATERS]:
             return False
 
         available = await uplink.get_parameter(
