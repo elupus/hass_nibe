@@ -1,6 +1,7 @@
 import logging
 import asyncio
 from collections import OrderedDict
+from typing import Set
 
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.climate import (
@@ -65,6 +66,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 NibeClimateSupply(
                     uplink,
                     system.system_id,
+                    system.statuses,
                     climate
                 )
             )
@@ -72,6 +74,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 NibeClimateRoom(
                     uplink,
                     system.system_id,
+                    system.statuses,
                     climate
                 )
             )
@@ -89,6 +92,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
     def __init__(self,
                  uplink,
                  system_id: int,
+                 statuses: Set[str],
                  climate: ClimateDevice):
         super(NibeClimate, self).__init__(
             uplink,
@@ -107,8 +111,8 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
         self._climate = climate
         self._status = 'DONE'
-        self._current_operation = None
-        self._current_mode = STATE_HEAT
+        self._current_operation = STATE_HEAT
+        self.parse_statuses(statuses)
 
     @property
     def device_info(self):
@@ -150,7 +154,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def is_on(self):
-        return True
+        return self._is_on
 
     @property
     def current_operation(self):
@@ -189,32 +193,33 @@ class NibeClimate(NibeEntity, ClimateDevice):
         await super().async_update()
         self.parse_data()
 
-    def parse_data(self):
+    async def async_statuses_updated(self, statuses: Set[str]):
+        self.parse_statuses(statuses)
 
-        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM,
-                                PARAM_STATUS_COOLING,
-                                PARAM_COMPRESSOR_FREQUENCY)
-
-        if self.get_bool(PARAM_STATUS_COOLING):
+    def parse_statuses(self, statuses: Set[str]):
+        if 'Heating' in statuses:
+            self._current_operation = STATE_HEAT
+            self._is_on = True
+        elif 'Cooling' in statuses:
             self._current_operation = STATE_COOL
-            self._current_mode = STATE_COOL
+            self._is_on = True
         else:
-            self._current_mode = STATE_HEAT
-            if self.get_bool(PARAM_PUMP_SPEED_HEATING_MEDIUM) and \
-               self.get_bool(PARAM_COMPRESSOR_FREQUENCY):
-                self._current_operation = STATE_HEAT
-            else:
-                self._current_operation = STATE_IDLE
+            self._is_on = False
+
+    def parse_data(self):
+        pass
 
 
 class NibeClimateRoom(NibeClimate):
     def __init__(self,
                  uplink,
                  system_id: int,
+                 statuses: Set[str],
                  climate: ClimateDevice):
         super().__init__(
             uplink,
             system_id,
+            statuses,
             climate
         )
         self._target_id = None
@@ -293,7 +298,7 @@ class NibeClimateRoom(NibeClimate):
     def parse_data(self):
         super().parse_data()
 
-        if self._current_mode == STATE_HEAT:
+        if self._current_operation == STATE_HEAT:
             self._target_id = self._climate.room_setpoint_heat
         else:
             self._target_id = self._climate.room_setpoint_cool
@@ -303,10 +308,12 @@ class NibeClimateSupply(NibeClimate):
     def __init__(self,
                  uplink,
                  system_id: int,
+                 statuses: Set[str],
                  climate: ClimateDevice):
         super().__init__(
             uplink,
             system_id,
+            statuses,
             climate
         )
         self._adjust_id = None
@@ -401,7 +408,7 @@ class NibeClimateSupply(NibeClimate):
     def parse_data(self):
         super().parse_data()
 
-        if self._current_mode == STATE_HEAT:
+        if self._current_operation == STATE_HEAT:
             self._target_id = self._climate.calc_supply_temp_heat
             self._adjust_id = self._climate.offset_heat
         else:

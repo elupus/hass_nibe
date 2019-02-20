@@ -12,6 +12,7 @@ from homeassistant.components.water_heater import (
     ENTITY_ID_FORMAT,
     SUPPORT_OPERATION_MODE
 )
+from typing import Set
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
     DATA_NIBE,
@@ -75,6 +76,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 NibeWaterHeater(
                     uplink,
                     system.system_id,
+                    system.statuses,
                     hwsys,
                 )
             )
@@ -92,6 +94,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     def __init__(self,
                  uplink,
                  system_id: int,
+                 statuses: Set[str],
                  hwsys):
         super().__init__(
             uplink,
@@ -120,6 +123,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
             self._hwsys.stop_temperature_water_normal,
             self._hwsys.stop_temperature_water_luxary,
         ])
+        self.parse_statuses(statuses)
 
     @property
     def name(self):
@@ -147,8 +151,20 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         return value is not None
 
     @property
+    def is_on(self):
+        return self._is_on
+
+    @property
     def supported_features(self):
         return SUPPORT_OPERATION_MODE
+
+    @property
+    def state(self):
+        """Return the current state."""
+        if self._is_on:
+            return self._current_operation
+        else:
+            return STATE_OFF
 
     @property
     def current_operation(self):
@@ -208,6 +224,15 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         _LOGGER.debug("Update water heater {}".format(self.name))
         await super().async_update()
         self.parse_data()
+
+    async def async_statuses_updated(self, statuses: Set[str]):
+        self.parse_statuses(statuses)
+
+    def parse_statuses(self, statuses: Set[str]):
+        if 'Hot Water' in statuses:
+            self._is_on = True
+        else:
+            self._is_on = False
 
     def parse_data(self):
         mode = self.get_value(self._hwsys.hot_water_comfort_mode)

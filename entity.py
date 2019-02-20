@@ -12,6 +12,7 @@ from homeassistant.components.group import (
 from .const import (
     DOMAIN as DOMAIN_NIBE,
     SIGNAL_PARAMETERS_UPDATED,
+    SIGNAL_STATUSES_UPDATED,
     SCAN_INTERVAL,
 )
 
@@ -89,10 +90,16 @@ class NibeEntity(Entity):
                               self.entity_id, key)
                 self._parameters[key] = data
 
+    async def async_statuses_updated(self, data):
+        pass
+
     async def async_added_to_hass(self):
         """Once registed ad this entity to member groups"""
         self.hass.helpers.dispatcher.async_dispatcher_connect(
             SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated)
+
+        self.hass.helpers.dispatcher.async_dispatcher_connect(
+            SIGNAL_STATUSES_UPDATED, self.async_statuses_updated)
 
         for group in self._groups:
             _LOGGER.debug("Adding entity {} to group {}".format(

@@ -146,7 +146,7 @@ class NibeSystem(object):
         self.system = None
         self.uplink = uplink
         self.notice = []
-        self._status_icons = []
+        self.statuses = set()
         self._device_info = {}
 
     @property
@@ -178,21 +178,22 @@ class NibeSystem(object):
             self.update,
             timedelta(seconds=SCAN_INTERVAL))
 
-    async def update_status(self):
-        self._status_icons = await self.uplink.get_status(self.system_id)
+    async def update_statuses(self):
+        status_icons = await self.uplink.get_status(self.system_id)
         parameters = {}
-        titles = set()
-        for status_icon in self._status_icons:
-            titles.add(status_icon['title'])
+        statuses = set()
+        for status_icon in status_icons:
+            statuses.add(status_icon['title'])
             for parameter in status_icon['parameters']:
                 parameters[parameter['parameterId']] = parameter
+        self.statuses = statuses
+        _LOGGER.debug("Statuses: %s", statuses)
 
-        _LOGGER.debug("Statuses: %s", titles)
         self.hass.helpers.dispatcher.async_dispatcher_send(
             SIGNAL_PARAMETERS_UPDATED, parameters)
 
         self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_STATUSES_UPDATED, titles)
+            SIGNAL_STATUSES_UPDATED, statuses)
 
     async def update_notifications(self):
         notice = await self.uplink.get_notifications(self.system_id)
@@ -214,4 +215,4 @@ class NibeSystem(object):
 
     async def update(self, now=None):
         await self.update_notifications()
-        await self.update_status()
+        await self.update_statuses()
