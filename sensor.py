@@ -105,6 +105,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entites_update = []
     entites_done = []
     for (system_id, parameter_id), config in sensors.items():
+        if parameter_id == 0:
+            continue
+
         entity = NibeSensor(
             uplink,
             system_id,
