@@ -95,7 +95,7 @@ class NibeEntity(Entity):
         if changed:
             self.async_schedule_update_ha_state()
 
-    async def statuses_updated(self, data):
+    async def async_statuses_updated(self, data):
         pass
 
     async def async_added_to_hass(self):
