@@ -58,6 +58,8 @@ CONFIG_SCHEMA = vol.Schema({
     DOMAIN: NIBE_SCHEMA
 }, extra=vol.ALLOW_EXTRA)
 
+FORWARD_PLATFORMS = ('climate', 'switch', 'sensor',
+                     'binary_sensor', 'water_heater')
 
 async def async_setup_systems(hass, uplink, entry):
     config = hass.data[DATA_NIBE]['config']
@@ -85,8 +87,7 @@ async def async_setup_systems(hass, uplink, entry):
 
     await asyncio.gather(*tasks)
 
-    for platform in ('climate', 'switch', 'sensor',
-                     'binary_sensor', 'water_heater'):
+    for platform in FORWARD_PLATFORMS:
         hass.async_add_job(hass.config_entries.async_forward_entry_setup(
             entry, platform))
 
@@ -133,7 +134,21 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
 
 
 async def async_unload_entry(hass, entry):
-    pass
+
+    await asyncio.wait([
+        hass.config_entries.async_forward_entry_unload(
+            entry, platform)
+        for platform in FORWARD_PLATFORMS
+    ])
+
+    await asyncio.wait([
+        system.unload()
+        for system in hass.data[DATA_NIBE]['systems'].values()
+    ])
+
+    await hass.data[DATA_NIBE]['uplink'].close()
+    hass.data[DATA_NIBE] = {}
+    return True
 
 
 class NibeSystem(object):
@@ -153,6 +168,9 @@ class NibeSystem(object):
     def device_info(self):
         """Return a device description for device registry."""
         return self._device_info
+
+    async def unload(self):
+        pass
 
     async def load(self):
         self.system = await self.uplink.get_system(self.system_id)
