@@ -323,7 +323,8 @@ class NibeClimateSupply(NibeClimate):
             self._climate.calc_supply_temp_heat,
             self._climate.calc_supply_temp_cool,
             self._climate.offset_heat,
-            self._climate.offset_cool
+            self._climate.offset_cool,
+            self._climate.external_adjustment_active
         ])
 
     @property
@@ -393,6 +394,8 @@ class NibeClimateSupply(NibeClimate):
             self.get_float(self._climate.offset_heat)
         data['offset_cool'] = \
             self.get_float(self._climate.offset_cool)
+        data['external_adjustment_active'] = \
+            self.get_bool(self._climate.external_adjustment_active)
 
         return data
 
