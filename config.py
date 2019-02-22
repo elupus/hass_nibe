@@ -47,11 +47,17 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             self.user_data = user_input
             return await self.async_step_auth()
 
+        url = '{}{}'.format(self.hass.config.api.base_url, CONF_AUTH_VIEW_URL)
+
         return self.async_show_form(
             step_id='user',
+            description_placeholders={
+                'application': CONF_UPLINK_APPLICATION_URL,
+                'suffix': CONF_AUTH_VIEW_URL,
+            },
             data_schema=vol.Schema({
                 vol.Required(CONF_REDIRECT_URI,
-                             default=CONF_REDIRECT_URI_DEFAULT): str,
+                             default=url): str,
                 vol.Required(CONF_CLIENT_ID): str,
                 vol.Required(CONF_CLIENT_SECRET): str,
                 vol.Required(CONF_WRITEACCESS,
@@ -96,7 +102,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 class NibeAuthView(HomeAssistantView):
     """Handle nibe  authentication callbacks."""
 
-    url = '/api/nibe/auth'
+    url = CONF_AUTH_VIEW_URL
     name = 'api:nibe:auth'
 
     requires_auth = False
