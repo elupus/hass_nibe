@@ -30,7 +30,7 @@ nibe:
               # unit to retrieve data for (0 is the master unit and should always exist)
             - unit: <identifier>
 
-             # Optional load of status entities
+              # Optional load of status entities
               categories: True
 
               # Optional load of status entities
