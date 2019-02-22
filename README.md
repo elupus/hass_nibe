@@ -12,8 +12,15 @@ Register an nibe uplink application on: https://api.nibeuplink.com/
 Installation
 ------------
 
- * Clone or copy the root of the repository into `<config dir>/custom_components`
+ * Clone or copy the root of the repository into `<config dir>/custom_components/nibe`
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
+
+```bash
+cd .homeassistant
+mkdir custom_components
+cd custom_components
+git clone https://github.com/elupus/hass_nibe.git nibe
+```
 
 Configuration
 -------------
