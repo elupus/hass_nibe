@@ -54,7 +54,7 @@ nibe:
 
 Minimal configuration
 ```yaml
-nibe
+nibe:
     systems:
         - system: <required system identifier>
           units:
