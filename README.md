@@ -59,21 +59,6 @@ nibe
         - system: <required system identifier>
           units:
             - unit: 0
-              statuses:
-```
-
-Optional explicit sensor setup
-```yaml
-sensor:
-  - platform: nibe
-    system   : <required system identifier>
-    parameter: <required parameter identifier>
-```
-
-Optional explicit switch setup
-```yaml
-switch:
-  - platform: switch
-    system   : <required system identifier>
-    parameter: <required parameter identifier>
+          climates: True
+          water_heaters: True
 ```
