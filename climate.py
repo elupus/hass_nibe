@@ -9,11 +9,20 @@ from homeassistant.components.climate import (
     ENTITY_ID_FORMAT,
 )
 from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE,
     STATE_HEAT,
     STATE_COOL,
     STATE_IDLE
 )
+
+try:
+    from homeassistant.components.climate.const import (
+        SUPPORT_TARGET_TEMPERATURE
+    )
+except ImportError:
+    from homeassistant.components.climate import (
+        SUPPORT_TARGET_TEMPERATURE
+    )
+
 from homeassistant.const import (ATTR_TEMPERATURE)
 from ..nibe.const import (
     DOMAIN as DOMAIN_NIBE,
