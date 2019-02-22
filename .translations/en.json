@@ -14,14 +14,14 @@
             },
             "auth": {
                 "title": "Authorize home assistant for nibe",
-                "description": "Please navigate to nibe uplinks authorization page [Authorize]({url})",
+                "description": "Please navigate to nibe uplinks authorization page [Authorize]({url}). When completed, please return here and enter the code you received",
                 "data": {
                     "code": "Code included in redirect uri"
                 }
             }
         },
         "error": {
-            "code": "Couldn't get an access token from code"
+            "code": "Couldn't get an access token from code. Further information may be in home assitant log"
         },
         "abort": {
             "already_configured": "Uplink is already configured"

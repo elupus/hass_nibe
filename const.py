@@ -28,7 +28,9 @@ CONF_BINARY_SENSORS = 'binary_sensors'
 CONF_CODE           = 'code'
 CONF_WATER_HEATERS  = 'water_heaters'
 
-CONF_AUTH_VIEW_URL        = '/api/nibe/auth'
+AUTH_CALLBACK_URL = '/api/nibe/auth'
+AUTH_CALLBACK_NAME = 'api:nibe:auth'
+
 CONF_UPLINK_APPLICATION_URL = 'https://api.nibeuplink.com/Applications'
 
 SIGNAL_PARAMETERS_UPDATED = 'nibe.parameters_updated'

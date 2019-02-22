@@ -10,7 +10,6 @@ from homeassistant.const import (
     HTTP_OK,
     HTTP_BAD_REQUEST
 )
-from homeassistant.data_entry_flow import UnknownFlow, RESULT_TYPE_ABORT
 
 _LOGGER = logging.getLogger(__name__)
 _view = None
@@ -47,13 +46,13 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             self.user_data = user_input
             return await self.async_step_auth()
 
-        url = '{}{}'.format(self.hass.config.api.base_url, CONF_AUTH_VIEW_URL)
+        url = '{}{}'.format(self.hass.config.api.base_url, AUTH_CALLBACK_URL)
 
         return self.async_show_form(
             step_id='user',
             description_placeholders={
                 'application': CONF_UPLINK_APPLICATION_URL,
-                'suffix': CONF_AUTH_VIEW_URL,
+                'suffix': AUTH_CALLBACK_URL,
             },
             data_schema=vol.Schema({
                 vol.Required(CONF_REDIRECT_URI,
@@ -66,8 +65,10 @@ class NibeConfigFlow(config_entries.ConfigFlow):
         )
 
     async def async_step_auth(self, user_input=None):
+        _LOGGER.debug('Async step auth %s', user_input)
+
         errors = {}
-        if user_input:
+        if user_input is not None:
             try:
                 await self.uplink.get_access_token(user_input['code'])
             except Exception as e:
@@ -77,8 +78,8 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 self.user_data[CONF_ACCESS_DATA] = self.uplink.access_data
                 return self.async_create_entry(
                     title="Nibe Uplink",
-                    data= self.user_data
-                )
+                    data= self.user_data)
+
         global _view
         if not _view:
             _view = NibeAuthView(self.hass)
@@ -102,8 +103,8 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 class NibeAuthView(HomeAssistantView):
     """Handle nibe  authentication callbacks."""
 
-    url = CONF_AUTH_VIEW_URL
-    name = 'api:nibe:auth'
+    url = AUTH_CALLBACK_URL
+    name = AUTH_CALLBACK_NAME
 
     requires_auth = False
 
@@ -120,13 +121,13 @@ class NibeAuthView(HomeAssistantView):
     async def get(self, request: Request) -> Response:
         """Handle oauth token request."""
         if 'state' not in request.query:
-            _LOGGER.error("state missing in request")
+            _LOGGER.error("State missing in request.")
             return self.json_message("state missing in url",
                                      status_code=HTTP_BAD_REQUEST)
         state = request.query['state']
 
         if 'code' not in request.query:
-            _LOGGER.error("state missing in request")
+            _LOGGER.error("State missing in request.")
             return self.json_message("code missing in url",
                                      status_code=HTTP_BAD_REQUEST)
         code = request.query['code']
@@ -134,24 +135,11 @@ class NibeAuthView(HomeAssistantView):
         _LOGGER.debug('Received auth request for state %s', state)
 
         if state not in self._flows:
-            _LOGGER.error("state unexpected %s", state)
+            _LOGGER.error("State unexpected %s", state)
             return self.json_message("state unexpected",
                                      status_code=HTTP_BAD_REQUEST)
 
-        flow_id = self._flows[state]
-
-        try:
-            result = await self.hass.config_entries.flow.async_configure(
-                flow_id,
-                {'code': code}
-            )
-        except UnknownFlow:
-            return self.json_message("flow not found",
-                                     status_code=HTTP_BAD_REQUEST)
-
-        if result['type'] == RESULT_TYPE_ABORT:
-            return self.json_message("authorization failed",
-                                     status_code=HTTP_BAD_REQUEST)
-        else:
-            return self.json_message("authorization succeeded",
-                                     status_code=HTTP_OK)
+        return self.json_message(message=("Authorization succeeded. "
+                                          "Enter the code in home assistant."),
+                                 message_code=code,
+                                 status_code=HTTP_OK)
