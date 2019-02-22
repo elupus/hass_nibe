@@ -8,18 +8,17 @@ from homeassistant.components.climate import (
     ClimateDevice,
     ENTITY_ID_FORMAT,
 )
-from homeassistant.components.climate.const import (
-    STATE_HEAT,
-    STATE_COOL,
-    STATE_IDLE
-)
 
 try:
     from homeassistant.components.climate.const import (
+        STATE_HEAT,
+        STATE_COOL,
         SUPPORT_TARGET_TEMPERATURE
     )
 except ImportError:
     from homeassistant.components.climate import (
+        STATE_HEAT,
+        STATE_COOL,
         SUPPORT_TARGET_TEMPERATURE
     )
 
