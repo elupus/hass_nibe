@@ -190,7 +190,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     @property
     def current_temperature(self):
         """Returrn current temperature."""
-        return self.get_value(self._hwsys.hot_water_charging)
+        return self.get_float(self._hwsys.hot_water_charging)
 
     def get_float_named(self, name):
         parameter_id = getattr(self._hwsys, name, None)
