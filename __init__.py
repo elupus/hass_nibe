@@ -98,6 +98,14 @@ async def async_setup(hass, config):
     """Monkey patch hass to get detected"""
     config_entries.FLOWS.append(DOMAIN)
 
+    """
+    Monkey patch history component to get full state history.
+    https://github.com/home-assistant/home-assistant/pull/21390
+    """
+    import homeassistant.components.history as history
+    if 'water_heater' not in history.SIGNIFICANT_DOMAINS:
+        history.SIGNIFICANT_DOMAINS = (*history.SIGNIFICANT_DOMAINS,
+                                       'water_heater')
     return True
 
 
