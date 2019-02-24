@@ -19,8 +19,6 @@ from .config import NibeConfigFlow  # noqa
 
 _LOGGER = logging.getLogger(__name__)
 
-config_entries.FLOWS.append(DOMAIN)
-
 DEPENDENCIES = ['group']
 REQUIREMENTS        = ['nibeuplink==0.5.0']
 
@@ -96,6 +94,10 @@ async def async_setup(hass, config):
     """Setup nibe uplink component"""
     hass.data[DATA_NIBE] = {}
     hass.data[DATA_NIBE]['config'] = config[DOMAIN]
+
+    """Monkey patch hass to get detected"""
+    config_entries.FLOWS.append(DOMAIN)
+
     return True
 
 
