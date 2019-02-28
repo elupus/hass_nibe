@@ -48,6 +48,8 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
         url = '{}{}'.format(self.hass.config.api.base_url, AUTH_CALLBACK_URL)
 
+        config = self.hass.data[DATA_NIBE]['config']
+
         return self.async_show_form(
             step_id='user',
             description_placeholders={
@@ -56,11 +58,17 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             },
             data_schema=vol.Schema({
                 vol.Required(CONF_REDIRECT_URI,
-                             default=url): str,
-                vol.Required(CONF_CLIENT_ID): str,
-                vol.Required(CONF_CLIENT_SECRET): str,
+                             default=config.get(CONF_REDIRECT_URI,
+                                                url)): str,
+                vol.Required(CONF_CLIENT_ID,
+                             default=config.get(CONF_CLIENT_ID,
+                                                None)): str,
+                vol.Required(CONF_CLIENT_SECRET,
+                             default=config.get(CONF_CLIENT_SECRET,
+                                                None)): str,
                 vol.Required(CONF_WRITEACCESS,
-                             default=False): bool,
+                             default=config.get(CONF_WRITEACCESS,
+                                                False)): bool,
             })
         )
 
