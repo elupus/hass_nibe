@@ -23,12 +23,12 @@ except ImportError:
     )
 
 from homeassistant.const import (ATTR_TEMPERATURE)
-from ..nibe.const import (
+from .const import (
     DOMAIN as DOMAIN_NIBE,
     DATA_NIBE,
     CONF_CLIMATES,
 )
-from ..nibe.entity import NibeEntity
+from .entity import NibeEntity
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0

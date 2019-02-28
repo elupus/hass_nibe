@@ -5,8 +5,8 @@ from homeassistant.components.switch import (
     SwitchDevice,
     ENTITY_ID_FORMAT
 )
-from ..nibe.entity import NibeParameterEntity
-from ..nibe.const import (
+from .entity import NibeParameterEntity
+from .const import (
     DATA_NIBE,
     CONF_SWITCHES,
 )

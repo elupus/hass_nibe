@@ -5,8 +5,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDevice,
     ENTITY_ID_FORMAT
 )
-from ..nibe.entity import NibeParameterEntity
-from ..nibe.const import (
+from .entity import NibeParameterEntity
+from .const import (
     DATA_NIBE,
     CONF_BINARY_SENSORS,
 )

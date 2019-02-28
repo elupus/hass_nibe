@@ -15,12 +15,12 @@ from homeassistant.const import (
     STATE_OFF,
 )
 from typing import Set
-from ..nibe.const import (
+from .const import (
     DOMAIN as DOMAIN_NIBE,
     DATA_NIBE,
     CONF_WATER_HEATERS,
 )
-from ..nibe.entity import NibeEntity
+from .entity import NibeEntity
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0

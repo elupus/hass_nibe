@@ -9,7 +9,7 @@ from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT
 )
 from homeassistant.core import split_entity_id
-from ..nibe.const import (
+from .const import (
     DATA_NIBE,
     DOMAIN as DOMAIN_NIBE,
     CONF_SENSORS,
@@ -18,7 +18,7 @@ from ..nibe.const import (
     CONF_CATEGORIES,
     CONF_STATUSES,
 )
-from ..nibe.entity import NibeParameterEntity
+from .entity import NibeParameterEntity
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
