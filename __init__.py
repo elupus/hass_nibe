@@ -242,6 +242,7 @@ class NibeSystem(object):
             )
         for x in removed:
             persistent_notification.async_dismiss(
+                self.hass,
                 'nibe:{}'.format(x['notificationId'])
             )
 
