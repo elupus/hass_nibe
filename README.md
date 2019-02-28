@@ -12,8 +12,15 @@ Register an nibe uplink application on: https://api.nibeuplink.com/
 Installation
 ------------
 
- * Clone or copy the root of the repository into `<config dir>/custom_components`
+ * Clone or copy the root of the repository into `<config dir>/custom_components/nibe`
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
+
+```bash
+cd .homeassistant
+mkdir custom_components
+cd custom_components
+git clone https://github.com/elupus/hass_nibe.git nibe
+```
 
 Configuration
 -------------
@@ -21,11 +28,6 @@ Configuration
 Configuration description
 ```yaml
 nibe:
-    client_id: <client id from nibe uplink>
-    client_secret: <client secret from nibe uplink>
-    redirect_uri: <the redirect url you have entered at nibe uplink configuration>
-    writeaccess: false # set to true to support climate write (needs new tokens)
-
     systems:
         # required system identifier
         - system: <identifier>
@@ -35,73 +37,35 @@ nibe:
               # unit to retrieve data for (0 is the master unit and should always exist)
             - unit: <identifier>
 
-              # retrieve categories, leave empty for all, remove tag for none
-              categories:
-                - <identifer>  # category identifier like 'SYSTEM_1'
-                - <identifer>
+              # Optional load of status entities
+              categories: True
 
-              # retrieve status parameters, remove tag for none
-              statuses:
+              # Optional load of status entities
+              statuses: True
 
-              # optional list of additional parameters to retrieve, can be done here or on the sensor platform
-              sensors:
-                - <parameter identifier>
-                - <parameter identifier>
+          # Optional list of additional parameters to retrieve, can be done here or on the sensor platform.
+          sensors:
+            - <parameter identifier>
+            - <parameter identifier>
 
-              # optional list of switches (note, for ability to change, you need to use writeaccess and have payed license)
-              switches:
-                - hot_water_boost
+          # Optional list of switches (note, for ability to change, you need to use writeaccess and have payed license).
+          switches:
+            - hot_water_boost
 
+          # Optional load climate entities
+          climates: True
+
+          # Optional load water_heaters entities
+          water_heaters: True
 ```
 
 Minimal configuration
 ```yaml
-    client_id: <client id from nibe uplink>
-    client_secret: <client secret from nibe uplink>
-    redirect_uri: <the redirect url you have entered at nibe uplink configuration>
-    writeaccess: false # set to true to support climate write (needs new tokens)
-
+nibe:
     systems:
         - system: <required system identifier>
           units:
             - unit: 0
-              categories:
-```
-
-
-Optional climate system setup with standard id's. climate field should be in the format of
-`[1-4](h|c)(a?)` as an example `1h` for system 1 heating, `2ca` for system 2 cooling flow adjust
-```yaml
-climate:
-  - platform: nibe
-    system : <required system identifier>
-    climate: <required climate identifier as per above>
-```
-
-Optional explicit climate system setup with fixed id
-```yaml
-climate:
-  - platform: nibe
-    name: 'Climate System 1'
-    system : <required system identifier>
-    current: <parameter id of current temperature>
-    target : <parameter id of target temperature>
-    adjust : <parameter id of the parallel adjustment, leave out if target should be updated>
-```
-
-
-Optional explicit sensor setup
-```yaml
-sensor:
-  - platform: nibe
-    system   : <required system identifier>
-    parameter: <required parameter identifier>
-```
-
-Optional explicit switch setup
-```yaml
-switch:
-  - platform: switch
-    system   : <required system identifier>
-    parameter: <required parameter identifier>
+          climates: True
+          water_heaters: True
 ```
