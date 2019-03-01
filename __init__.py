@@ -184,7 +184,8 @@ async def async_unload_entry(hass, entry):
     ])
 
     await hass.data[DATA_NIBE]['uplink'].close()
-    hass.data[DATA_NIBE] = {}
+    del hass.data[DATA_NIBE]['systems']
+    del hass.data[DATA_NIBE]['uplink']
     return True
 
 
