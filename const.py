@@ -33,6 +33,8 @@ AUTH_CALLBACK_NAME = 'api:nibe:auth'
 
 CONF_UPLINK_APPLICATION_URL = 'https://api.nibeuplink.com/Applications'
 
+SERVICE_SET_SMARTHOME_MODE = 'set_smarthome_mode'
+
 SIGNAL_PARAMETERS_UPDATED = 'nibe.parameters_updated'
 SIGNAL_STATUSES_UPDATED = 'nibe.statuses_updated'
 

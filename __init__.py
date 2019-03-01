@@ -20,7 +20,7 @@ from .config import NibeConfigFlow  # noqa
 _LOGGER = logging.getLogger(__name__)
 
 DEPENDENCIES = ['group']
-REQUIREMENTS        = ['nibeuplink==0.5.0']
+REQUIREMENTS = ['nibeuplink==0.6.0']
 
 
 def none_as_true(data):
@@ -94,6 +94,27 @@ async def async_setup_systems(hass, uplink, entry):
             entry, platform))
 
 
+async def async_register_services(hass):
+    async def set_smarthome_mode(call):
+        """Set smarthome mode"""
+        uplink = hass.data[DATA_NIBE]['uplink']
+        await uplink.put_smarthome_mode(
+            call.data['system'],
+            call.data['mode']
+        )
+
+    from nibeuplink import SMARTHOME_MODES
+    SERVICE_SET_SMARTHOME_MODE_SCHEMA = vol.Schema({
+        vol.Required('system'): cv.positive_int,
+        vol.Required('mode'): vol.In(SMARTHOME_MODES.values())
+    })
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_SMARTHOME_MODE,
+        set_smarthome_mode,
+        SERVICE_SET_SMARTHOME_MODE_SCHEMA)
+
 async def async_setup(hass, config):
     """Setup nibe uplink component"""
     hass.data[DATA_NIBE] = {}
@@ -110,6 +131,8 @@ async def async_setup(hass, config):
     if 'water_heater' not in history.SIGNIFICANT_DOMAINS:
         history.SIGNIFICANT_DOMAINS = (*history.SIGNIFICANT_DOMAINS,
                                        'water_heater')
+
+    await async_register_services(hass)
     return True
 
 
