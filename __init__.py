@@ -13,6 +13,9 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
+from homeassistant.const import (
+    CONF_NAME
+)
 
 from .const import *
 from .config import NibeConfigFlow  # noqa
@@ -36,6 +39,12 @@ UNIT_SCHEMA = vol.Schema({
     vol.Optional(CONF_STATUSES, default=False): none_as_true,
 })
 
+THERMOSTAT_SCHEMA = vol.Schema({
+    vol.Optional(CONF_NAME): str,
+    vol.Optional(CONF_CURRENT_TEMPERATURE): cv.entity_id,
+    vol.Optional(CONF_VALVE_POSITION): cv.entity_id,
+})
+
 SYSTEM_SCHEMA = vol.Schema({
     vol.Required(CONF_SYSTEM): cv.positive_int,
     vol.Optional(CONF_UNITS, default=[]):
@@ -45,6 +54,8 @@ SYSTEM_SCHEMA = vol.Schema({
     vol.Optional(CONF_WATER_HEATERS, default=False): none_as_true,
     vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_THERMOSTATS, default={}):
+        cv.schema_with_slug_keys(THERMOSTAT_SCHEMA),
 })
 
 NIBE_SCHEMA = vol.Schema({

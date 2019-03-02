@@ -27,6 +27,9 @@ CONF_SWITCHES       = 'switches'
 CONF_BINARY_SENSORS = 'binary_sensors'
 CONF_CODE           = 'code'
 CONF_WATER_HEATERS  = 'water_heaters'
+CONF_THERMOSTATS    = 'thermostats'
+CONF_CURRENT_TEMPERATURE = 'current_temperature'
+CONF_VALVE_POSITION = 'valve_position'
 
 AUTH_CALLBACK_URL = '/api/nibe/auth'
 AUTH_CALLBACK_NAME = 'api:nibe:auth'
@@ -39,3 +42,5 @@ SIGNAL_PARAMETERS_UPDATED = 'nibe.parameters_updated'
 SIGNAL_STATUSES_UPDATED = 'nibe.statuses_updated'
 
 SCAN_INTERVAL       = 60
+
+DEFAULT_THERMOSTAT_TEMPERATURE = 22

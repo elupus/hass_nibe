@@ -13,22 +13,44 @@ from homeassistant.components.climate import (
 
 try:
     from homeassistant.components.climate.const import (
+        ATTR_OPERATION_MODE,
+        STATE_AUTO,
         STATE_HEAT,
         STATE_COOL,
-        SUPPORT_TARGET_TEMPERATURE
+        SUPPORT_TARGET_TEMPERATURE,
+        SUPPORT_ON_OFF
     )
 except ImportError:
     from homeassistant.components.climate import (
+        ATTR_OPERATION_MODE,
+        STATE_AUTO,
         STATE_HEAT,
         STATE_COOL,
-        SUPPORT_TARGET_TEMPERATURE
+        SUPPORT_TARGET_TEMPERATURE,
+        SUPPORT_ON_OFF
     )
 
-from homeassistant.const import (ATTR_TEMPERATURE)
+from homeassistant.const import (
+    ATTR_TEMPERATURE,
+    STATE_OFF,
+    TEMP_CELSIUS,
+    CONF_NAME,
+)
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.event import (
+    async_track_state_change, async_track_time_interval)
+
+from . import (
+    NibeSystem,
+)
 from .const import (
     DOMAIN as DOMAIN_NIBE,
     DATA_NIBE,
     CONF_CLIMATES,
+    CONF_THERMOSTATS,
+    CONF_CURRENT_TEMPERATURE,
+    CONF_VALVE_POSITION,
+    DEFAULT_THERMOSTAT_TEMPERATURE,
 )
 from .entity import NibeEntity
 
@@ -37,41 +59,44 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
+async def _is_climate_active(uplink, system, climate):
+    if not system.config[CONF_CLIMATES]:
+        return False
+
+    if climate.active_accessory is None:
+        return True
+
+    active_accessory = await uplink.get_parameter(
+        system.system_id,
+        climate.active_accessory)
+
+    _LOGGER.debug("Accessory status for {} is {}".format(
+        climate.name,
+        active_accessory))
+
+    if active_accessory and active_accessory['rawValue']:
+        return True
+
+    return False
+
+
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
+    from nibeuplink import (  # noqa
+        PARAM_CLIMATE_SYSTEMS,
+        ClimateSystem,
+        Uplink)
 
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE]['uplink']
-    systems = hass.data[DATA_NIBE]['systems']
-
-    from nibeuplink import (PARAM_CLIMATE_SYSTEMS)
+    uplink = hass.data[DATA_NIBE]['uplink']  # type: Uplink
+    systems = hass.data[DATA_NIBE]['systems']  # type: List[NibeSystem]
 
     entities = []
 
-    async def is_active(system, climate):
-        if not system.config[CONF_CLIMATES]:
-            return False
-
-        if climate.active_accessory is None:
-            return True
-
-        active_accessory = await uplink.get_parameter(
-            system.system_id,
-            climate.active_accessory)
-
-        _LOGGER.debug("Accessory status for {} is {}".format(
-            climate.name,
-            active_accessory))
-
-        if active_accessory and active_accessory['rawValue']:
-            return True
-
-        return False
-
-    async def add_active(system, climate):
-        if await is_active(system, climate):
+    async def add_active(system: NibeSystem, climate: ClimateSystem):
+        if await _is_climate_active(uplink, system, climate):
             entities.append(
                 NibeClimateSupply(
                     uplink,
@@ -86,6 +111,20 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     system.system_id,
                     system.statuses,
                     climate
+                )
+            )
+
+    for system in systems.values():
+        thermostats = system.config[CONF_THERMOSTATS]
+        for thermostat_id, thermostat_config in thermostats.items():
+            entities.append(
+                NibeThermostat(
+                    uplink,
+                    system.system_id,
+                    thermostat_id,
+                    thermostat_config.get(CONF_NAME, thermostat_id),
+                    thermostat_config.get(CONF_CURRENT_TEMPERATURE),
+                    thermostat_config.get(CONF_VALVE_POSITION)
                 )
             )
 
@@ -463,3 +502,184 @@ class NibeClimateSupply(NibeClimate):
         else:
             self._target_id = self._climate.calc_supply_temp_cool
             self._adjust_id = self._climate.offset_cool
+
+
+class NibeThermostat(ClimateDevice, RestoreEntity):
+    """Nibe Smarthome Thermostat."""
+
+    def __init__(self,
+                 uplink,
+                 system_id: int,
+                 object_id: str,
+                 name: str,
+                 current_temperature_id: str,
+                 valve_position_id: str):
+        """Init."""
+        self._name = name
+        self._system_id = system_id
+        self._current_operation = STATE_OFF
+        self._current_temperature_id = current_temperature_id
+        self._current_temperature = None
+        self._valve_position_id = valve_position_id
+        self._valve_position = None
+        self._target_temperature = DEFAULT_THERMOSTAT_TEMPERATURE
+        self._operation_list = [STATE_AUTO, STATE_OFF]
+        self.entity_id = ENTITY_ID_FORMAT.format(object_id)
+
+    async def async_added_to_hass(self):
+        """Run when entity about to be added."""
+        await super().async_added_to_hass()
+        # Check If we have an old state
+        old_state = await self.async_get_last_state()
+        if old_state is not None:
+            self._target_temperature = old_state.attributes.get(
+                ATTR_TEMPERATURE)
+            self._current_operation = old_state.attributes.get(
+                ATTR_OPERATION_MODE)
+
+        def track_entity_id(tracked_entity_id, update_fun):
+            if tracked_entity_id:
+                async def changed(entity_id, old_state, new_state):
+                    update_fun(new_state)
+                    await self._async_publish()
+                    await self.async_update_ha_state()
+
+                update_fun(self.hass.states.get(tracked_entity_id))
+
+                async_track_state_change(
+                    self.hass,
+                    tracked_entity_id,
+                    changed)
+
+        track_entity_id(self._current_temperature_id,
+                        self._update_current_temperature)
+        track_entity_id(self._valve_position_id,
+                        self._update_valve_position)
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return {
+            'identifiers': {(DOMAIN_NIBE,
+                             self._system_id)},
+            'name': self._name,
+            'model': 'Smart Thermostat',
+            'manufacturer': "NIBE Energy Systems",
+        }
+
+    @property
+    def name(self):
+        """Return name."""
+        return self._name
+
+    @property
+    def temperature_unit(self):
+        """Return temperature unit."""
+        return TEMP_CELSIUS
+
+    @property
+    def device_state_attributes(self):
+        """Return extra state."""
+        data = OrderedDict()
+        data['valve_position'] = self._valve_position
+        return data
+
+    @property
+    def supported_features(self):
+        """Return supported features."""
+        return (SUPPORT_TARGET_TEMPERATURE |
+                SUPPORT_ON_OFF)
+
+    @property
+    def is_on(self):
+        """Return if device is currently on."""
+        return self._current_operation != STATE_OFF
+
+    @property
+    def current_operation(self):
+        """Return current operation ie. heat, cool, idle."""
+        return self._current_operation
+
+    @property
+    def operation_list(self):
+        """Return operation list."""
+        return self._operation_list
+
+    @property
+    def current_temperature(self):
+        """Return current temperature."""
+        return self._current_temperature
+
+    @property
+    def target_temperature(self):
+        """Return target temperature."""
+        return self._target_temperature
+
+    @property
+    def target_temperature_step(self):
+        """Return steps for target temperature."""
+        return 0.5
+
+    @property
+    def should_poll(self):
+        """Indicate that we need to poll data"""
+        return False
+
+    def _update_current_temperature(self, state):
+        if state is None:
+            return
+        try:
+            if state.state is None:
+                self._current_temperature = None
+            else:
+                self._current_temperature = float(state.state)
+        except ValueError as ex:
+            self._current_temperature = None
+            _LOGGER.error("Unable to update from sensor: %s", ex)
+
+    def _update_valve_position(self, state):
+        if state is None:
+            return
+        try:
+            if state.state is None:
+                self._valve_position = None
+            else:
+                self._valve_position = float(state.state)
+        except ValueError as ex:
+            self._current_temperature = None
+            _LOGGER.error("Unable to update from sensor: %s", ex)
+
+    async def async_turn_on(self):
+        """Turn thermostat on."""
+        await self.async_set_operation_mode(STATE_AUTO)
+
+    async def async_turn_off(self):
+        """Turn thermostat off."""
+        await self.async_set_operation_mode(STATE_OFF)
+
+    async def async_set_operation_mode(self, operation_mode):
+        """Set operation mode."""
+        if operation_mode in self._operation_list:
+            self._current_operation = operation_mode
+        else:
+            _LOGGER.error("Unrecognized operation mode: %s", operation_mode)
+            return
+
+        await self._async_publish()
+        await self.async_update_ha_state()
+
+    async def async_set_temperature(self, **kwargs):
+        """Set new target temperature."""
+        temperature = kwargs.get(ATTR_TEMPERATURE)
+        if temperature is None:
+            return
+        self._target_temp = temperature
+        await self._async_publish()
+        await self.async_update_ha_state()
+
+    async def _async_publish(self):
+        pass
+
+    async def async_update(self):
+        """Explicitly update thermostat state."""
+        _LOGGER.debug("Update thermostat {}".format(self.name))
