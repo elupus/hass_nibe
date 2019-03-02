@@ -40,6 +40,9 @@ UNIT_SCHEMA = vol.Schema({
 })
 
 THERMOSTAT_SCHEMA = vol.Schema({
+    vol.Required(CONF_EXTERNAL_ID): int,
+    vol.Optional(CONF_CLIMATE_SYSTEMS, default=[1]):
+        vol.All(cv.ensure_list, [int]),
     vol.Optional(CONF_NAME): str,
     vol.Optional(CONF_CURRENT_TEMPERATURE): cv.entity_id,
     vol.Optional(CONF_VALVE_POSITION): cv.entity_id,

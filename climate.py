@@ -3,7 +3,7 @@
 import logging
 import asyncio
 from collections import OrderedDict
-from typing import Set
+from typing import Set, List
 
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.components.climate import (
@@ -50,6 +50,8 @@ from .const import (
     CONF_THERMOSTATS,
     CONF_CURRENT_TEMPERATURE,
     CONF_VALVE_POSITION,
+    CONF_EXTERNAL_ID,
+    CONF_CLIMATE_SYSTEMS,
     DEFAULT_THERMOSTAT_TEMPERATURE,
 )
 from .entity import NibeEntity
@@ -122,9 +124,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     uplink,
                     system.system_id,
                     thermostat_id,
+                    thermostat_config.get(CONF_EXTERNAL_ID),
                     thermostat_config.get(CONF_NAME, thermostat_id),
                     thermostat_config.get(CONF_CURRENT_TEMPERATURE),
-                    thermostat_config.get(CONF_VALVE_POSITION)
+                    thermostat_config.get(CONF_VALVE_POSITION),
+                    thermostat_config.get(CONF_CLIMATE_SYSTEMS),
                 )
             )
 
@@ -511,17 +515,22 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
                  uplink,
                  system_id: int,
                  object_id: str,
+                 external_id: int,
                  name: str,
                  current_temperature_id: str,
-                 valve_position_id: str):
+                 valve_position_id: str,
+                 systems: List[int]):
         """Init."""
         self._name = name
+        self._uplink = uplink
         self._system_id = system_id
+        self._external_id = external_id
         self._current_operation = STATE_OFF
         self._current_temperature_id = current_temperature_id
         self._current_temperature = None
         self._valve_position_id = valve_position_id
         self._valve_position = None
+        self._systems = systems
         self._target_temperature = DEFAULT_THERMOSTAT_TEMPERATURE
         self._operation_list = [STATE_AUTO, STATE_OFF]
         self.entity_id = ENTITY_ID_FORMAT.format(object_id)
@@ -673,12 +682,42 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        self._target_temp = temperature
+        self._target_temperature = temperature
         await self._async_publish()
         await self.async_update_ha_state()
 
     async def _async_publish(self):
-        pass
+        from nibeuplink import SetThermostatModel
+
+        def scaled(value, multi=10):
+            if value is None:
+                return None
+            else:
+                return round(value * multi)
+
+        if self.is_on:
+            data = SetThermostatModel(
+                externalId=self._external_id,
+                name=self._name,
+                actualTemp=scaled(self._current_temperature),
+                targetTemp=scaled(self._target_temperature),
+                valvePosition=scaled(self._valve_position, 1),
+                climateSystems=self._systems,
+            )
+        else:
+            data = SetThermostatModel(
+                externalId=self._external_id,
+                name=self._name,
+                actualTemp=None,
+                targetTemp=None,
+                valvePosition=None,
+                climateSystems=None,
+            )
+
+        _LOGGER.debug("Publish thermostat {}".format(data))
+        await self._uplink.post_smarthome_thermostats(
+            self._system_id,
+            data)
 
     async def async_update(self):
         """Explicitly update thermostat state."""
