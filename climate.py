@@ -1,3 +1,5 @@
+"""Climate entities for nibe uplink."""
+
 import logging
 import asyncio
 from collections import OrderedDict
