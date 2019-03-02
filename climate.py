@@ -97,11 +97,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class NibeClimate(NibeEntity, ClimateDevice):
+    """Base class for nibe climate entities."""
+
     def __init__(self,
                  uplink,
                  system_id: int,
                  statuses: Set[str],
                  climate: ClimateDevice):
+        """Init."""
         super(NibeClimate, self).__init__(
             uplink,
             system_id,
@@ -120,6 +123,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def device_info(self):
+        """Return device info."""
         return {
             'identifiers': {(DOMAIN_NIBE,
                              self._system_id,
@@ -132,11 +136,12 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def name(self):
+        """Return entity name."""
         return self._climate.name
 
     @property
     def device_state_attributes(self):
-
+        """Extra state attributes."""
         from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM)
 
         data = OrderedDict()
@@ -148,10 +153,12 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def supported_features(self):
+        """Supported features."""
         return SUPPORT_TARGET_TEMPERATURE
 
     @property
     def is_on(self):
+        """Is entity on."""
         return self._is_on
 
     @property
@@ -161,17 +168,20 @@ class NibeClimate(NibeEntity, ClimateDevice):
 
     @property
     def unique_id(self):
+        """Return unique identifier."""
         return "{}_{}".format(self._system_id,
                               self._climate.name)
 
     async def async_turn_on(self):
+        """Turn the climate on."""
         return
 
     async def async_turn_off(self):
+        """Turn the climate off."""
         return
 
     async def async_set_temperature_internal(self, parameter, data):
-
+        """Set temperature."""
         _LOGGER.debug("Set temperature on parameter {} to {}".format(
             parameter,
             data))
@@ -187,15 +197,18 @@ class NibeClimate(NibeEntity, ClimateDevice):
             _LOGGER.debug("Put parameter response {}".format(self._status))
 
     async def async_update(self):
+        """Update internal state."""
         _LOGGER.debug("Update climate {}".format(self.name))
         await super().async_update()
         self.parse_data()
 
     async def async_statuses_updated(self, statuses: Set[str]):
+        """Statuses have been updated."""
         self.parse_statuses(statuses)
         self.async_schedule_update_ha_state()
 
     def parse_statuses(self, statuses: Set[str]):
+        """Parse status list."""
         if 'Heating' in statuses:
             self._current_operation = STATE_HEAT
             self._is_on = True
@@ -206,15 +219,19 @@ class NibeClimate(NibeEntity, ClimateDevice):
             self._is_on = False
 
     def parse_data(self):
+        """Parse data received."""
         pass
 
 
 class NibeClimateRoom(NibeClimate):
+    """Climate entity for a room temperature sensor."""
+
     def __init__(self,
                  uplink,
                  system_id: int,
                  statuses: Set[str],
                  climate: ClimateDevice):
+        """Init."""
         super().__init__(
             uplink,
             system_id,
@@ -239,10 +256,12 @@ class NibeClimateRoom(NibeClimate):
 
     @property
     def available(self):
+        """Is entity available."""
         return self.get_value(self._climate.room_temp) is not None
 
     @property
     def temperature_unit(self):
+        """Return temperature unit used."""
         data = self._parameters[self._climate.room_temp]
         if data:
             return data['unit']
@@ -251,33 +270,41 @@ class NibeClimateRoom(NibeClimate):
 
     @property
     def name(self):
+        """Return name of entity."""
         return "{} Room".format(self._climate.name)
 
     @property
     def unique_id(self):
+        """Return unique id of entity."""
         return "{}_{}".format(super().unique_id, "room")
 
     @property
     def max_temp(self):
+        """Return maximium selectable temperature."""
         return 35.0
 
     @property
     def min_temp(self):
+        """Return minimum selectable temperature."""
         return 5.0
 
     @property
     def current_temperature(self):
+        """Return current temperature."""
         return self.get_float(self._climate.room_temp)
 
     @property
     def target_temperature(self):
+        """Return target temperature."""
         return self.get_float(self._target_id)
 
     @property
     def target_temperature_step(self):
+        """Return steps that temperature can be selected in."""
         return 0.5
 
     async def async_set_temperature(self, **kwargs):
+        """Set temperature."""
         data = kwargs.get(ATTR_TEMPERATURE)
         if data is None:
             return
@@ -286,6 +313,7 @@ class NibeClimateRoom(NibeClimate):
 
     @property
     def device_state_attributes(self):
+        """Return extra state."""
         data = super().device_state_attributes
         data['room_temp'] = \
             self.get_float(self._climate.room_temp)
@@ -295,6 +323,7 @@ class NibeClimateRoom(NibeClimate):
             self.get_float(self._climate.room_setpoint_cool)
 
     def parse_data(self):
+        """Parse data."""
         super().parse_data()
 
         if self._current_operation == STATE_HEAT:
@@ -304,11 +333,14 @@ class NibeClimateRoom(NibeClimate):
 
 
 class NibeClimateSupply(NibeClimate):
+    """Climate entity for supply temperature."""
+
     def __init__(self,
                  uplink,
                  system_id: int,
                  statuses: Set[str],
                  climate: ClimateDevice):
+        """Init."""
         super().__init__(
             uplink,
             system_id,
@@ -337,10 +369,12 @@ class NibeClimateSupply(NibeClimate):
 
     @property
     def available(self):
+        """Is entity available."""
         return self.get_value(self._climate.supply_temp) is not None
 
     @property
     def temperature_unit(self):
+        """Return used temperature unit."""
         data = self._parameters[self._climate.supply_temp]
         if data:
             return data['unit']
@@ -349,37 +383,46 @@ class NibeClimateSupply(NibeClimate):
 
     @property
     def name(self):
+        """Return name of entity."""
         return "{} Supply".format(self._climate.name)
 
     @property
     def unique_id(self):
+        """Return unique id of entity."""
         return "{}_{}".format(super().unique_id, "supply")
 
     def get_target_base(self):
+        """Return temperature."""
         return (self.get_float(self._target_id, 0) -
                 self.get_float(self._adjust_id, 0))
 
     @property
     def max_temp(self):
+        """Maximum selectable temperature."""
         return self.get_target_base() + 10.0
 
     @property
     def min_temp(self):
+        """Minimum selectable temperature."""
         return self.get_target_base() - 10.0
 
     @property
     def current_temperature(self):
+        """Return current temperature."""
         return self.get_float(self._climate.supply_temp)
 
     @property
     def target_temperature(self):
+        """Return target temperature."""
         return self.get_float(self._target_id)
 
     @property
     def target_temperature_step(self):
+        """Return steps that temperature can be selected in."""
         return 1.0
 
     async def async_set_temperature(self, **kwargs):
+        """Set current temperature."""
         data = kwargs.get(ATTR_TEMPERATURE)
         if data is None:
             return
@@ -391,6 +434,7 @@ class NibeClimateSupply(NibeClimate):
 
     @property
     def device_state_attributes(self):
+        """Return extra state."""
         data = super().device_state_attributes
         data['supply_temp'] = \
             self.get_float(self._climate.supply_temp)
@@ -408,6 +452,7 @@ class NibeClimateSupply(NibeClimate):
         return data
 
     def parse_data(self):
+        """Parse data."""
         super().parse_data()
 
         if self._current_operation == STATE_HEAT:
