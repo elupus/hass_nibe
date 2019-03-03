@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+from datetime import timedelta
 from collections import OrderedDict
 from typing import Set, List
 
@@ -533,6 +534,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         self._systems = systems
         self._target_temperature = DEFAULT_THERMOSTAT_TEMPERATURE
         self._operation_list = [STATE_AUTO, STATE_OFF]
+        self._scheduled_update = None
         self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     async def async_added_to_hass(self):
@@ -565,12 +567,25 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         track_entity_id(self._valve_position_id,
                         self._update_valve_position)
 
+        self._schedule()
+
+    def _schedule(self):
+        if self._scheduled_update:
+            self._scheduled_update()
+        self._scheduled_update = async_track_time_interval(
+            self.hass,
+            self._async_publish(),
+            timedelta(minutes=15)
+        )
+
     @property
     def device_info(self):
         """Return device info."""
         return {
             'identifiers': {(DOMAIN_NIBE,
-                             self._system_id)},
+                             self._system_id,
+                             self._external_id)},
+            'via_hub': (DOMAIN_NIBE, self._system_id),
             'name': self._name,
             'model': 'Smart Thermostat',
             'manufacturer': "NIBE Energy Systems",
@@ -674,6 +689,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             _LOGGER.error("Unrecognized operation mode: %s", operation_mode)
             return
 
+        self._schedule()
         await self._async_publish()
         await self.async_update_ha_state()
 
@@ -683,6 +699,8 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         if temperature is None:
             return
         self._target_temperature = temperature
+
+        self._schedule()
         await self._async_publish()
         await self.async_update_ha_state()
 
