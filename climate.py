@@ -581,7 +581,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             self._scheduled_update()
         self._scheduled_update = async_track_time_interval(
             self.hass,
-            self._async_publish(),
+            self._async_publish,
             timedelta(minutes=15)
         )
 
