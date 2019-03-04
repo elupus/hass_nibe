@@ -246,7 +246,6 @@ class NibeSystem(object):
     def __init__(self, hass, uplink, system_id, config, entry_id):
         """Init."""
         self.hass = hass
-        self.parameters = {}
         self.config = config
         self.system_id = system_id
         self.entry_id = entry_id
