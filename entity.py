@@ -1,20 +1,17 @@
 import asyncio
-from collections import OrderedDict
 import logging
+from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import (Dict, Any, List)
+from typing import Any, Dict, List
 
+from homeassistant.components.group import ATTR_ADD_ENTITIES, ATTR_OBJECT_ID
+from homeassistant.components.group import DOMAIN as DOMAIN_GROUP
+from homeassistant.components.group import SERVICE_SET
 from homeassistant.helpers.entity import Entity
-from homeassistant.components.group import (
-    ATTR_ADD_ENTITIES, ATTR_OBJECT_ID,
-    DOMAIN as DOMAIN_GROUP, SERVICE_SET)
 
-from .const import (
-    DOMAIN as DOMAIN_NIBE,
-    SIGNAL_PARAMETERS_UPDATED,
-    SIGNAL_STATUSES_UPDATED,
-    SCAN_INTERVAL,
-)
+from .const import DOMAIN as DOMAIN_NIBE
+from .const import (SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED,
+                    SIGNAL_STATUSES_UPDATED)
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -1,15 +1,13 @@
-import voluptuous as vol
 import logging
 
-from homeassistant import config_entries
-from .const import *
-
+import voluptuous as vol
 from aiohttp.web import Request, Response
+
+from homeassistant import config_entries
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.const import (
-    HTTP_OK,
-    HTTP_BAD_REQUEST
-)
+from homeassistant.const import HTTP_BAD_REQUEST, HTTP_OK
+
+from .const import *
 
 _LOGGER = logging.getLogger(__name__)
 _view = None

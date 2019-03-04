@@ -1,15 +1,10 @@
 import logging
 
+from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchDevice
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.components.switch import (
-    SwitchDevice,
-    ENTITY_ID_FORMAT
-)
+
+from .const import CONF_SWITCHES, DATA_NIBE
 from .entity import NibeParameterEntity
-from .const import (
-    DATA_NIBE,
-    CONF_SWITCHES,
-)
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0

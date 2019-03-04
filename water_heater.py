@@ -1,25 +1,20 @@
-import logging
 import asyncio
-import aiohttp
+import logging
 from collections import OrderedDict
-from homeassistant.exceptions import PlatformNotReady
-from homeassistant.components.water_heater import (
-    WaterHeaterDevice,
-    STATE_HEAT_PUMP,
-    STATE_ECO,
-    STATE_HIGH_DEMAND,
-    ENTITY_ID_FORMAT,
-    SUPPORT_OPERATION_MODE
-)
-from homeassistant.const import (
-    STATE_OFF,
-)
 from typing import Set
-from .const import (
-    DOMAIN as DOMAIN_NIBE,
-    DATA_NIBE,
-    CONF_WATER_HEATERS,
-)
+
+import aiohttp
+
+from homeassistant.components.water_heater import (ENTITY_ID_FORMAT, STATE_ECO,
+                                                   STATE_HEAT_PUMP,
+                                                   STATE_HIGH_DEMAND,
+                                                   SUPPORT_OPERATION_MODE,
+                                                   WaterHeaterDevice)
+from homeassistant.const import STATE_OFF
+from homeassistant.exceptions import PlatformNotReady
+
+from .const import CONF_WATER_HEATERS, DATA_NIBE
+from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
 
 DEPENDENCIES = ['nibe']

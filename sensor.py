@@ -1,23 +1,16 @@
-from collections import defaultdict
 import asyncio
 import logging
-from typing import (List)
+from collections import defaultdict
+from typing import List
 
+from homeassistant.components.sensor import ENTITY_ID_FORMAT
+from homeassistant.core import split_entity_id
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
-from homeassistant.components.sensor import (
-    ENTITY_ID_FORMAT
-)
-from homeassistant.core import split_entity_id
-from .const import (
-    DATA_NIBE,
-    DOMAIN as DOMAIN_NIBE,
-    CONF_SENSORS,
-    CONF_UNITS,
-    CONF_UNIT,
-    CONF_CATEGORIES,
-    CONF_STATUSES,
-)
+
+from .const import (CONF_CATEGORIES, CONF_SENSORS, CONF_STATUSES, CONF_UNIT,
+                    CONF_UNITS, DATA_NIBE)
+from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
 
 DEPENDENCIES = ['nibe']

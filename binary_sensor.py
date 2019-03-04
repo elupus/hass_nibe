@@ -1,15 +1,11 @@
 import logging
 
+from homeassistant.components.binary_sensor import (ENTITY_ID_FORMAT,
+                                                    BinarySensorDevice)
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.components.binary_sensor import (
-    BinarySensorDevice,
-    ENTITY_ID_FORMAT
-)
+
+from .const import CONF_BINARY_SENSORS, DATA_NIBE
 from .entity import NibeParameterEntity
-from .const import (
-    DATA_NIBE,
-    CONF_BINARY_SENSORS,
-)
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
