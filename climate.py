@@ -133,8 +133,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     uplink,
                     system.system_id,
                     thermostat_id,
-                    thermostat_config.get(CONF_EXTERNAL_ID),
-                    thermostat_config.get(CONF_NAME, thermostat_id),
+                    thermostat_config.get(CONF_NAME),
                     thermostat_config.get(CONF_CURRENT_TEMPERATURE),
                     thermostat_config.get(CONF_VALVE_POSITION),
                     thermostat_config.get(CONF_CLIMATE_SYSTEMS),
@@ -523,7 +522,6 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
     def __init__(self,
                  uplink,
                  system_id: int,
-                 object_id: str,
                  external_id: int,
                  name: str,
                  current_temperature_id: str,
@@ -543,7 +541,6 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         self._target_temperature = DEFAULT_THERMOSTAT_TEMPERATURE
         self._operation_list = [STATE_AUTO, STATE_OFF, STATE_IDLE]
         self._scheduled_update = None
-        self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     async def async_added_to_hass(self):
         """Run whe?n entity about to be added."""
@@ -586,6 +583,12 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             self._async_publish,
             timedelta(minutes=15)
         )
+
+    @property
+    def unique_id(self):
+        """Return unique id of entity."""
+        return "{}_{}_thermostat_{}".format(
+            DOMAIN_NIBE, self._system_id, self._external_id)
 
     @property
     def device_info(self):
@@ -660,7 +663,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
 
     @property
     def should_poll(self):
-        """Indicate that we need to poll data"""
+        """Indicate that we need to poll data."""
         return False
 
     def _update_current_temperature(self, state):

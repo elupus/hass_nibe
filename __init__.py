@@ -40,10 +40,9 @@ UNIT_SCHEMA = vol.Schema({
 })
 
 THERMOSTAT_SCHEMA = vol.Schema({
-    vol.Required(CONF_EXTERNAL_ID): int,
     vol.Optional(CONF_CLIMATE_SYSTEMS, default=[1]):
         vol.All(cv.ensure_list, [int]),
-    vol.Optional(CONF_NAME): str,
+    vol.Required(CONF_NAME): str,
     vol.Optional(CONF_CURRENT_TEMPERATURE): cv.entity_id,
     vol.Optional(CONF_VALVE_POSITION): cv.entity_id,
 })
@@ -58,7 +57,7 @@ SYSTEM_SCHEMA = vol.Schema({
     vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_THERMOSTATS, default={}):
-        cv.schema_with_slug_keys(THERMOSTAT_SCHEMA),
+        {cv.positive_int: THERMOSTAT_SCHEMA},
 })
 
 NIBE_SCHEMA = vol.Schema({
