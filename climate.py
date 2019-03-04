@@ -704,7 +704,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         await self._async_publish()
         await self.async_update_ha_state()
 
-    async def _async_publish(self):
+    async def _async_publish(self, time=None):
         from nibeuplink import SetThermostatModel
 
         def scaled(value, multi=10):
