@@ -1,49 +1,29 @@
 """Support for nibe uplink."""
 
 
-from datetime import timedelta
-import logging
 import asyncio
 import json
+import logging
+from datetime import timedelta
+
 import voluptuous as vol
+
 import homeassistant.helpers.config_validation as cv
-
 from homeassistant import config_entries
-from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.components import persistent_notification
-from homeassistant.const import (
-    CONF_NAME
-)
+from homeassistant.const import CONF_NAME
+from homeassistant.helpers.event import async_track_time_interval
 
-from .const import (
-    SCAN_INTERVAL,
-    SIGNAL_PARAMETERS_UPDATED,
-    SIGNAL_STATUSES_UPDATED,
-    DATA_NIBE,
-    DOMAIN,
-    SERVICE_SET_SMARTHOME_MODE,
-    CONF_CLIENT_ID,
-    CONF_CLIENT_SECRET,
-    CONF_REDIRECT_URI,
-    CONF_WRITEACCESS,
-    CONF_ACCESS_DATA,
-    CONF_CATEGORIES,
-    CONF_SENSORS,
-    CONF_STATUSES,
-    CONF_SYSTEMS,
-    CONF_SYSTEM,
-    CONF_UNITS,
-    CONF_UNIT,
-    CONF_CLIMATES,
-    CONF_SWITCHES,
-    CONF_BINARY_SENSORS,
-    CONF_WATER_HEATERS,
-    CONF_THERMOSTATS,
-    CONF_CURRENT_TEMPERATURE,
-    CONF_VALVE_POSITION,
-    CONF_CLIMATE_SYSTEMS,
-)
 from .config import NibeConfigFlow  # noqa
+from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
+                    CONF_CLIENT_ID, CONF_CLIENT_SECRET, CONF_CLIMATE_SYSTEMS,
+                    CONF_CLIMATES, CONF_CURRENT_TEMPERATURE, CONF_REDIRECT_URI,
+                    CONF_SENSORS, CONF_STATUSES, CONF_SWITCHES, CONF_SYSTEM,
+                    CONF_SYSTEMS, CONF_THERMOSTATS, CONF_UNIT, CONF_UNITS,
+                    CONF_VALVE_POSITION, CONF_WATER_HEATERS, CONF_WRITEACCESS,
+                    DATA_NIBE, DOMAIN, SCAN_INTERVAL,
+                    SERVICE_SET_SMARTHOME_MODE, SIGNAL_PARAMETERS_UPDATED,
+                    SIGNAL_STATUSES_UPDATED)
 
 _LOGGER = logging.getLogger(__name__)
 
