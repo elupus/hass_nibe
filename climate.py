@@ -1,16 +1,28 @@
 """Climate entities for nibe uplink."""
 
-import logging
 import asyncio
-from datetime import timedelta
+import logging
 from collections import OrderedDict
-from typing import Set, List
+from datetime import timedelta
+from typing import List, Set
 
+from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateDevice
+from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME, STATE_OFF,
+                                 STATE_UNAVAILABLE, STATE_UNKNOWN,
+                                 TEMP_CELSIUS)
 from homeassistant.exceptions import PlatformNotReady
-from homeassistant.components.climate import (
-    ClimateDevice,
-    ENTITY_ID_FORMAT,
-)
+from homeassistant.helpers.event import (async_track_state_change,
+                                         async_track_time_interval)
+from homeassistant.helpers.restore_state import RestoreEntity
+
+from . import NibeSystem
+from .const import (ATTR_TARGET_TEMPERATURE, ATTR_VALVE_POSITION,
+                    CONF_CLIMATE_SYSTEMS, CONF_CLIMATES,
+                    CONF_CURRENT_TEMPERATURE, CONF_THERMOSTATS,
+                    CONF_VALVE_POSITION, DATA_NIBE,
+                    DEFAULT_THERMOSTAT_TEMPERATURE)
+from .const import DOMAIN as DOMAIN_NIBE
+from .entity import NibeEntity
 
 try:
     from homeassistant.components.climate.const import (
@@ -35,34 +47,7 @@ except ImportError:
         SUPPORT_ON_OFF
     )
 
-from homeassistant.const import (
-    ATTR_TEMPERATURE,
-    STATE_OFF,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
-    TEMP_CELSIUS,
-    CONF_NAME,
-)
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.event import (
-    async_track_state_change, async_track_time_interval)
 
-from . import (
-    NibeSystem,
-)
-from .const import (
-    ATTR_TARGET_TEMPERATURE,
-    ATTR_VALVE_POSITION,
-    DOMAIN as DOMAIN_NIBE,
-    DATA_NIBE,
-    CONF_CLIMATES,
-    CONF_THERMOSTATS,
-    CONF_CURRENT_TEMPERATURE,
-    CONF_VALVE_POSITION,
-    CONF_CLIMATE_SYSTEMS,
-    DEFAULT_THERMOSTAT_TEMPERATURE,
-)
-from .entity import NibeEntity
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
