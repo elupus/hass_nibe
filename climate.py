@@ -550,7 +550,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         old_state = await self.async_get_last_state()
         if old_state is not None:
             self._target_temperature = old_state.attributes.get(
-                ATTR_TEMPERATURE, DEFAULT_THERMOSTAT_TEMPERATURE)
+                "target_temperature", DEFAULT_THERMOSTAT_TEMPERATURE)
             self._current_operation = old_state.attributes.get(
                 ATTR_OPERATION_MODE, STATE_AUTO)
             self._is_on = old_state.state != STATE_OFF
@@ -613,6 +613,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         """Return extra state."""
         data = OrderedDict()
         data['valve_position'] = self._valve_position
+        data['target_temperature'] = self._target_temperature
         return data
 
     @property
@@ -645,7 +646,10 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        return self._target_temperature
+        if self._current_operation == STATE_AUTO:
+            return self._target_temperature
+        else:
+            return None
 
     @property
     def target_temperature_step(self):
