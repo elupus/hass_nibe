@@ -1,3 +1,7 @@
+"""Constants for nibe uplink."""
+
+ATTR_TARGET_TEMPERATURE = 'target_temperature'
+ATTR_VALVE_POSITION = 'valve_position'
 
 DOMAIN              = 'nibe'
 DATA_NIBE           = 'nibe'
