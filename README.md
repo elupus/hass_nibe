@@ -57,6 +57,31 @@ nibe:
 
           # Optional load water_heaters entities
           water_heaters: True
+
+          # Optional smart thermostats.
+          thermostats:
+            # Key in dict is external identifer in nibe uplink, it should
+            # be an unique integer for this thermostat
+            1:
+              # Required friendly name of thermostat
+              name: "Kitchen Thermostat"
+
+              # Optional name of a home assistant entity representing current temperature
+              current_temperature: input_number.current
+
+              # Optional name of a home assistant entity representing valve position of
+              # a thermostat. At the moment it's use case is unknown.
+              # valve_position: input_number.valve
+
+              # List of systems that this thermostat is affecting. This is
+              # this is the sub climate system/area index (System 1, System 2, ..)
+              # that the pump is controlling.
+              systems: 1
+
+            2:
+              name: "Livingroom Thermostat"
+              current_temperature: input_number.current
+              systems: 1
 ```
 
 Minimal configuration
