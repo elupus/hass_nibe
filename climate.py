@@ -7,6 +7,12 @@ from datetime import timedelta
 from typing import List, Set
 
 from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateDevice
+from homeassistant.components.climate.const import (ATTR_OPERATION_MODE,
+                                                    STATE_AUTO, STATE_COOL,
+                                                    STATE_HEAT, STATE_IDLE,
+                                                    SUPPORT_ON_OFF,
+                                                    SUPPORT_OPERATION_MODE,
+                                                    SUPPORT_TARGET_TEMPERATURE)
 from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME, STATE_OFF,
                                  STATE_UNAVAILABLE, STATE_UNKNOWN,
                                  TEMP_CELSIUS)
@@ -23,31 +29,6 @@ from .const import (ATTR_TARGET_TEMPERATURE, ATTR_VALVE_POSITION,
                     DEFAULT_THERMOSTAT_TEMPERATURE)
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
-
-try:
-    from homeassistant.components.climate.const import (
-        ATTR_OPERATION_MODE,
-        STATE_AUTO,
-        STATE_HEAT,
-        STATE_COOL,
-        STATE_IDLE,
-        SUPPORT_TARGET_TEMPERATURE,
-        SUPPORT_OPERATION_MODE,
-        SUPPORT_ON_OFF
-    )
-except ImportError:
-    from homeassistant.components.climate import (
-        ATTR_OPERATION_MODE,
-        STATE_AUTO,
-        STATE_HEAT,
-        STATE_COOL,
-        STATE_IDLE,
-        SUPPORT_TARGET_TEMPERATURE,
-        SUPPORT_OPERATION_MODE,
-        SUPPORT_ON_OFF
-    )
-
-
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
