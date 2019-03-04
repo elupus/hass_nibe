@@ -23,7 +23,7 @@ from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
                     CONF_VALVE_POSITION, CONF_WATER_HEATERS, CONF_WRITEACCESS,
                     DATA_NIBE, DOMAIN, SCAN_INTERVAL,
                     SERVICE_SET_SMARTHOME_MODE, SIGNAL_PARAMETERS_UPDATED,
-                    SIGNAL_STATUSES_UPDATED)
+                    SIGNAL_STATUSES_UPDATED, SERVICE_SET_PARAMETER)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -125,6 +125,8 @@ async def async_setup_systems(hass, uplink, entry):
 
 async def async_register_services(hass):
     """Register public services."""
+    from nibeuplink import SMARTHOME_MODES
+
     async def set_smarthome_mode(call):
         """Set smarthome mode."""
         uplink = hass.data[DATA_NIBE]['uplink']
@@ -133,10 +135,22 @@ async def async_register_services(hass):
             call.data['mode']
         )
 
-    from nibeuplink import SMARTHOME_MODES
+    async def set_parameter(call):
+        uplink = hass.data[DATA_NIBE]['uplink']
+        await uplink.put_parameter(
+            call.data['system'],
+            call.data['parameter'],
+            call.data['value'])
+
     SERVICE_SET_SMARTHOME_MODE_SCHEMA = vol.Schema({
         vol.Required('system'): cv.positive_int,
         vol.Required('mode'): vol.In(SMARTHOME_MODES.values())
+    })
+
+    SERVICE_SET_PARAMETER_SCHEMA = vol.Schema({
+        vol.Required('system'): cv.positive_int,
+        vol.Required('parameter'): cv.string,
+        vol.Required('value'): cv.string
     })
 
     hass.services.async_register(
@@ -144,6 +158,12 @@ async def async_register_services(hass):
         SERVICE_SET_SMARTHOME_MODE,
         set_smarthome_mode,
         SERVICE_SET_SMARTHOME_MODE_SCHEMA)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_PARAMETER,
+        set_smarthome_mode,
+        SERVICE_SET_PARAMETER_SCHEMA)
 
 
 async def async_setup(hass, config):
