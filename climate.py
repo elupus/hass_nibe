@@ -18,7 +18,9 @@ try:
         STATE_AUTO,
         STATE_HEAT,
         STATE_COOL,
+        STATE_IDLE,
         SUPPORT_TARGET_TEMPERATURE,
+        SUPPORT_OPERATION_MODE,
         SUPPORT_ON_OFF
     )
 except ImportError:
@@ -27,13 +29,17 @@ except ImportError:
         STATE_AUTO,
         STATE_HEAT,
         STATE_COOL,
+        STATE_IDLE,
         SUPPORT_TARGET_TEMPERATURE,
+        SUPPORT_OPERATION_MODE,
         SUPPORT_ON_OFF
     )
 
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     STATE_OFF,
+    STATE_UNAVAILABLE,
+    STATE_UNKNOWN,
     TEMP_CELSIUS,
     CONF_NAME,
 )
@@ -533,20 +539,21 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         self._valve_position = None
         self._systems = systems
         self._target_temperature = DEFAULT_THERMOSTAT_TEMPERATURE
-        self._operation_list = [STATE_AUTO, STATE_OFF]
+        self._operation_list = [STATE_AUTO, STATE_OFF, STATE_IDLE]
         self._scheduled_update = None
         self.entity_id = ENTITY_ID_FORMAT.format(object_id)
 
     async def async_added_to_hass(self):
-        """Run when entity about to be added."""
+        """Run whe?n entity about to be added."""
         await super().async_added_to_hass()
         # Check If we have an old state
         old_state = await self.async_get_last_state()
         if old_state is not None:
             self._target_temperature = old_state.attributes.get(
-                ATTR_TEMPERATURE)
+                ATTR_TEMPERATURE, DEFAULT_THERMOSTAT_TEMPERATURE)
             self._current_operation = old_state.attributes.get(
-                ATTR_OPERATION_MODE)
+                ATTR_OPERATION_MODE, STATE_AUTO)
+            self._is_on = old_state.state != STATE_OFF
 
         def track_entity_id(tracked_entity_id, update_fun):
             if tracked_entity_id:
@@ -612,7 +619,8 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
     def supported_features(self):
         """Return supported features."""
         return (SUPPORT_TARGET_TEMPERATURE |
-                SUPPORT_ON_OFF)
+                SUPPORT_ON_OFF |
+                SUPPORT_OPERATION_MODE)
 
     @property
     def is_on(self):
@@ -653,7 +661,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         if state is None:
             return
         try:
-            if state.state is None:
+            if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 self._current_temperature = None
             else:
                 self._current_temperature = float(state.state)
@@ -665,7 +673,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         if state is None:
             return
         try:
-            if state.state is None:
+            if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
                 self._valve_position = None
             else:
                 self._valve_position = float(state.state)
@@ -688,10 +696,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         else:
             _LOGGER.error("Unrecognized operation mode: %s", operation_mode)
             return
-
-        self._schedule()
-        await self._async_publish()
-        await self.async_update_ha_state()
+        await self._async_publish_update()
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -699,7 +704,9 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         if temperature is None:
             return
         self._target_temperature = temperature
+        await self._async_publish_update()
 
+    async def _async_publish_update(self):
         self._schedule()
         await self._async_publish()
         await self.async_update_ha_state()
@@ -713,24 +720,30 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             else:
                 return round(value * multi)
 
-        if self.is_on:
-            data = SetThermostatModel(
-                externalId=self._external_id,
-                name=self._name,
-                actualTemp=scaled(self._current_temperature),
-                targetTemp=scaled(self._target_temperature),
-                valvePosition=scaled(self._valve_position, 1),
-                climateSystems=self._systems,
-            )
+        if self._current_operation == STATE_AUTO:
+            actual = scaled(self._current_temperature)
+            target = scaled(self._target_temperature)
+            valve = scaled(self._valve_position, 1)
+            systems = self._systems
+        elif self._current_operation == STATE_IDLE:
+            actual = scaled(self._current_temperature)
+            target = None
+            valve = scaled(self._valve_position, 1)
+            systems = self._systems
         else:
-            data = SetThermostatModel(
-                externalId=self._external_id,
-                name=self._name,
-                actualTemp=None,
-                targetTemp=None,
-                valvePosition=None,
-                climateSystems=None,
-            )
+            actual = None
+            target = None
+            valve = None
+            systems = []
+
+        data = SetThermostatModel(
+            externalId=self._external_id,
+            name=self._name,
+            actualTemp=actual,
+            targetTemp=target,
+            valvePosition=valve,
+            climateSystems=systems,
+        )
 
         _LOGGER.debug("Publish thermostat {}".format(data))
         await self._uplink.post_smarthome_thermostats(
