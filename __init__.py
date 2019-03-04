@@ -1,6 +1,4 @@
-"""
-Support for nibe uplink.
-"""
+"""Support for nibe uplink."""
 
 
 from datetime import timedelta
@@ -17,7 +15,34 @@ from homeassistant.const import (
     CONF_NAME
 )
 
-from .const import *
+from .const import (
+    SCAN_INTERVAL,
+    SIGNAL_PARAMETERS_UPDATED,
+    SIGNAL_STATUSES_UPDATED,
+    DATA_NIBE,
+    DOMAIN,
+    SERVICE_SET_SMARTHOME_MODE,
+    CONF_CLIENT_ID,
+    CONF_CLIENT_SECRET,
+    CONF_REDIRECT_URI,
+    CONF_WRITEACCESS,
+    CONF_ACCESS_DATA,
+    CONF_CATEGORIES,
+    CONF_SENSORS,
+    CONF_STATUSES,
+    CONF_SYSTEMS,
+    CONF_SYSTEM,
+    CONF_UNITS,
+    CONF_UNIT,
+    CONF_CLIMATES,
+    CONF_SWITCHES,
+    CONF_BINARY_SENSORS,
+    CONF_WATER_HEATERS,
+    CONF_THERMOSTATS,
+    CONF_CURRENT_TEMPERATURE,
+    CONF_VALVE_POSITION,
+    CONF_CLIMATE_SYSTEMS,
+)
 from .config import NibeConfigFlow  # noqa
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,6 +52,7 @@ REQUIREMENTS = ['nibeuplink==0.6.0']
 
 
 def none_as_true(data):
+    """Return a none value as a truth."""
     if data is None:
         return True
     else:
@@ -51,11 +77,14 @@ SYSTEM_SCHEMA = vol.Schema({
     vol.Required(CONF_SYSTEM): cv.positive_int,
     vol.Optional(CONF_UNITS, default=[]):
         vol.All(cv.ensure_list, [UNIT_SCHEMA]),
-    vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SENSORS, default=[]):
+        vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_CLIMATES, default=False): none_as_true,
     vol.Optional(CONF_WATER_HEATERS, default=False): none_as_true,
-    vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
-    vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_SWITCHES, default=[]):
+        vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(CONF_BINARY_SENSORS, default=[]):
+        vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_THERMOSTATS, default={}):
         {cv.positive_int: THERMOSTAT_SCHEMA},
 })
@@ -76,13 +105,20 @@ CONFIG_SCHEMA = vol.Schema({
 FORWARD_PLATFORMS = ('climate', 'switch', 'sensor',
                      'binary_sensor', 'water_heater')
 
+
 async def async_setup_systems(hass, uplink, entry):
+    """Configure each system."""
     config = hass.data[DATA_NIBE]['config']
 
     if not len(config.get(CONF_SYSTEMS)):
         systems = await uplink.get_systems()
         msg = json.dumps(systems, indent=1)
-        persistent_notification.async_create(hass, 'No systems selected, please configure one system id of:<br/><br/><pre>{}</pre>'.format(msg) , 'Invalid nibe config', 'invalid_config')
+        persistent_notification.async_create(
+            hass,
+            ('No systems selected, please configure one system id of:'
+             '<br/><br/><pre>{}</pre>').format(msg),
+            'Invalid nibe config',
+            'invalid_config')
         return
 
     systems = {
@@ -108,8 +144,9 @@ async def async_setup_systems(hass, uplink, entry):
 
 
 async def async_register_services(hass):
+    """Register public services."""
     async def set_smarthome_mode(call):
-        """Set smarthome mode"""
+        """Set smarthome mode."""
         uplink = hass.data[DATA_NIBE]['uplink']
         await uplink.put_smarthome_mode(
             call.data['system'],
@@ -128,8 +165,9 @@ async def async_register_services(hass):
         set_smarthome_mode,
         SERVICE_SET_SMARTHOME_MODE_SCHEMA)
 
+
 async def async_setup(hass, config):
-    """Setup nibe uplink component"""
+    """Configure the nibe uplink component."""
     hass.data[DATA_NIBE] = {}
     hass.data[DATA_NIBE]['config'] = config[DOMAIN]
 
@@ -168,12 +206,12 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
             })
 
     uplink = Uplink(
-        client_id = entry.data.get(CONF_CLIENT_ID),
-        client_secret = entry.data.get(CONF_CLIENT_SECRET),
-        redirect_uri = entry.data.get(CONF_REDIRECT_URI),
-        access_data = entry.data.get(CONF_ACCESS_DATA),
-        access_data_write = access_data_write,
-        scope = scope
+        client_id=entry.data.get(CONF_CLIENT_ID),
+        client_secret=entry.data.get(CONF_CLIENT_SECRET),
+        redirect_uri=entry.data.get(CONF_REDIRECT_URI),
+        access_data=entry.data.get(CONF_ACCESS_DATA),
+        access_data_write=access_data_write,
+        scope=scope
     )
 
     await uplink.refresh_access_token()
@@ -184,7 +222,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
 
 
 async def async_unload_entry(hass, entry):
-
+    """Unload a configuration entity."""
     await asyncio.wait([
         hass.config_entries.async_forward_entry_unload(
             entry, platform)
@@ -203,7 +241,10 @@ async def async_unload_entry(hass, entry):
 
 
 class NibeSystem(object):
+    """Object representing a system."""
+
     def __init__(self, hass, uplink, system_id, config, entry_id):
+        """Init."""
         self.hass = hass
         self.parameters = {}
         self.config = config
@@ -221,9 +262,11 @@ class NibeSystem(object):
         return self._device_info
 
     async def unload(self):
+        """Unload system."""
         pass
 
     async def load(self):
+        """Load system."""
         self.system = await self.uplink.get_system(self.system_id)
         _LOGGER.debug("Loading system: {}".format(self.system))
 
@@ -248,6 +291,7 @@ class NibeSystem(object):
             timedelta(seconds=SCAN_INTERVAL))
 
     async def update_statuses(self):
+        """Update status list."""
         status_icons = await self.uplink.get_status(self.system_id)
         parameters = {}
         statuses = set()
@@ -265,6 +309,7 @@ class NibeSystem(object):
             SIGNAL_STATUSES_UPDATED, statuses)
 
     async def update_notifications(self):
+        """Update notification list."""
         notice = await self.uplink.get_notifications(self.system_id)
         added = [k for k in notice if k not in self.notice]
         removed = [k for k in self.notice if k not in notice]
@@ -284,5 +329,6 @@ class NibeSystem(object):
             )
 
     async def update(self, now=None):
+        """Update system state."""
         await self.update_notifications()
         await self.update_statuses()

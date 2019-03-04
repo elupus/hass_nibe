@@ -1,3 +1,5 @@
+"""Binary sensors for nibe uplink."""
+
 import logging
 
 from homeassistant.components.binary_sensor import (ENTITY_ID_FORMAT,
@@ -9,16 +11,15 @@ from .entity import NibeParameterEntity
 
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
-_LOGGER      = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the device based on a config entry."""
-
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink  = hass.data[DATA_NIBE]['uplink']
+    uplink = hass.data[DATA_NIBE]['uplink']
     systems = hass.data[DATA_NIBE]['systems']
 
     entities = []
@@ -37,11 +38,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
+    """Binary sensor."""
+
     def __init__(self,
                  uplink,
                  system_id,
                  parameter_id,
                  entry):
+        """Init."""
         super(NibeBinarySensor, self).__init__(
             uplink,
             system_id,
@@ -52,6 +56,7 @@ class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
 
     @property
     def is_on(self):
+        """Return if sensor is on."""
         data = self._parameters[self._parameter_id]
         if data:
             return data['rawValue'] == "1"

@@ -1,3 +1,5 @@
+"""Sensors for nibe."""
+
 import asyncio
 import logging
 from collections import defaultdict
@@ -19,10 +21,12 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def gen_dict():
+    """Generate a default dict."""
     return {'groups': [], 'data': None}
 
 
 async def async_load(hass, uplink):
+    """Load the sensors."""
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
@@ -92,8 +96,7 @@ async def async_load(hass, uplink):
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the device based on a config entry."""
-
-    uplink  = hass.data[DATA_NIBE]['uplink']
+    uplink = hass.data[DATA_NIBE]['uplink']
     sensors = await async_load(hass, uplink)
     entites_update = []
     entites_done = []
@@ -106,8 +109,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
             system_id,
             parameter_id,
             entry,
-            data = config['data'],
-            groups = config.get('groups', [])
+            data=config['data'],
+            groups=config.get('groups', [])
         )
         if config['data']:
             entites_done.append(entity)
@@ -119,6 +122,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class NibeSensor(NibeParameterEntity, Entity):
+    """Nibe Sensor."""
+
     def __init__(self,
                  uplink,
                  system_id,
@@ -126,6 +131,7 @@ class NibeSensor(NibeParameterEntity, Entity):
                  entry,
                  data,
                  groups):
+        """Init."""
         super(NibeSensor, self).__init__(uplink,
                                          system_id,
                                          parameter_id,

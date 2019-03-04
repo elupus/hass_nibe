@@ -1,3 +1,5 @@
+"""Water heater entity for nibe uplink."""
+
 import asyncio
 import logging
 from collections import OrderedDict
@@ -32,7 +34,7 @@ NIBE_STATE_TO_HA = {
         'start': 'start_temperature_water_economy',
         'stop': 'stop_temperature_water_economy',
     },
-    'normal' : {
+    'normal': {
         'state': STATE_HEAT_PUMP,
         'start': 'start_temperature_water_normal',
         'stop': 'stop_temperature_water_normal',
@@ -57,7 +59,6 @@ HA_BOOST_TO_NIBE = {v: k for k, v in NIBE_BOOST_TO_STATE.items()}
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
-
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
@@ -100,11 +101,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 
 class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
+    """Water heater entity."""
+
     def __init__(self,
                  uplink,
                  system_id: int,
                  statuses: Set[str],
                  hwsys):
+        """Init."""
         super().__init__(
             uplink,
             system_id,
@@ -138,10 +142,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def name(self):
+        """Return name of entity."""
         return self._name
 
     @property
     def temperature_unit(self):
+        """Return temperature unit."""
         data = self._parameters[self._hwsys.hot_water_charging]
         if data:
             return data['unit']
@@ -150,6 +156,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def device_state_attributes(self):
+        """Return extra state attributes."""
         data = OrderedDict()
         data['current_temperature'] = self.current_temperature
         data['target_temp_low'] = self.target_temperature_low
@@ -158,15 +165,18 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def available(self):
+        """Return if entity is available."""
         value = self.get_value(self._hwsys.hot_water_charging)
         return value is not None
 
     @property
     def is_on(self):
+        """Is the entity on."""
         return self._is_on
 
     @property
     def supported_features(self):
+        """Return supported operation modes."""
         return SUPPORT_OPERATION_MODE
 
     @property
@@ -188,10 +198,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         return self.get_float(self._hwsys.hot_water_charging)
 
     def get_float_named(self, name):
+        """Return a float attribute for system."""
         parameter_id = getattr(self._hwsys, name, None)
         return self.get_float(parameter_id)
 
     def get_float_operation(self, name):
+        """Return a float based on operation mode."""
         if self._current_operation in HA_BOOST_TO_NIBE:
             state = HA_STATE_TO_NIBE.get(STATE_HIGH_DEMAND)
         else:
@@ -203,10 +215,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def target_temperature_high(self):
+        """Return the target high temperature."""
         return self.get_float_operation('stop')
 
     @property
     def target_temperature_low(self):
+        """Return the target low temperature."""
         return self.get_float_operation('start')
 
     @property
@@ -240,26 +254,30 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     @property
     def unique_id(self):
+        """Return the unique id."""
         return "{}_{}".format(self._system_id,
                               self._hwsys.hot_water_charging)
 
     async def async_update(self):
-
+        """Update entity."""
         _LOGGER.debug("Update water heater {}".format(self.name))
         await super().async_update()
         self.parse_data()
 
     async def async_statuses_updated(self, statuses: Set[str]):
+        """React to statuses updated."""
         self.parse_statuses(statuses)
         self.async_schedule_update_ha_state()
 
     def parse_statuses(self, statuses: Set[str]):
+        """Parse status values."""
         if 'Hot Water' in statuses:
             self._is_on = True
         else:
             self._is_on = False
 
     def parse_data(self):
+        """Parse data values."""
         mode = self.get_value(self._hwsys.hot_water_comfort_mode)
         if mode in NIBE_STATE_TO_HA:
             operation = NIBE_STATE_TO_HA[mode]['state']
