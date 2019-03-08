@@ -28,7 +28,7 @@ from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
 _LOGGER = logging.getLogger(__name__)
 
 DEPENDENCIES = ['group']
-REQUIREMENTS = ['nibeuplink==0.6.0']
+REQUIREMENTS = ['nibeuplink==0.6.1']
 
 
 def none_as_true(data):
