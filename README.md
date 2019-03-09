@@ -26,13 +26,13 @@ git clone https://github.com/elupus/hass_nibe.git nibe
 
   <img src="/docs/nibe_files_windows.png" alt="Windows folder" />
 
+
   - [x] Add an empty nibe configuration block to your `<config dir>/configuration.yaml`
 ```yaml
 nibe:
 ```
-
   - [x] Restart your Home Assistant
-    * Your system identifier is displayed as a notification after the first restart.
+    * Your system identifier is displayed in the notification error message after the first restart.
 
   - [x] Go to the Integrations page located in Home Assistants Configuration dashboard
   - [x] Scroll all the way down (custom components end up last in the list)
@@ -51,7 +51,20 @@ nibe:
   <img src="/docs/nibe_authorize.png" alt="Authorize home assistant for nibe" />
 
   * The system should now have access to the Nibe Uplink API.
-  
+
+  - [x] Add more some more info to your #Configuration
+```yaml
+  nibe:
+      systems:
+          - system: <required system identifier>
+            units:
+              - unit: 0
+            climates: True
+            water_heaters: True
+```
+- [x] Restart your Home assistant again
+  * The integration page should then display all available entities. 
+
   <img src="/docs/nibe_integration.png" alt="Integration page example" />
 
 Configuration
