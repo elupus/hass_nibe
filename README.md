@@ -45,26 +45,26 @@ nibe:
 
 * Go to the Configuration tab of Home Assistant
 
-https://github.com/runevad/hass_nibe/blob/master/docs/configuration.png
+<img src="https://github.com/runevad/hass_nibe/blob/master/docs/configuration.png" alt="Configuration page" />
 
 * Go to the Integration page
 * Scroll all the way down (custom components end up last in the list)
 
-https://github.com/runevad/hass_nibe/blob/master/docs/integrations.png
+<img src="https://github.com/runevad/hass_nibe/blob/master/docs/integrations.png" alt="Integrations page" />
 
 * Enter the Nibe configuration
 - Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
 The configurator should send you to a page that has generated an access token.
 
-https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_config.png
+<img src="https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_config.png" alt="Nibe configurator" />
 
 * Copy the code segment, go back to your other window or tab containing the Nibe configurator.
 * Paste the code into the field that is displayed.
 
 The system should now display your Nibe instance.
 
-https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration.png
-https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration_2.png
+<img src="https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration.png" alt="Integration page" />
+<img src="https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration_2.png" alt="Integration page 2" />
 
 Full configuration description
 ```yaml
