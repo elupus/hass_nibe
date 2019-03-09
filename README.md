@@ -52,7 +52,7 @@ nibe:
 
   * The system should now have access to the Nibe Uplink API.
 
-  - [x] Add more some more info to your ../#configuration
+  - [x] Add more some more info to your [Configuration](README.md#configuration)
 ```yaml
   nibe:
       systems:
