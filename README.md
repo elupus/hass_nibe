@@ -24,9 +24,10 @@ Installation
  * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
  * Rename the folder "hass_nibe-master" to "nibe" so that all the files should end up inside the a "nibe" under the custom_components folder.
 
-<img src="https://github.com/runevad/hass_nibe/blob/master/docs/nibe_files_windows.png" alt="Windows folder" />
+<img src="/docs/nibe_files_windows.png" alt="Windows folder" />
 
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
+ (Get your system identifier from https://www.nibeuplink.com/System/<b>XXXXX</b>/Status/Overview) when accessing your account at https://www.nibeuplink.com
 
 Configuration
 -------------
@@ -44,26 +45,26 @@ nibe:
 
 * Go to the Configuration tab of Home Assistant
 
-<img src="https://github.com/runevad/hass_nibe/blob/master/docs/configuration.png" alt="Configuration page" />
+<img src="/docs/configuration.png" alt="Configuration page" />
 
 * Go to the Integration page
 * Scroll all the way down (custom components end up last in the list)
 
-<img src="https://github.com/runevad/hass_nibe/blob/master/docs/integrations.png" alt="Integrations page" />
+<img src="/docs/integrations.png" alt="Integrations page" />
 
 * Enter the Nibe configuration
 - Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
 The configurator should send you to a page that has generated an access token.
 
-<img src="https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_config.png" alt="Nibe configurator" />
+<img src="/docs/Nibe_config.png" alt="Nibe configurator" />
 
 * Copy the code segment, go back to your other window or tab containing the Nibe configurator.
 * Paste the code into the field that is displayed.
 
 The system should now display your Nibe instance.
 
-<img src="https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration.png" alt="Integration page" />
-<img src="https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration_2.png" alt="Integration page 2" />
+<img src="/docs/Nibe_integration.png" alt="Integration page" />
+<img src="/docs/Nibe_integration_2.png" alt="Integration page 2" />
 
 Full configuration description
 ```yaml
