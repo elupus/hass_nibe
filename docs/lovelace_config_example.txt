@@ -1,6 +1,5 @@
   - badges: []
     icon: 'mdi:thermostat'
-    path: nibe_31372_0
     title: NIBE F1155
     cards:
       - entities:
