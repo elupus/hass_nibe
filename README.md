@@ -13,19 +13,56 @@ Installation
 ------------
 
  * Clone or copy the root of the repository into `<config dir>/custom_components/nibe`
- * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
 
-```bash
-cd .homeassistant
-mkdir custom_components
-cd custom_components
-git clone https://github.com/elupus/hass_nibe.git nibe
-```
+ ```bash
+ cd .homeassistant
+ mkdir custom_components
+ cd custom_components
+ git clone https://github.com/elupus/hass_nibe.git nibe
+ ```
+
+ * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
+ * Rename the folder "hass_nibe-master" to "nibe" so that all the files should end up inside the a "nibe" under the custom_components folder.
+
+# image of folder stucture here
+
+
+ * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
 
 Configuration
 -------------
 
-Configuration description
+Minimal configuration
+```yaml
+nibe:
+    systems:
+        - system: <required system identifier>
+          units:
+            - unit: 0
+          climates: True
+          water_heaters: True
+```
+
+* Go to the Configuration tab of Home Assistant
+
+# <image here>
+
+* Go to the Integration page
+* Scroll all the way down (custom components end up last in the list)
+
+* Enter the Nibe configuration
+- Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
+The configurator should send you to a page that has generated an access token.
+
+* Copy the code segment, go back to your other window or tab containing the Nibe configurator.
+* Paste the code into the field that is displayed.
+
+The system should now display your Nibe instance.
+
+# image here
+# image here    
+
+Full configuration description
 ```yaml
 nibe:
     systems:
@@ -82,15 +119,4 @@ nibe:
               name: "Livingroom Thermostat"
               current_temperature: input_number.current
               systems: 1
-```
-
-Minimal configuration
-```yaml
-nibe:
-    systems:
-        - system: <required system identifier>
-          units:
-            - unit: 0
-          climates: True
-          water_heaters: True
 ```
