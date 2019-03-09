@@ -4,15 +4,14 @@ Nibe - An home assistant plugin to get data from Nibe Uplink
 Preparation
 ------------
 
-Register an nibe uplink application on: https://api.nibeuplink.com/
-
-  * Set the redirect url to match `<http or https>://<your_home_assistant_url_or_local_ip>:<port>/api/nibe/auth`
-  * Take note of the **Identifer** (client_id) and the **Secret**
+  [x] Register an nibe uplink application on: https://api.nibeuplink.com/
+  [x] Set the redirect url to match `<http or https>://<your_home_assistant_url_or_local_ip>:<port>/api/nibe/auth`
+  [x] Take note of the **Identifer** (client_id) and the **Secret**
 
 Installation
 ------------
 
- * Clone or copy the root of the repository into `<config dir>/custom_components/nibe`
+  [x] Clone or copy the root of the repository into `<config dir>/custom_components/nibe`
 
 ```bash
 cd .homeassistant
@@ -21,16 +20,39 @@ cd custom_components
 git clone https://github.com/elupus/hass_nibe.git nibe
 ```
 
- * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
- * Rename the folder "hass_nibe-master" to "nibe".
- - All files should be inside the "nibe" catalog under the custom_components folder.
+  * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
+  [x] Rename the folder "hass_nibe-master" to "nibe".
+    * All files should be inside the "nibe" catalog under the custom_components folder.
 
-<img src="/docs/nibe_files_windows.png" alt="Windows folder" />
+  <img src="/docs/nibe_files_windows.png" alt="Windows folder" />
 
- * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
- - To get your system identifier log into your account at https://www.nibeuplink.com
- - Look at the url when accessing your heat pump start page
- - Copy the numbers that appears in the url : https://www.nibeuplink.com/System/**XXXXX**
+  [x] Add an empty nibe configuration block to your `<config dir>/configuration.yaml`
+```yaml
+nibe:
+```
+
+  [x] Restart your Home Assistant
+    * Your system identifier is displayed as a notification after the first restart.
+
+  [x] Go to the Integrations page located in Home Assistants Configuration dashboard
+  [x] Scroll all the way down (custom components end up last in the list)
+
+  <img src="/docs/integrations.png" alt="Integrations page" />
+
+  [x] Click the Nibe Uplink configure button
+  [x] Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
+
+  <img src="/docs/nibe_config.png" alt="Configure uplink parameters" />
+
+  [x] The configurator should send you to a authorization page that has generated a long access token.
+  [x] Copy the long **code segment** and go back to your other window or tab containing the Nibe configurator.
+  [x] Paste the long code into the field that is displayed, click Submit.
+
+  <img src="/docs/nibe_authorize.png" alt="Authorize home assistant for nibe" />
+
+  * The system should now have access to the Nibe Uplink API.
+  
+  <img src="/docs/nibe_integration.png" alt="Integration page example" />
 
 Configuration
 -------------
@@ -45,29 +67,6 @@ nibe:
           climates: True
           water_heaters: True
 ```
-
-* Restart your Home Assistant
-* Go to the Configuration tab of Home Assistant
-
-<img src="/docs/configuration.png" alt="Configuration page" />
-
-* Go to the Integration page
-* Scroll all the way down (custom components end up last in the list)
-
-<img src="/docs/integrations.png" alt="Integrations page" />
-
-* Click the Nibe Uplink configure button
-- Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
-- The configurator should send you to a page that has generated an access token.
-
-<img src="/docs/Nibe_config.png" alt="Nibe configurator" />
-
-* Copy the code segment, go back to your other window or tab containing the Nibe configurator.
-* Paste the code into the new field that is displayed.
-
-- The system should now display your Nibe Uplink integration.
-
-<img src="/docs/Nibe_integration.png" alt="Integration page" />
 
 Full configuration description
 ```yaml
