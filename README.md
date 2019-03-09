@@ -24,7 +24,7 @@ Installation
  * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
  * Rename the folder "hass_nibe-master" to "nibe" so that all the files should end up inside the a "nibe" under the custom_components folder.
 
-# image of folder stucture here
+  https://github.com/runevad/hass_nibe/blob/master/docs/nibe_files_windows.png
 
 
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
@@ -45,22 +45,26 @@ nibe:
 
 * Go to the Configuration tab of Home Assistant
 
-# <image here>
+https://github.com/runevad/hass_nibe/blob/master/docs/configuration.png
 
 * Go to the Integration page
 * Scroll all the way down (custom components end up last in the list)
 
+https://github.com/runevad/hass_nibe/blob/master/docs/integrations.png
+
 * Enter the Nibe configuration
 - Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
 The configurator should send you to a page that has generated an access token.
+
+https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_config.png
 
 * Copy the code segment, go back to your other window or tab containing the Nibe configurator.
 * Paste the code into the field that is displayed.
 
 The system should now display your Nibe instance.
 
-# image here
-# image here    
+https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration.png
+https://github.com/runevad/hass_nibe/blob/master/docs/Nibe_integration_2.png
 
 Full configuration description
 ```yaml
