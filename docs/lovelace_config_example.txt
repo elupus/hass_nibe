@@ -1,0 +1,69 @@
+  - badges: []
+    icon: 'mdi:thermostat'
+    path: nibe_31372_0
+    title: NIBE F1155
+    cards:
+      - entities:
+          - sensor.nibe_31372_40067
+          - sensor.nibe_31372_40014
+          - sensor.nibe_31372_40013
+          - sensor.nibe_31372_40004
+          - sensor.nibe_31372_40083
+          - sensor.nibe_31372_40081
+          - sensor.nibe_31372_40079
+          - sensor.nibe_31372_43005
+        show_header_toggle: false
+        title: Status
+        type: entities
+      - entities:
+          - entity: sensor.nibe_31372_43416
+          - entity: sensor.nibe_31372_43439
+          - entity: sensor.nibe_31372_43437
+          - entity: sensor.nibe_31372_40015
+          - entity: sensor.nibe_31372_40016
+          - entity: sensor.nibe_31372_40017
+          - entity: sensor.nibe_31372_40008
+          - entity: sensor.nibe_31372_40018
+          - entity: sensor.nibe_31372_40019
+          - entity: sensor.nibe_31372_40012
+          - entity: sensor.nibe_31372_40022
+          - entity: sensor.nibe_31372_43420
+          - entity: sensor.nibe_31372_43424
+          - entity: sensor.nibe_31372_43122
+          - entity: sensor.nibe_31372_43136
+        show_header_toggle: false
+        title: 'Compressor Module '
+        type: entities
+      - entities:
+          - sensor.nibe_31372_43009
+          - sensor.nibe_31372_40008
+          - sensor.nibe_31372_40012
+          - sensor.nibe_31372_40033
+        show_header_toggle: false
+        title: Climate System
+        type: entities
+      - entities:
+          - entity: sensor.nibe_31372_47214
+          - entity: sensor.nibe_31372_43081
+          - entity: sensor.nibe_31372_43084
+          - entity: sensor.nibe_31372_47212
+        show_header_toggle: false
+        title: Addition
+        type: entities
+      - entities:
+          - sensor.nibe_31372_44897
+          - sensor.nibe_31372_44908
+          - sensor.nibe_31372_10069
+        show_header_toggle: false
+        title: Smart Price Adaption
+        type: entities
+      - entities:
+          - sensor.nibe_31372_47411
+          - sensor.nibe_31372_47410
+          - sensor.nibe_31372_47409
+          - sensor.nibe_31372_47408
+          - sensor.nibe_31372_47407
+          - sensor.nibe_31372_47412
+        show_header_toggle: false
+        title: Soft inputs/outputs
+        type: entities
