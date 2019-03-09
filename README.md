@@ -69,9 +69,6 @@ nibe:
 
 <img src="/docs/Nibe_integration.png" alt="Integration page" />
 
-Example
-<img src="/docs/Nibe_integration_2.png" alt="Integration page 2" />
-
 Full configuration description
 ```yaml
 nibe:
