@@ -14,20 +14,23 @@ Installation
 
  * Clone or copy the root of the repository into `<config dir>/custom_components/nibe`
 
- ```bash
- cd .homeassistant
- mkdir custom_components
- cd custom_components
- git clone https://github.com/elupus/hass_nibe.git nibe
- ```
+```bash
+cd .homeassistant
+mkdir custom_components
+cd custom_components
+git clone https://github.com/elupus/hass_nibe.git nibe
+```
 
  * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
- * Rename the folder "hass_nibe-master" to "nibe" so that all the files should end up inside the a "nibe" under the custom_components folder.
+ * Rename the folder "hass_nibe-master" to "nibe".
+ - All files should be inside the "nibe" catalog under the custom_components folder.
 
 <img src="/docs/nibe_files_windows.png" alt="Windows folder" />
 
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
- (Get your system identifier from https://www.nibeuplink.com/System/<b>XXXXX</b>/Status/Overview) when accessing your account at https://www.nibeuplink.com
+ - To get your system identifier log into your account at https://www.nibeuplink.com
+ - Look at the url when accessing your heat pump start page
+ - Copy the numbers that appears in the url : https://www.nibeuplink.com/System/**XXXXX**
 
 Configuration
 -------------
@@ -43,6 +46,7 @@ nibe:
           water_heaters: True
 ```
 
+* Restart your Home Assistant
 * Go to the Configuration tab of Home Assistant
 
 <img src="/docs/configuration.png" alt="Configuration page" />
@@ -52,18 +56,20 @@ nibe:
 
 <img src="/docs/integrations.png" alt="Integrations page" />
 
-* Enter the Nibe configuration
+* Click the Nibe Uplink configure button
 - Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
-The configurator should send you to a page that has generated an access token.
+- The configurator should send you to a page that has generated an access token.
 
 <img src="/docs/Nibe_config.png" alt="Nibe configurator" />
 
 * Copy the code segment, go back to your other window or tab containing the Nibe configurator.
-* Paste the code into the field that is displayed.
+* Paste the code into the new field that is displayed.
 
-The system should now display your Nibe instance.
+- The system should now display your Nibe Uplink integration.
 
 <img src="/docs/Nibe_integration.png" alt="Integration page" />
+
+Example
 <img src="/docs/Nibe_integration_2.png" alt="Integration page 2" />
 
 Full configuration description
