@@ -20,10 +20,10 @@ cd custom_components
 git clone https://github.com/elupus/hass_nibe.git nibe
 ```
 
-  * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
+  If you are using Windows
+  - [x] Download the zip file and extract the folder inside to your custom_components folder.
   - [x] Rename the folder "hass_nibe-master" to "nibe".
     * All files should be inside the "nibe" catalog under the custom_components folder.
-
   <img src="/docs/nibe_files_windows.png" alt="Windows folder" />
 
 
@@ -33,26 +33,24 @@ nibe:
 ```
   - [x] Restart your Home Assistant
     * Your system identifier is displayed in the notification error message after the first restart.
+    * This is needed later on for [Configuration](README.md#configuration)
 
   - [x] Go to the Integrations page located in Home Assistants Configuration dashboard
   - [x] Scroll all the way down (custom components end up last in the list)
-
   <img src="/docs/integrations.png" alt="Integrations page" />
 
   - [x] Click the Nibe Uplink configure button
   - [x] Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
-
   <img src="/docs/nibe_config.png" alt="Configure uplink parameters" />
 
   - [x] The configurator should send you to a authorization page that has generated a long access token.
   - [x] Copy the long **code segment** and go back to your other window or tab containing the Nibe configurator.
   - [x] Paste the long code into the field that is displayed, click Submit.
-
   <img src="/docs/nibe_authorize.png" alt="Authorize home assistant for nibe" />
 
   * The system should now have access to the Nibe Uplink API.
 
-  - [x] Add more some more info to your [Configuration](README.md#configuration)
+  - [x] Add some more info to your [Configuration](README.md#configuration)
 ```yaml
   nibe:
       systems:
@@ -64,7 +62,6 @@ nibe:
 ```
 - [x] Restart your Home assistant again
   * The integration page should then display all available entities. 
-
   <img src="/docs/nibe_integration.png" alt="Integration page example" />
 
 Configuration
