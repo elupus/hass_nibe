@@ -24,8 +24,7 @@ Installation
  * If you are using windows, download the zip and extract the folder inside to your custom_components folder.
  * Rename the folder "hass_nibe-master" to "nibe" so that all the files should end up inside the a "nibe" under the custom_components folder.
 
-  https://github.com/runevad/hass_nibe/blob/master/docs/nibe_files_windows.png
-
+<img src="https://github.com/runevad/hass_nibe/blob/master/docs/nibe_files_windows.png" alt="Windows folder" />
 
  * Add a nibe configuration block to your `<config dir>/configuration.yaml` see example below
 
