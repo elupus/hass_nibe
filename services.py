@@ -66,13 +66,14 @@ async def async_register_services(hass):
         vol.Required('system'): cv.positive_int,
         vol.Required('id'): cv.positive_int,
         vol.Required(ATTR_NAME): cv.string,
-        vol.Optional(ATTR_TEMPERATURE):
-            vol.Coerce(float),
-        vol.Optional(ATTR_TARGET_TEMPERATURE):
-            vol.Coerce(float),
-        vol.Optional(ATTR_VALVE_POSITION):
-            vol.All(vol.Coerce(int),
-                    vol.Range(min=0, max=100))
+        vol.Required('systems'): cv.ensure_list,
+        vol.Optional(ATTR_TEMPERATURE, default=None):
+            vol.Any(None, vol.Coerce(float)),
+        vol.Optional(ATTR_TARGET_TEMPERATURE, default=None):
+            vol.Any(None, vol.Coerce(float)),
+        vol.Optional(ATTR_VALVE_POSITION, default=None):
+            vol.Any(None, vol.All(vol.Coerce(int),
+                                  vol.Range(min=0, max=100)))
     })
 
     hass.services.async_register(
@@ -90,5 +91,5 @@ async def async_register_services(hass):
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_THERMOSTAT,
-        set_smarthome_mode,
+        set_thermostat,
         SERVICE_SET_THERMOSTAT_SCHEMA)

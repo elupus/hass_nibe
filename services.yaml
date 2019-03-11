@@ -13,7 +13,8 @@ set_thermostat:
   description: Set a nibe uplink smart home thermostat, must be called once every 30 minutes.
   fields:
     system: {description: System identifcation to send command to., example: "12345"}
-    id: {description: "Identifier for this thermostat should be unique for the system.", example: "hot_water_boost"}
+    id: {description: "Identifier for this thermostat should be unique for the system (1,2,3...).", example: "1"}
+    name: {description: "Name displayed for thermostat in uplink", example: "Kitchen Thermostat"}
     temperature: {description: "Optional measured temperature in celcius, can be left out", example: "29.0"}
     target_temperature: {description: "Optional target temperature in celcius, can be left out", example: "29.0"}
     valve_position: {description: "Optional valve position in percents", example: "50"}
