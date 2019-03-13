@@ -15,6 +15,10 @@ set_thermostat:
     system: {description: System identifcation to send command to., example: "12345"}
     id: {description: "Identifier for this thermostat should be unique for the system (1,2,3...).", example: "1"}
     name: {description: "Name displayed for thermostat in uplink", example: "Kitchen Thermostat"}
+    systems:
+      description: "List of climate systems affected by this thermostat.
+                    These will match up to the S1, S2 climate's the component generate"
+      example: "[1]"
     temperature: {description: "Optional measured temperature in celcius, can be left out", example: "29.0"}
     target_temperature: {description: "Optional target temperature in celcius, can be left out", example: "29.0"}
     valve_position: {description: "Optional valve position in percents", example: "50"}
