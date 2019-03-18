@@ -37,11 +37,17 @@ async def async_register_services(hass):
     async def set_thermostat(call):
         uplink = hass.data[DATA_NIBE]['uplink']
 
+        def scaled(value, multi=10):
+            if value is None:
+                return None
+            else:
+                return round(value * multi)
+
         data = SetThermostatModel(
             externalId=call.data['id'],
             name=call.data[ATTR_NAME],
-            actualTemp=call.data[ATTR_TEMPERATURE],
-            targetTemp=call.data[ATTR_TARGET_TEMPERATURE],
+            actualTemp=scaled(call.data[ATTR_TEMPERATURE]),
+            targetTemp=scaled(call.data[ATTR_TARGET_TEMPERATURE]),
             valvePosition=call.data[ATTR_VALVE_POSITION],
             climateSystems=call.data['systems'],
         )
