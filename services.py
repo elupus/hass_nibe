@@ -1,4 +1,4 @@
-"""Services for nibe uplink"""
+"""Services for nibe uplink."""
 import logging
 
 import voluptuous as vol
