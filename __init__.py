@@ -28,7 +28,7 @@ from .services import async_register_services
 _LOGGER = logging.getLogger(__name__)
 
 DEPENDENCIES = ['group']
-REQUIREMENTS = ['nibeuplink==0.6.2']
+REQUIREMENTS = ['nibeuplink==0.6.3']
 
 
 def none_as_true(data):
