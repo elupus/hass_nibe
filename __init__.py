@@ -21,7 +21,7 @@ from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
                     CONF_SENSORS, CONF_STATUSES, CONF_SWITCHES, CONF_SYSTEM,
                     CONF_SYSTEMS, CONF_THERMOSTATS, CONF_UNIT, CONF_UNITS,
                     CONF_VALVE_POSITION, CONF_WATER_HEATERS, CONF_WRITEACCESS,
-                    DATA_NIBE, DOMAIN, SCAN_INTERVAL,
+                    DATA_NIBE, DOMAIN, SCAN_INTERVAL, CONF_FANS,
                     SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED)
 from .services import async_register_services
 
@@ -61,6 +61,7 @@ SYSTEM_SCHEMA = vol.Schema({
         vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_CLIMATES, default=False): none_as_true,
     vol.Optional(CONF_WATER_HEATERS, default=False): none_as_true,
+    vol.Optional(CONF_FANS, default=False): none_as_true,
     vol.Optional(CONF_SWITCHES, default=[]):
         vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(CONF_BINARY_SENSORS, default=[]):
@@ -83,7 +84,8 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 FORWARD_PLATFORMS = ('climate', 'switch', 'sensor',
-                     'binary_sensor', 'water_heater')
+                     'binary_sensor', 'water_heater',
+                     'fan')
 
 
 async def async_setup_systems(hass, uplink, entry):

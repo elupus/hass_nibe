@@ -68,6 +68,14 @@ class NibeEntity(Entity):
         else:
             return data['value']
 
+    def get_raw(self, parameter_id, default=None):
+        """Get value in display format."""
+        data = self._parameters[parameter_id]
+        if data is None or data['rawValue'] is None:
+            return default
+        else:
+            return data['rawValue']
+
     def get_scale(self, parameter_id):
         """Calculate scale of parameter."""
         data = self._parameters[parameter_id]

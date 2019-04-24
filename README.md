@@ -110,6 +110,9 @@ nibe:
           # Optional load water_heaters entities
           water_heaters: True
 
+          # Optional fan entities
+          fans: True
+
           # Optional smart thermostats.
           thermostats:
             # Key in dict is external identifer in nibe uplink, it should
