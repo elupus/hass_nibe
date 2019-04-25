@@ -237,15 +237,15 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         """Set new target operation mode."""
         try:
             if operation_mode in HA_STATE_TO_NIBE:
-                    await self._uplink.put_parameter(
-                        self._system_id,
-                        self._hwsys.hot_water_comfort_mode,
-                        HA_STATE_TO_NIBE[operation_mode])
+                await self._uplink.put_parameter(
+                    self._system_id,
+                    self._hwsys.hot_water_comfort_mode,
+                    HA_STATE_TO_NIBE[operation_mode])
             elif operation_mode in HA_BOOST_TO_NIBE:
-                    await self._uplink.put_parameter(
-                        self._system_id,
-                        self._hwsys.hot_water_boost,
-                        HA_BOOST_TO_NIBE[operation_mode])
+                await self._uplink.put_parameter(
+                    self._system_id,
+                    self._hwsys.hot_water_boost,
+                    HA_BOOST_TO_NIBE[operation_mode])
             else:
                 _LOGGER.error("Operation mode %s not supported",
                               operation_mode)
