@@ -3,7 +3,7 @@
   "name": "Nibe Uplink Heat Pumps",
   "documentation": "https://github.com/elupus/hass_nibe",
   "requirements": [
-    "nibeuplink==0.7.0"
+    "nibeuplink==0.7.1"
   ],
   "dependencies": [
     "group"
