@@ -78,7 +78,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         available = await uplink.get_parameter(
             system.system_id,
             hwsys.hot_water_production)
-        _LOGGER.error(available)
         if available and available['value']:
             return True
         return False
