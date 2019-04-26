@@ -7,10 +7,6 @@ from typing import List
 from homeassistant.components.fan import (
     ENTITY_ID_FORMAT,
     SUPPORT_SET_SPEED,
-    SPEED_OFF,
-    SPEED_LOW,
-    SPEED_MEDIUM,
-    SPEED_HIGH,
     FanEntity)
 from homeassistant.exceptions import PlatformNotReady
 
@@ -21,16 +17,14 @@ from .entity import NibeEntity
 DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
-SPEED_NORMAL = 'normal'
+SPEED_AUTO = 'auto'
 SPEED_BOOST = 'boost'
 
-_SPEED_MAP = {
-    SPEED_NORMAL: 'exhaust_speed_normal',
-    SPEED_OFF: 'exhaust_speed_1',
-    SPEED_LOW: 'exhaust_speed_2',
-    SPEED_MEDIUM: 'exhaust_speed_3',
-    SPEED_HIGH: 'exhaust_speed_4',
+NIBE_BOOST_TO_SPEED = {
+    0: SPEED_AUTO,
+    1: SPEED_BOOST,
 }
+HA_SPEED_TO_NIBE = {v: k for k, v in NIBE_BOOST_TO_SPEED.items()}
 
 
 async def _is_ventilation_active(uplink, system, climate):
@@ -66,8 +60,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
 
     await asyncio.gather(*[
-        add_active(system, climate)
-        for climate in PARAM_VENTILATION_SYSTEMS.values()
+        add_active(system, ventilation)
+        for ventilation in PARAM_VENTILATION_SYSTEMS.values()
         for system in systems.values()
     ])
 
@@ -126,28 +120,13 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def speed(self) -> str:
         """Return the current speed."""
-        fan_speed = self.get_value(self._ventilation.fan_speed)
-        if fan_speed is None:
-            return None
-
         boost = self.get_raw(self._ventilation.ventilation_boost)
-        if boost:
-            return SPEED_BOOST
-
-        for key, value in _SPEED_MAP.items():
-            speed = self.get_value(getattr(self._ventilation, value))
-            if speed is None:
-                continue
-            if fan_speed == speed:
-                return key
-        return None
+        return NIBE_BOOST_TO_SPEED.get(boost, str(boost))
 
     @property
     def speed_list(self) -> list:
         """Get the list of available speeds."""
-        speeds = list(_SPEED_MAP.keys())
-        speeds.append(SPEED_BOOST)
-        return speeds
+        return list(NIBE_BOOST_TO_SPEED.values())
 
     @property
     def state_attributes(self) -> dict:
@@ -177,23 +156,21 @@ class NibeFan(NibeEntity, FanEntity):
             self.get_raw(self._ventilation.ventilation_boost)
         return data
 
+    # pylint: disable=arguments-differ
+    async def async_turn_on(self, speed: str = None, **kwargs):
+        """Turn on the fan."""
+        await self.async_set_speed(speed)
+
     async def async_set_speed(self, speed: str):
         """Set the speed of the fan."""
-        if speed == SPEED_BOOST:
+        if speed in HA_SPEED_TO_NIBE:
             await self._uplink.put_parameter(
                 self._system_id,
                 self._ventilation.ventilation_boost,
-                1)
-        elif speed in _SPEED_MAP.keys():
-            """Boost should be off."""
-            await self._uplink.put_parameter(
-                self._system_id,
-                self._ventilation.ventilation_boost,
-                0)
-
+                HA_SPEED_TO_NIBE[speed])
         else:
             _LOGGER.error("Unsupported speed %s", speed)
-            return False
+            raise NotImplementedError()
 
     @property
     def supported_features(self) -> int:
