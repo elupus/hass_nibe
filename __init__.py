@@ -1,6 +1,6 @@
 """Support for nibe uplink."""
 
-
+import attr
 import asyncio
 import json
 import logging
@@ -88,12 +88,21 @@ FORWARD_PLATFORMS = ('climate', 'switch', 'sensor',
                      'fan')
 
 
+@attr.s
+class NibeData():
+    """Holder for nibe data."""
+
+    config = attr.ib()
+    uplink = attr.ib(default=None)
+    systems = attr.ib(default=[])
+
+
 async def async_setup_systems(hass, uplink, entry):
     """Configure each system."""
-    config = hass.data[DATA_NIBE]['config']
+    data = hass.data[DATA_NIBE]
 
-    if not len(config.get(CONF_SYSTEMS)):
-        systems = await uplink.get_systems()
+    if not len(data.config.get(CONF_SYSTEMS)):
+        systems = await data.uplink.get_systems()
         msg = json.dumps(systems, indent=1)
         persistent_notification.async_create(
             hass,
@@ -110,11 +119,11 @@ async def async_setup_systems(hass, uplink, entry):
                        config[CONF_SYSTEM],
                        config,
                        entry.entry_id)
-        for config in config.get(CONF_SYSTEMS)
+        for config in data.config.get(CONF_SYSTEMS)
     }
 
-    hass.data[DATA_NIBE]['systems'] = systems
-    hass.data[DATA_NIBE]['uplink'] = uplink
+    data.systems = systems
+    data.uplink = uplink
 
     tasks = [system.load() for system in systems.values()]
 
@@ -127,8 +136,7 @@ async def async_setup_systems(hass, uplink, entry):
 
 async def async_setup(hass, config):
     """Configure the nibe uplink component."""
-    hass.data[DATA_NIBE] = {}
-    hass.data[DATA_NIBE]['config'] = config[DOMAIN]
+    hass.data[DATA_NIBE] = NibeData(config[DOMAIN])
 
     """Monkey patch hass to get detected"""
     config_entries.FLOWS.append(DOMAIN)
@@ -182,6 +190,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
 
 async def async_unload_entry(hass, entry):
     """Unload a configuration entity."""
+    data = hass.data[DATA_NIBE]
     await asyncio.wait([
         hass.config_entries.async_forward_entry_unload(
             entry, platform)
@@ -190,12 +199,13 @@ async def async_unload_entry(hass, entry):
 
     await asyncio.wait([
         system.unload()
-        for system in hass.data[DATA_NIBE]['systems'].values()
+        for system in data.systems.values()
     ])
 
-    await hass.data[DATA_NIBE]['uplink'].close()
-    del hass.data[DATA_NIBE]['systems']
-    del hass.data[DATA_NIBE]['uplink']
+    await data.uplink.close()
+    data.systems = []
+    data.uplink = None
+    data.monitor = None
     return True
 
 

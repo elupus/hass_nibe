@@ -30,7 +30,7 @@ async def async_load(hass, uplink):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    systems = hass.data[DATA_NIBE]['systems']
+    systems = hass.data[DATA_NIBE].systems
 
     sensors = defaultdict(gen_dict)
     group = hass.components.group
@@ -96,7 +96,7 @@ async def async_load(hass, uplink):
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the device based on a config entry."""
-    uplink = hass.data[DATA_NIBE]['uplink']
+    uplink = hass.data[DATA_NIBE].uplink
     sensors = await async_load(hass, uplink)
     entites_update = []
     entites_done = []

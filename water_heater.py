@@ -64,8 +64,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE]['uplink']
-    systems = hass.data[DATA_NIBE]['systems']
+    uplink = hass.data[DATA_NIBE].uplink
+    systems = hass.data[DATA_NIBE].systems
 
     entities = []
 

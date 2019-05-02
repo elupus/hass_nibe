@@ -21,21 +21,21 @@ async def async_register_services(hass):
 
     async def set_smarthome_mode(call):
         """Set smarthome mode."""
-        uplink = hass.data[DATA_NIBE]['uplink']
+        uplink = hass.data[DATA_NIBE].uplink
         await uplink.put_smarthome_mode(
             call.data['system'],
             call.data['mode']
         )
 
     async def set_parameter(call):
-        uplink = hass.data[DATA_NIBE]['uplink']
+        uplink = hass.data[DATA_NIBE].uplink
         await uplink.put_parameter(
             call.data['system'],
             call.data['parameter'],
             call.data['value'])
 
     async def set_thermostat(call):
-        uplink = hass.data[DATA_NIBE]['uplink']
+        uplink = hass.data[DATA_NIBE].uplink
 
         def scaled(value, multi=10):
             if value is None:
