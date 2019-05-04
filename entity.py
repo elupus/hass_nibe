@@ -92,8 +92,12 @@ class NibeEntity(Entity):
         }
 
     async def async_parameters_updated(self,
+                                       system_id: int,
                                        data: Dict[str, Dict[str, Any]]):
         """Handle updated parameter."""
+        if system_id != self._system_id:
+            return
+
         changed = False
         for key, value in data.items():
             if key in self._parameters:
@@ -108,7 +112,7 @@ class NibeEntity(Entity):
         if changed:
             self.async_schedule_update_ha_state()
 
-    async def async_statuses_updated(self, data):
+    async def async_statuses_updated(self, system_id, data):
         """Handle update of status."""
         pass
 

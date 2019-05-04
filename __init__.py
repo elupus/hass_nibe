@@ -271,10 +271,10 @@ class NibeSystem(object):
         _LOGGER.debug("Statuses: %s", statuses)
 
         self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_PARAMETERS_UPDATED, parameters)
+            SIGNAL_PARAMETERS_UPDATED, self.system_id, parameters)
 
         self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_STATUSES_UPDATED, statuses)
+            SIGNAL_STATUSES_UPDATED, self.system_id, statuses)
 
     async def update_notifications(self):
         """Update notification list."""

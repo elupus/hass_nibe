@@ -267,8 +267,10 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
         await super().async_update()
         self.parse_data()
 
-    async def async_statuses_updated(self, statuses: Set[str]):
+    async def async_statuses_updated(self, system_id: int, statuses: Set[str]):
         """React to statuses updated."""
+        if system_id != self._system_id:
+            return
         self.parse_statuses(statuses)
         self.async_schedule_update_ha_state()
 
