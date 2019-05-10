@@ -97,10 +97,8 @@ class NibeData():
     systems = attr.ib(default=[])
 
 
-async def async_setup_systems(hass, uplink, entry):
+async def async_setup_systems(hass, data, entry):
     """Configure each system."""
-    data = hass.data[DATA_NIBE]
-
     if not len(data.config.get(CONF_SYSTEMS)):
         systems = await data.uplink.get_systems()
         msg = json.dumps(systems, indent=1)
@@ -115,7 +113,7 @@ async def async_setup_systems(hass, uplink, entry):
     systems = {
         config[CONF_SYSTEM]:
             NibeSystem(hass,
-                       uplink,
+                       data.uplink,
                        config[CONF_SYSTEM],
                        config,
                        entry.entry_id)
@@ -123,7 +121,6 @@ async def async_setup_systems(hass, uplink, entry):
     }
 
     data.systems = systems
-    data.uplink = uplink
 
     tasks = [system.load() for system in systems.values()]
 
@@ -181,9 +178,12 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
         scope=scope
     )
 
+    data = hass.data[DATA_NIBE]
+    data.uplink = uplink
+
     await uplink.refresh_access_token()
 
-    await async_setup_systems(hass, uplink, entry)
+    await async_setup_systems(hass, data, entry)
 
     return True
 
