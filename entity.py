@@ -177,7 +177,7 @@ class NibeEntity(Entity):
                 get(parameter_id)
                 for parameter_id, data in self._parameters.items()
                 if timedout(data)
-            ],
+            ]
         )
 
         self.parse_data()
