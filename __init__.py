@@ -12,7 +12,6 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
-from homeassistant.helpers.event import async_track_time_interval
 
 from .config import NibeConfigFlow  # noqa
 from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
