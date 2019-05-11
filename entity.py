@@ -14,6 +14,7 @@ from homeassistant.helpers.entity import Entity
 from .const import DOMAIN as DOMAIN_NIBE
 from .const import (SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED,
                     SIGNAL_STATUSES_UPDATED)
+from .services import async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +92,11 @@ class NibeEntity(Entity):
             'identifiers': {(DOMAIN_NIBE, self._system_id)},
         }
 
+    @property
+    def should_poll(self):
+        """Indicate that we need to poll data."""
+        return False
+
     def parse_data(self):
         """Parse data to update internal variables."""
         pass
@@ -141,6 +147,12 @@ class NibeEntity(Entity):
                     }
                 )
             )
+
+        async def update():
+            await self.async_update()
+            await self.async_update_ha_state()
+
+        async_track_delta_time(self.hass, SCAN_INTERVAL, update)
 
     async def async_update(self):
         """Update of entity."""
@@ -213,11 +225,6 @@ class NibeParameterEntity(NibeEntity):
     def unique_id(self):
         """Return a unique identifier for a this parameter."""
         return "{}_{}".format(self._system_id, self._parameter_id)
-
-    @property
-    def should_poll(self):
-        """Indicate that we need to poll data."""
-        return True
 
     @property
     def device_state_attributes(self):

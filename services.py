@@ -3,6 +3,7 @@ import logging
 
 import voluptuous as vol
 
+from homeassistant.helpers.event import async_call_later
 import homeassistant.helpers.config_validation as cv
 from homeassistant.const import ATTR_NAME, ATTR_TEMPERATURE
 
@@ -11,6 +12,29 @@ from .const import (ATTR_TARGET_TEMPERATURE, ATTR_VALVE_POSITION, DATA_NIBE,
                     SERVICE_SET_THERMOSTAT)
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def async_track_delta_time(hass, delta, callable):
+    """
+    Run callable cyclicly.
+
+    Similar to async_track_time_interval, but where we
+    instead guarantee delta between calls
+    """
+    remove = None
+
+    async def fun(now):
+        try:
+            await callable()
+        finally:
+            nonlocal remove
+            remove = async_call_later(hass, delta, fun)
+
+    def remover():
+        remove()
+
+    remove = async_call_later(hass, delta, fun)
+    return remover
 
 
 async def async_register_services(hass):

@@ -23,7 +23,7 @@ from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
                     CONF_VALVE_POSITION, CONF_WATER_HEATERS, CONF_WRITEACCESS,
                     DATA_NIBE, DOMAIN, SCAN_INTERVAL, CONF_FANS,
                     SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED)
-from .services import async_register_services
+from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -252,11 +252,13 @@ class NibeSystem(object):
             **self._device_info
         )
 
-        await self.update()
-        async_track_time_interval(
-            self.hass,
-            self.update,
-            timedelta(seconds=SCAN_INTERVAL))
+        await self.update_notifications()
+        await self.update_statuses()
+
+        async_track_delta_time(
+            self.hass, SCAN_INTERVAL, self.update_notifications)
+        async_track_delta_time(
+            self.hass, SCAN_INTERVAL, self.update_statuses)
 
     async def update_statuses(self):
         """Update status list."""
@@ -295,8 +297,3 @@ class NibeSystem(object):
                 self.hass,
                 'nibe:{}'.format(x['notificationId'])
             )
-
-    async def update(self, now=None):
-        """Update system state."""
-        await self.update_notifications()
-        await self.update_statuses()
