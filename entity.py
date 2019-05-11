@@ -3,7 +3,6 @@
 import asyncio
 import logging
 from collections import OrderedDict
-from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from homeassistant.components.group import ATTR_ADD_ENTITIES, ATTR_OBJECT_ID
@@ -13,8 +12,8 @@ from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN as DOMAIN_NIBE
 from .const import (SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED,
+                    SIGNAL_PARAMETERS_NEEDED
                     SIGNAL_STATUSES_UPDATED)
-from .services import async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +102,8 @@ class NibeEntity(Entity):
 
     async def async_parameters_updated(self,
                                        system_id: int,
-                                       data: Dict[str, Dict[str, Any]]):
+                                       data: Dict[str, Dict[str, Any]],
+                                       source: str):
         """Handle updated parameter."""
         if system_id != self._system_id:
             return
@@ -111,13 +111,10 @@ class NibeEntity(Entity):
         changed = False
         for key, value in data.items():
             if key in self._parameters:
-                value2 = dict(value)
-                value2['timeout'] = (datetime.now() +
-                                     timedelta(seconds=(SCAN_INTERVAL * 2)))
                 _LOGGER.debug("Data changed for %s %s",
                               self.entity_id, key)
                 changed = True
-                self._parameters[key] = value2
+                self._parameters[key] = value
 
         if changed:
             self.parse_data()
@@ -135,6 +132,9 @@ class NibeEntity(Entity):
         self.hass.helpers.dispatcher.async_dispatcher_connect(
             SIGNAL_STATUSES_UPDATED, self.async_statuses_updated)
 
+        self.hass.helpers.dispatcher.async_dispatcher_send(
+            SIGNAL_PARAMETERS_NEEDED, self._system_id, self._parameters.keys())
+
         for group in self._groups:
             _LOGGER.debug("Adding entity {} to group {}".format(
                 self.entity_id,
@@ -148,24 +148,9 @@ class NibeEntity(Entity):
                 )
             )
 
-        async def update():
-            await self.async_update()
-            await self.async_update_ha_state()
-
-        async_track_delta_time(self.hass, SCAN_INTERVAL, update)
-
     async def async_update(self):
         """Update of entity."""
         _LOGGER.debug("Update %s", self.entity_id)
-
-        def timedout(data):
-            if data:
-                timeout = data.get('timeout')
-                if timeout and datetime.now() < timeout:
-                    _LOGGER.debug("Skipping update for %s %s",
-                                  self.entity_id, data['parameterId'])
-                    return False
-            return True
 
         async def get(parameter_id):
             self._parameters[parameter_id] = await self._uplink.get_parameter(
@@ -176,7 +161,6 @@ class NibeEntity(Entity):
             *[
                 get(parameter_id)
                 for parameter_id, data in self._parameters.items()
-                if timedout(data)
             ],
         )
 

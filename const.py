@@ -39,9 +39,11 @@ SERVICE_SET_SMARTHOME_MODE = 'set_smarthome_mode'
 SERVICE_SET_PARAMETER = 'set_parameter'
 SERVICE_SET_THERMOSTAT = 'set_thermostat'
 
+SIGNAL_PARAMETERS_NEEDED = 'nibe.parameters_needed'
 SIGNAL_PARAMETERS_UPDATED = 'nibe.parameters_updated'
 SIGNAL_STATUSES_UPDATED = 'nibe.statuses_updated'
 
 SCAN_INTERVAL = 60
+SCAN_INTERVAL_PARAMETERS = 10
 
 DEFAULT_THERMOSTAT_TEMPERATURE = 22

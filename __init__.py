@@ -4,6 +4,7 @@ import attr
 import asyncio
 import json
 import logging
+from typing import List, Dict, Any
 from datetime import timedelta
 
 import voluptuous as vol
@@ -12,7 +13,10 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import (
+    async_track_time_interval,
+    async_call_later,
+)
 
 from .config import NibeConfigFlow  # noqa
 from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
@@ -22,7 +26,8 @@ from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
                     CONF_SYSTEMS, CONF_THERMOSTATS, CONF_UNIT, CONF_UNITS,
                     CONF_VALVE_POSITION, CONF_WATER_HEATERS, CONF_WRITEACCESS,
                     DATA_NIBE, DOMAIN, SCAN_INTERVAL, CONF_FANS,
-                    SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED)
+                    SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED,
+                    SIGNAL_PARAMETERS_NEEDED, SCAN_INTERVAL_PARAMETERS)
 from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
@@ -95,6 +100,8 @@ class NibeData():
     config = attr.ib()
     uplink = attr.ib(default=None)
     systems = attr.ib(default=[])
+    monitor = attr.ib(default=None)
+    monitor_stop = attr.ib(default=None)
 
 
 async def async_setup_systems(hass, data, entry):
@@ -129,6 +136,61 @@ async def async_setup_systems(hass, data, entry):
     for platform in FORWARD_PLATFORMS:
         hass.async_add_job(hass.config_entries.async_forward_entry_setup(
             entry, platform))
+
+
+async def async_setup_monitor(hass, data):
+    """Configure the parameter monitor."""
+    from nibeuplink import Monitor
+
+    def updated_parameters_external(system_id: int,
+                                    parameters: Dict[str, Dict[str, Any]],
+                                    source: str):
+        if source == 'monitor':
+            return
+
+        data.monitor.postpone(system_id, parameters)
+
+    def updated_parameter(system_id: int,
+                          parameters: Dict[str, Dict[str, Any]]):
+        hass.helpers.dispatcher.async_dispatcher_send(
+            SIGNAL_PARAMETERS_UPDATED, system_id, parameters, 'monitor')
+
+    def needed_parameters(system_id: int,
+                          parameters: List[str]):
+        """Notification from entities about needing updates."""
+        _LOGGER.debug("Needed parameters for system %s: %s",
+                      system_id,
+                      parameters)
+
+        for parameter in parameters:
+            data.monitor.add(system_id,
+                             parameter)
+
+    data.monitor = Monitor(data.uplink)
+    data.monitor.add_callback(updated_parameter)
+
+    async def run_monitor(timestamp):
+        """
+        Update one set of parameters.
+
+        We run it one by one to guarantee delay between
+        requests. So it won't actually run every interval
+        instead it will have a separation between calls.
+        """
+        try:
+            await data.monitor.run_once()
+        finally:
+            data.monitor_stop = async_call_later(
+                hass, SCAN_INTERVAL_PARAMETERS, run_monitor)
+
+    data.monitor_stop = async_call_later(
+        hass, SCAN_INTERVAL_PARAMETERS, run_monitor)
+
+    hass.helpers.dispatcher.async_dispatcher_connect(
+        SIGNAL_PARAMETERS_NEEDED, needed_parameters)
+
+    hass.helpers.dispatcher.async_dispatcher_connect(
+        SIGNAL_PARAMETERS_UPDATED, updated_parameters_external)
 
 
 async def async_setup(hass, config):
@@ -183,6 +245,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
 
     await uplink.refresh_access_token()
 
+    await async_setup_monitor(hass, data)
     await async_setup_systems(hass, data, entry)
 
     return True
@@ -201,6 +264,10 @@ async def async_unload_entry(hass, entry):
         system.unload()
         for system in data.systems.values()
     ])
+
+    if data.monitor_stop:
+        data.monitor_stop()
+        data.monitor_stop = None
 
     await data.uplink.close()
     data.systems = []
@@ -273,7 +340,7 @@ class NibeSystem(object):
         _LOGGER.debug("Statuses: %s", statuses)
 
         self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_PARAMETERS_UPDATED, self.system_id, parameters)
+            SIGNAL_PARAMETERS_UPDATED, self.system_id, parameters, 'statuses')
 
         self.hass.helpers.dispatcher.async_dispatcher_send(
             SIGNAL_STATUSES_UPDATED, self.system_id, statuses)
