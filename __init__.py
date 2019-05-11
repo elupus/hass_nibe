@@ -4,7 +4,6 @@ import attr
 import asyncio
 import json
 import logging
-from datetime import timedelta
 
 import voluptuous as vol
 
