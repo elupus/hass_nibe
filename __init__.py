@@ -26,9 +26,6 @@ from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
 
-DEPENDENCIES = ['group']
-REQUIREMENTS = ['nibeuplink==0.7.1']
-
 
 def none_as_true(data):
     """Return a none value as a truth."""
