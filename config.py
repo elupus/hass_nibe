@@ -53,7 +53,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
         url = '{}{}'.format(self.hass.config.api.base_url, AUTH_CALLBACK_URL)
 
-        config = self.hass.data[DATA_NIBE]['config']
+        config = self.hass.data[DATA_NIBE].config
 
         return self.async_show_form(
             step_id='user',
