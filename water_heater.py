@@ -15,6 +15,10 @@ from homeassistant.components.water_heater import (ENTITY_ID_FORMAT, STATE_ECO,
 from homeassistant.const import STATE_OFF
 from homeassistant.exceptions import PlatformNotReady
 
+from nibeuplink import (
+    PARAM_HOTWATER_SYSTEMS
+)
+
 from .const import CONF_WATER_HEATERS, DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
@@ -68,8 +72,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     systems = hass.data[DATA_NIBE].systems
 
     entities = []
-
-    from nibeuplink import (PARAM_HOTWATER_SYSTEMS)
 
     async def is_active(system, hwsys):
         if not system.config[CONF_WATER_HEATERS]:

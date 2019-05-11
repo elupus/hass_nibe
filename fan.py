@@ -10,6 +10,12 @@ from homeassistant.components.fan import (
     FanEntity)
 from homeassistant.exceptions import PlatformNotReady
 
+from nibeuplink import (
+    PARAM_VENTILATION_SYSTEMS,
+    VentilationSystem,
+    Uplink
+)
+
 from . import NibeSystem
 from .const import (CONF_FANS, DATA_NIBE, DOMAIN as DOMAIN_NIBE)
 from .entity import NibeEntity
@@ -36,11 +42,6 @@ async def _is_ventilation_active(uplink, system, climate):
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
-    from nibeuplink import (  # noqa
-        PARAM_VENTILATION_SYSTEMS,
-        VentilationSystem,
-        Uplink)
-
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 

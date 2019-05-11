@@ -21,6 +21,14 @@ from homeassistant.helpers.event import (async_track_state_change,
                                          async_track_time_interval)
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from nibeuplink import (
+    PARAM_CLIMATE_SYSTEMS,
+    PARAM_PUMP_SPEED_HEATING_MEDIUM,
+    ClimateSystem,
+    SetThermostatModel,
+    Uplink,
+)
+
 from . import NibeSystem
 from .const import (ATTR_TARGET_TEMPERATURE, ATTR_VALVE_POSITION,
                     CONF_CLIMATE_SYSTEMS, CONF_CLIMATES,
@@ -58,11 +66,6 @@ async def _is_climate_active(uplink, system, climate):
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
-    from nibeuplink import (  # noqa
-        PARAM_CLIMATE_SYSTEMS,
-        ClimateSystem,
-        Uplink)
-
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
@@ -128,8 +131,6 @@ class NibeClimate(NibeEntity, ClimateDevice):
             system_id,
             [])
 
-        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM)
-
         self.get_parameters([
             PARAM_PUMP_SPEED_HEATING_MEDIUM,
         ])
@@ -160,8 +161,6 @@ class NibeClimate(NibeEntity, ClimateDevice):
     @property
     def device_state_attributes(self):
         """Extra state attributes."""
-        from nibeuplink import (PARAM_PUMP_SPEED_HEATING_MEDIUM)
-
         data = OrderedDict()
         data['status'] = self._status
         data['pump_speed_heating_medium'] = \
@@ -679,8 +678,6 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         await self.async_update_ha_state()
 
     async def _async_publish(self, time=None):
-        from nibeuplink import SetThermostatModel
-
         def scaled(value, multi=10):
             if value is None:
                 return None

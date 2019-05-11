@@ -11,6 +11,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
+from nibeuplink import Uplink
 
 from .config import NibeConfigFlow  # noqa
 from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
@@ -149,8 +150,6 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     """Set up an access point from a config entry."""
     _LOGGER.debug("Setup nibe entry")
-
-    from nibeuplink import Uplink
 
     scope = None
     if entry.data.get(CONF_WRITEACCESS):
