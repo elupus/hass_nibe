@@ -27,7 +27,6 @@ CONF_THERMOSTATS = 'thermostats'
 CONF_CURRENT_TEMPERATURE = 'current_temperature'
 CONF_VALVE_POSITION = 'valve_position'
 CONF_CLIMATE_SYSTEMS = 'systems'
-CONF_CODE = 'code'
 CONF_FANS = 'fans'
 
 AUTH_CALLBACK_URL = '/api/nibe/auth'

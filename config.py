@@ -3,14 +3,13 @@
 import logging
 from typing import Dict  # noqa
 import voluptuous as vol
-from aiohttp.web import Request, Response
+from aiohttp.web import Request, Response, HTTPBadRequest
 
-from homeassistant import config_entries
+from homeassistant import config_entries, data_entry_flow
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.const import HTTP_BAD_REQUEST, HTTP_OK
 
 from .const import (AUTH_CALLBACK_NAME, AUTH_CALLBACK_URL, CONF_ACCESS_DATA,
-                    CONF_CLIENT_ID, CONF_CLIENT_SECRET, CONF_CODE,
+                    CONF_CLIENT_ID, CONF_CLIENT_SECRET,
                     CONF_REDIRECT_URI, CONF_UPLINK_APPLICATION_URL,
                     CONF_WRITEACCESS, DATA_NIBE, DOMAIN)
 
@@ -90,28 +89,26 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 errors['base'] = 'code'
             else:
                 self.user_data[CONF_ACCESS_DATA] = self.uplink.access_data
-                return self.async_create_entry(
-                    title="Nibe Uplink",
-                    data=self.user_data)
+                return self.async_external_step_done(next_step_id='finish')
 
         global _view
         if not _view:
-            _view = NibeAuthView(self.hass)
+            _view = NibeAuthView()
             self.hass.http.register_view(_view)
 
         url = self.uplink.get_authorize_url()
         _view.register_flow(self.uplink.state, self.flow_id)
 
-        return self.async_show_form(
+        return self.async_external_step(
             step_id='auth',
-            description_placeholders={
-                'url': url
-            },
-            data_schema=vol.Schema({
-                vol.Required(CONF_CODE): str
-            }),
-            errors=errors
+            url=url,
         )
+
+    async def async_step_finish(self, user_data=None):
+        """Just to finish up the external step."""
+        return self.async_create_entry(
+            title="Nibe Uplink",
+            data=self.user_data)
 
 
 class NibeAuthView(HomeAssistantView):
@@ -122,10 +119,9 @@ class NibeAuthView(HomeAssistantView):
 
     requires_auth = False
 
-    def __init__(self, hass) -> None:
+    def __init__(self) -> None:
         """Initialize instance of the view."""
         super().__init__()
-        self.hass = hass
         self._flows = {}  # type: Dict[str, str]
 
     def register_flow(self, state, flow_id):
@@ -135,26 +131,34 @@ class NibeAuthView(HomeAssistantView):
 
     async def get(self, request: Request) -> Response:
         """Handle oauth token request."""
-        if 'state' not in request.query:
-            _LOGGER.error("State missing in request.")
-            return self.json_message("state missing in url",
-                                     status_code=HTTP_BAD_REQUEST)
-        state = request.query['state']
+        hass = request.app['hass']
 
-        if 'code' not in request.query:
-            _LOGGER.error("State missing in request.")
-            return self.json_message("code missing in url",
-                                     status_code=HTTP_BAD_REQUEST)
-        code = request.query['code']
+        def check_get(param):
+            if param not in request.query:
+                _LOGGER.error("State missing in request.")
+                raise HTTPBadRequest('Parameter {} not found'.format(param))
+            return request.query[param]
 
-        _LOGGER.debug('Received auth request for state %s', state)
+        state = check_get('state')
+        code = check_get('code')
 
         if state not in self._flows:
             _LOGGER.error("State unexpected %s", state)
-            return self.json_message("state unexpected",
-                                     status_code=HTTP_BAD_REQUEST)
+            raise HTTPBadRequest('State can not be translated into flow')
 
-        return self.json_message(message=("Authorization succeeded. "
-                                          "Enter the code in home assistant."),
-                                 message_code=code,
-                                 status_code=HTTP_OK)
+        flow_id = self._flows[state]
+        _LOGGER.debug('Received auth request for flow %s', flow_id)
+
+        try:
+            await hass.config_entries.flow.async_configure(
+                flow_id, {'code': code}
+            )
+
+            return Response(
+                headers={
+                    'content-type': 'text/html'
+                },
+                text="<script>window.close()</script>"
+            )
+        except data_entry_flow.UnknownFlow:
+            raise HTTPBadRequest('Unkown flow')
