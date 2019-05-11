@@ -4,6 +4,7 @@ import attr
 import asyncio
 import json
 import logging
+from typing import List
 
 import voluptuous as vol
 
@@ -89,11 +90,11 @@ class NibeData():
     """Holder for nibe data."""
 
     config = attr.ib()
-    uplink = attr.ib(default=None)
-    systems = attr.ib(default=[])
+    uplink = attr.ib(default=None, type=Uplink)
+    systems = attr.ib(default=[], type=List['NibeSystem'])
 
 
-async def async_setup_systems(hass, data, entry):
+async def async_setup_systems(hass, data: NibeData, entry):
     """Configure each system."""
     if not len(data.config.get(CONF_SYSTEMS)):
         systems = await data.uplink.get_systems()

@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import List
+from typing import List, Dict, Optional
 
 from homeassistant.components.fan import (
     ENTITY_ID_FORMAT,
@@ -72,9 +72,9 @@ class NibeFan(NibeEntity, FanEntity):
     """Nibe Sensor."""
 
     def __init__(self,
-                 uplink,
-                 system_id,
-                 ventilation):
+                 uplink: Uplink,
+                 system_id: int,
+                 ventilation: VentilationSystem):
         """Init."""
         super().__init__(
             uplink,
@@ -139,7 +139,7 @@ class NibeFan(NibeEntity, FanEntity):
         return data
 
     @property
-    def device_state_attributes(self):
+    def device_state_attributes(self) -> Dict[str, Optional[str]]:
         """Return extra state."""
         data = {}
         data['fan_speed'] = \
@@ -157,11 +157,11 @@ class NibeFan(NibeEntity, FanEntity):
         return data
 
     # pylint: disable=arguments-differ
-    async def async_turn_on(self, speed: str = None, **kwargs):
+    async def async_turn_on(self, speed: str = None, **kwargs) -> None:
         """Turn on the fan."""
-        await self.async_set_speed(speed)
+        await self.async_set_speed(speed or SPEED_AUTO)
 
-    async def async_set_speed(self, speed: str):
+    async def async_set_speed(self, speed: str) -> None:
         """Set the speed of the fan."""
         if speed in HA_SPEED_TO_NIBE:
             await self._uplink.put_parameter(
@@ -178,6 +178,6 @@ class NibeFan(NibeEntity, FanEntity):
         return SUPPORT_SET_SPEED
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return a unique identifier for a this parameter."""
         return "{}_{}".format(self._system_id, self._ventilation.fan_speed)
