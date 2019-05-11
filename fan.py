@@ -20,7 +20,6 @@ from . import NibeSystem
 from .const import (CONF_FANS, DATA_NIBE, DOMAIN as DOMAIN_NIBE)
 from .entity import NibeEntity
 
-DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 SPEED_AUTO = 'auto'

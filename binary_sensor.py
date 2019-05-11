@@ -9,7 +9,6 @@ from homeassistant.exceptions import PlatformNotReady
 from .const import CONF_BINARY_SENSORS, DATA_NIBE
 from .entity import NibeParameterEntity
 
-DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 

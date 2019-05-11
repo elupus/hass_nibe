@@ -23,7 +23,6 @@ from .const import CONF_WATER_HEATERS, DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
 
-DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 

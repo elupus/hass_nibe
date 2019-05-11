@@ -15,7 +15,6 @@ from .const import (CONF_CATEGORIES, CONF_SENSORS, CONF_STATUSES, CONF_UNIT,
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
 
-DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 

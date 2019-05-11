@@ -38,7 +38,6 @@ from .const import (ATTR_TARGET_TEMPERATURE, ATTR_VALVE_POSITION,
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
 
-DEPENDENCIES = ['nibe']
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
