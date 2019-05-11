@@ -91,6 +91,10 @@ class NibeEntity(Entity):
             'identifiers': {(DOMAIN_NIBE, self._system_id)},
         }
 
+    def parse_data(self):
+        """Parse data to update internal variables."""
+        pass
+
     async def async_parameters_updated(self,
                                        system_id: int,
                                        data: Dict[str, Dict[str, Any]]):
@@ -110,6 +114,7 @@ class NibeEntity(Entity):
                 self._parameters[key] = value2
 
         if changed:
+            self.parse_data()
             self.async_schedule_update_ha_state()
 
     async def async_statuses_updated(self, system_id, data):
@@ -162,6 +167,8 @@ class NibeEntity(Entity):
                 if timedout(data)
             ],
         )
+
+        self.parse_data()
 
 
 class NibeParameterEntity(NibeEntity):
@@ -256,8 +263,3 @@ class NibeParameterEntity(NibeEntity):
             self._value = data['value']
         else:
             self._value = None
-
-    async def async_update(self):
-        """Fetch new state data for the sensor."""
-        await super().async_update()
-        self.parse_data()

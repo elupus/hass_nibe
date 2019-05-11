@@ -261,17 +261,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
                                  self._hwsys.hot_water_charging,
                                  self._hwsys.hot_water_production)
 
-    async def async_update(self):
-        """Update entity."""
-        _LOGGER.debug("Update water heater {}".format(self.name))
-        await super().async_update()
-        self.parse_data()
-
     async def async_statuses_updated(self, system_id: int, statuses: Set[str]):
         """React to statuses updated."""
         if system_id != self._system_id:
             return
         self.parse_statuses(statuses)
+        self.parse_data()
         self.async_schedule_update_ha_state()
 
     def parse_statuses(self, statuses: Set[str]):
@@ -283,6 +278,8 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     def parse_data(self):
         """Parse data values."""
+        super().parse_data()
+
         mode = self.get_value(self._hwsys.hot_water_comfort_mode)
         if mode in NIBE_STATE_TO_HA:
             self._current_state = NIBE_STATE_TO_HA[mode]['state']

@@ -214,17 +214,12 @@ class NibeClimate(NibeEntity, ClimateDevice):
         finally:
             _LOGGER.debug("Put parameter response {}".format(self._status))
 
-    async def async_update(self):
-        """Update internal state."""
-        _LOGGER.debug("Update climate {}".format(self.name))
-        await super().async_update()
-        self.parse_data()
-
     async def async_statuses_updated(self, system_id: int, statuses: Set[str]):
         """Statuses have been updated."""
         if system_id != self._system_id:
             return
         self.parse_statuses(statuses)
+        self.parse_data()
         self.async_schedule_update_ha_state()
 
     def parse_statuses(self, statuses: Set[str]):
@@ -237,10 +232,6 @@ class NibeClimate(NibeEntity, ClimateDevice):
             self._is_on = True
         else:
             self._is_on = False
-
-    def parse_data(self):
-        """Parse data received."""
-        pass
 
 
 class NibeClimateRoom(NibeClimate):
