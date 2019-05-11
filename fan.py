@@ -163,7 +163,7 @@ class NibeFan(NibeEntity, FanEntity):
 
     async def async_set_speed(self, speed: str) -> None:
         """Set the speed of the fan."""
-        if speed in HA_SPEED_TO_NIBE:
+        if speed in HA_SPEED_TO_NIBE and self._ventilation.ventilation_boost:
             await self._uplink.put_parameter(
                 self._system_id,
                 self._ventilation.ventilation_boost,

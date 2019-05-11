@@ -4,17 +4,23 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union, Optional
 
 from homeassistant.components.group import ATTR_ADD_ENTITIES, ATTR_OBJECT_ID
 from homeassistant.components.group import DOMAIN as DOMAIN_GROUP
 from homeassistant.components.group import SERVICE_SET
 from homeassistant.helpers.entity import Entity
 
+from nibeuplink import Uplink
+
 from .const import DOMAIN as DOMAIN_NIBE
 from .const import (SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED,
                     SIGNAL_STATUSES_UPDATED)
 from .services import async_track_delta_time
+
+ParameterId = Union[str, int]
+Parameter = Dict[str, Any]
+ParameterSet = Dict[ParameterId, Optional[Parameter]]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,57 +34,71 @@ UNIT_ICON = {
 class NibeEntity(Entity):
     """Base class for all nibe sytem entities."""
 
-    def __init__(self, uplink, system_id, groups, parameters=None):
+    def __init__(self,
+                 uplink: Uplink,
+                 system_id: int,
+                 groups: List[str],
+                 parameters: Optional[ParameterSet] = None):
         """Initialize base class."""
         super().__init__()
         self._uplink = uplink
         self._system_id = system_id
         self._groups = groups
         self._device_info = None
-        self._parameters = OrderedDict()
+        self._parameters = OrderedDict()  # type: ParameterSet
         if parameters:
             self._parameters.update(parameters)
 
-    def get_parameters(self, parameter_ids: List[str]):
+    def get_parameters(self, parameter_ids: List[Optional[ParameterId]]):
         """Register a parameter for retrieval."""
         for parameter_id in parameter_ids:
-            if parameter_id not in self._parameters:
+            if parameter_id and parameter_id not in self._parameters:
                 self._parameters[parameter_id] = None
 
-    def get_bool(self, parameter_id):
+    def get_bool(self, parameter_id: Optional[ParameterId]):
         """Get bool parameter."""
+        if not parameter_id:
+            return None
         data = self._parameters[parameter_id]
         if data is None or data['value'] is None:
             return False
         else:
             return bool(data['value'])
 
-    def get_float(self, parameter_id, default=None):
+    def get_float(self, parameter_id: Optional[ParameterId], default=None):
         """Get float parameter."""
+        if not parameter_id:
+            return None
         data = self._parameters[parameter_id]
         if data is None or data['value'] is None:
             return default
         else:
             return float(data['value'])
 
-    def get_value(self, parameter_id, default=None):
+    def get_value(self, parameter_id: Optional[ParameterId], default=None):
         """Get value in display format."""
+        if not parameter_id:
+            return None
         data = self._parameters[parameter_id]
         if data is None or data['value'] is None:
             return default
         else:
             return data['value']
 
-    def get_raw(self, parameter_id, default=None):
+    def get_raw(self, parameter_id: Optional[ParameterId], default=None):
         """Get value in display format."""
+        if not parameter_id:
+            return None
         data = self._parameters[parameter_id]
         if data is None or data['rawValue'] is None:
             return default
         else:
             return data['rawValue']
 
-    def get_scale(self, parameter_id):
+    def get_scale(self, parameter_id: Optional[ParameterId]):
         """Calculate scale of parameter."""
+        if not parameter_id:
+            return None
         data = self._parameters[parameter_id]
         if data is None or data['value'] is None:
             return 1.0
