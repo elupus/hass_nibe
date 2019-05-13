@@ -123,7 +123,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
                  uplink,
                  system_id: int,
                  statuses: Set[str],
-                 climate: ClimateDevice):
+                 climate: ClimateSystem):
         """Init."""
         super(NibeClimate, self).__init__(
             uplink,
@@ -239,7 +239,7 @@ class NibeClimateRoom(NibeClimate):
                  uplink,
                  system_id: int,
                  statuses: Set[str],
-                 climate: ClimateDevice):
+                 climate: ClimateSystem):
         """Init."""
         super().__init__(
             uplink,
@@ -348,7 +348,7 @@ class NibeClimateSupply(NibeClimate):
                  uplink,
                  system_id: int,
                  statuses: Set[str],
-                 climate: ClimateDevice):
+                 climate: ClimateSystem):
         """Init."""
         super().__init__(
             uplink,
