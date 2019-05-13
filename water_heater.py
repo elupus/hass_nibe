@@ -16,7 +16,7 @@ from homeassistant.const import STATE_OFF
 from homeassistant.exceptions import PlatformNotReady
 
 from nibeuplink import (
-    PARAM_HOTWATER_SYSTEMS
+    get_active_hotwater
 )
 
 from .const import CONF_WATER_HEATERS, DATA_NIBE
@@ -72,19 +72,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    async def is_active(system, hwsys):
-        if not system.config[CONF_WATER_HEATERS]:
-            return False
-
-        available = await uplink.get_parameter(
-            system.system_id,
-            hwsys.hot_water_production)
-        if available and available['rawValue'] == 1:
-            return True
-        return False
-
-    async def add_active(system, hwsys):
-        if await is_active(system, hwsys):
+    async def add_active(system):
+        hwsyses = await get_active_hotwater(uplink, system.system_id)
+        for hwsys in hwsyses.values():
             entities.append(
                 NibeWaterHeater(
                     uplink,
@@ -95,9 +85,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
 
     await asyncio.gather(*[
-        add_active(system, hwsys)
-        for hwsys in PARAM_HOTWATER_SYSTEMS.values()
+        add_active(system)
         for system in systems.values()
+        if system.config[CONF_WATER_HEATERS]
     ])
 
     async_add_entities(entities, True)
