@@ -14,7 +14,7 @@ from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
 from nibeuplink import Uplink
 
-from .config import NibeConfigFlow  # noqa
+from .config_flow import NibeConfigFlow  # noqa
 from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
                     CONF_CLIENT_ID, CONF_CLIENT_SECRET, CONF_CLIMATE_SYSTEMS,
                     CONF_CLIMATES, CONF_CURRENT_TEMPERATURE, CONF_REDIRECT_URI,
@@ -132,8 +132,15 @@ async def async_setup(hass, config):
     """Configure the nibe uplink component."""
     hass.data[DATA_NIBE] = NibeData(config[DOMAIN])
 
-    """Monkey patch hass to get detected"""
-    config_entries.FLOWS.append(DOMAIN)
+    """Monkey patch hass to get detected."""
+    try:
+        config_entries.FLOWS.append(DOMAIN)
+    except AttributeError:
+        try:
+            from homeassistant.generated import config_flows
+            config_flows.FLOWS.append(DOMAIN)
+        except AttributeError:
+            _LOGGER.warning("Unable to extend config flow list.")
 
     await async_register_services(hass)
     return True

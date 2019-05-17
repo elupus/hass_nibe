@@ -11,7 +11,7 @@ from homeassistant.components.fan import (
 from homeassistant.exceptions import PlatformNotReady
 
 from nibeuplink import (
-    PARAM_VENTILATION_SYSTEMS,
+    get_active_ventilation,
     VentilationSystem,
     Uplink
 )
@@ -32,13 +32,6 @@ NIBE_BOOST_TO_SPEED = {
 HA_SPEED_TO_NIBE = {v: k for k, v in NIBE_BOOST_TO_SPEED.items()}
 
 
-async def _is_ventilation_active(uplink, system, climate):
-    if not system.config[CONF_FANS]:
-        return False
-
-    return True
-
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
     if DATA_NIBE not in hass.data:
@@ -50,7 +43,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = []
 
     async def add_active(system: NibeSystem, ventilation: VentilationSystem):
-        if await _is_ventilation_active(uplink, system, ventilation):
+        ventilations = await get_active_ventilation(uplink, system.system_id)
+        for ventilation in ventilations.values():
             entities.append(
                 NibeFan(
                     uplink,
@@ -60,9 +54,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
 
     await asyncio.gather(*[
-        add_active(system, ventilation)
-        for ventilation in PARAM_VENTILATION_SYSTEMS.values()
+        add_active(system)
         for system in systems.values()
+        if system.config[CONF_FANS]
     ])
 
     async_add_entities(entities, True)

@@ -22,11 +22,11 @@ from homeassistant.helpers.event import (async_track_state_change,
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from nibeuplink import (
-    PARAM_CLIMATE_SYSTEMS,
     PARAM_PUMP_SPEED_HEATING_MEDIUM,
     ClimateSystem,
     SetThermostatModel,
     Uplink,
+    get_active_climate
 )
 
 from . import NibeSystem
@@ -42,27 +42,6 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
-async def _is_climate_active(uplink, system, climate):
-    if not system.config[CONF_CLIMATES]:
-        return False
-
-    if climate.active_accessory is None:
-        return True
-
-    active_accessory = await uplink.get_parameter(
-        system.system_id,
-        climate.active_accessory)
-
-    _LOGGER.debug("Accessory status for {} is {}".format(
-        climate.name,
-        active_accessory))
-
-    if active_accessory and active_accessory['rawValue']:
-        return True
-
-    return False
-
-
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up the climate device based on a config entry."""
     if DATA_NIBE not in hass.data:
@@ -73,8 +52,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    async def add_active(system: NibeSystem, climate: ClimateSystem):
-        if await _is_climate_active(uplink, system, climate):
+    async def add_active(system: NibeSystem):
+        climates = await get_active_climate(uplink, system.system_id)
+        for climate in climates.values():
             entities.append(
                 NibeClimateSupply(
                     uplink,
@@ -108,9 +88,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
 
     await asyncio.gather(*[
-        add_active(system, climate)
-        for climate in PARAM_CLIMATE_SYSTEMS.values()
+        add_active(system)
         for system in systems.values()
+        if system.config[CONF_CLIMATES]
     ])
 
     async_add_entities(entities, True)
@@ -123,7 +103,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
                  uplink,
                  system_id: int,
                  statuses: Set[str],
-                 climate: ClimateDevice):
+                 climate: ClimateSystem):
         """Init."""
         super(NibeClimate, self).__init__(
             uplink,
@@ -239,7 +219,7 @@ class NibeClimateRoom(NibeClimate):
                  uplink,
                  system_id: int,
                  statuses: Set[str],
-                 climate: ClimateDevice):
+                 climate: ClimateSystem):
         """Init."""
         super().__init__(
             uplink,
@@ -348,7 +328,7 @@ class NibeClimateSupply(NibeClimate):
                  uplink,
                  system_id: int,
                  statuses: Set[str],
-                 climate: ClimateDevice):
+                 climate: ClimateSystem):
         """Init."""
         super().__init__(
             uplink,
