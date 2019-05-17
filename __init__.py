@@ -14,7 +14,7 @@ from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
 from nibeuplink import Uplink
 
-from .config import NibeConfigFlow  # noqa
+from .config_flow import NibeConfigFlow  # noqa
 from .const import (CONF_ACCESS_DATA, CONF_BINARY_SENSORS, CONF_CATEGORIES,
                     CONF_CLIENT_ID, CONF_CLIENT_SECRET, CONF_CLIMATE_SYSTEMS,
                     CONF_CLIMATES, CONF_CURRENT_TEMPERATURE, CONF_REDIRECT_URI,
