@@ -11,7 +11,7 @@ from homeassistant.components.fan import (
 from homeassistant.exceptions import PlatformNotReady
 
 from nibeuplink import (
-    get_active_ventilation,
+    get_active_ventilations,
     VentilationSystem,
     Uplink
 )
@@ -42,8 +42,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    async def add_active(system: NibeSystem, ventilation: VentilationSystem):
-        ventilations = await get_active_ventilation(uplink, system.system_id)
+    async def add_active(system: NibeSystem):
+        ventilations = await get_active_ventilations(uplink, system.system_id)
         for ventilation in ventilations.values():
             entities.append(
                 NibeFan(
