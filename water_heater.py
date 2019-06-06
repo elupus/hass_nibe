@@ -58,7 +58,6 @@ NIBE_BOOST_TO_OPERATION = {
     4: OPERATION_BOOST_ONE_TIME
 }
 
-HA_STATE_TO_NIBE = {v['state']: k for k, v in NIBE_STATE_TO_HA.items()}
 HA_BOOST_TO_NIBE = {v: k for k, v in NIBE_BOOST_TO_OPERATION.items()}
 
 
@@ -197,12 +196,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     def get_float_operation(self, name):
         """Return a float based on operation mode."""
-        if self._current_operation in HA_BOOST_TO_NIBE:
-            state = HA_STATE_TO_NIBE.get(STATE_HIGH_DEMAND)
+        if self._current_operation == OPERATION_AUTO:
+            mode = self.get_value(self._hwsys.hot_water_comfort_mode)
         else:
-            state = HA_STATE_TO_NIBE.get(self._current_operation)
-        if state:
-            return self.get_float_named(NIBE_STATE_TO_HA[state][name])
+            mode = 'luxuary'
+        if mode in NIBE_STATE_TO_HA:
+            return self.get_float_named(NIBE_STATE_TO_HA[mode][name])
         else:
             return None
 
@@ -224,17 +223,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
     async def async_set_operation_mode(self, operation_mode):
         """Set new target operation mode."""
         try:
-            if operation_mode in HA_STATE_TO_NIBE:
-                await self._uplink.put_parameter(
-                    self._system_id,
-                    self._hwsys.hot_water_boost,
-                    0)
-
-                await self._uplink.put_parameter(
-                    self._system_id,
-                    self._hwsys.hot_water_comfort_mode,
-                    HA_STATE_TO_NIBE[operation_mode])
-            elif operation_mode in HA_BOOST_TO_NIBE:
+            if operation_mode in HA_BOOST_TO_NIBE:
                 await self._uplink.put_parameter(
                     self._system_id,
                     self._hwsys.hot_water_boost,
