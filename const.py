@@ -36,6 +36,7 @@ CONF_UPLINK_APPLICATION_URL = 'https://api.nibeuplink.com/Applications'
 
 SERVICE_SET_SMARTHOME_MODE = 'set_smarthome_mode'
 SERVICE_SET_PARAMETER = 'set_parameter'
+SERVICE_GET_PARAMETER = 'get_parameter'
 SERVICE_SET_THERMOSTAT = 'set_thermostat'
 
 SIGNAL_PARAMETERS_UPDATED = 'nibe.parameters_updated'

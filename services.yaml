@@ -9,6 +9,11 @@ set_parameter:
     system: {description: System identifcation to send command to., example: "12345"}
     parameter: {description: "Parameter to set.", example: "hot_water_boost"}
     value: {description: "Value to set", example: "1"}
+get_parameter:
+  description: Get a nibe uplink parameter and display a notification.
+  fields:
+    system: {description: System identifcation to send command to., example: "12345"}
+    parameter: {description: "Parameter to get.", example: "hot_water_boost"}
 set_thermostat:
   description: Set a nibe uplink smart home thermostat, must be called once every 30 minutes.
   fields:

@@ -1,5 +1,6 @@
 """Services for nibe uplink."""
 import logging
+import json
 
 import voluptuous as vol
 
@@ -9,7 +10,7 @@ from homeassistant.const import ATTR_NAME, ATTR_TEMPERATURE
 
 from .const import (ATTR_TARGET_TEMPERATURE, ATTR_VALVE_POSITION, DATA_NIBE,
                     DOMAIN, SERVICE_SET_PARAMETER, SERVICE_SET_SMARTHOME_MODE,
-                    SERVICE_SET_THERMOSTAT)
+                    SERVICE_SET_THERMOSTAT, SERVICE_GET_PARAMETER)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,6 +67,17 @@ async def async_register_services(hass):
             call.data['parameter'],
             call.data['value'])
 
+    async def get_parameter(call):
+        uplink = hass.data[DATA_NIBE].uplink
+        data = await uplink.get_parameter(
+            call.data['system'],
+            call.data['parameter'])
+
+        hass.components.persistent_notification.async_create(
+                    json.dumps(data, indent=1),
+                    "Nibe get parameter result"
+                )
+
     async def set_thermostat(call):
         uplink = hass.data[DATA_NIBE].uplink
 
@@ -100,6 +112,11 @@ async def async_register_services(hass):
         vol.Required('value'): cv.string
     })
 
+    SERVICE_GET_PARAMETER_SCHEMA = vol.Schema({
+        vol.Required('system'): cv.positive_int,
+        vol.Required('parameter'): cv.string,
+    })
+
     SERVICE_SET_THERMOSTAT_SCHEMA = vol.Schema({
         vol.Required('system'): cv.positive_int,
         vol.Required('id'): cv.positive_int,
@@ -125,6 +142,12 @@ async def async_register_services(hass):
         SERVICE_SET_PARAMETER,
         set_parameter,
         SERVICE_SET_PARAMETER_SCHEMA)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_PARAMETER,
+        get_parameter,
+        SERVICE_GET_PARAMETER_SCHEMA)
 
     hass.services.async_register(
         DOMAIN,
