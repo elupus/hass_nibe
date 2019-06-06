@@ -30,7 +30,7 @@ def async_track_delta_time(hass, delta, callable):
 
     async def fun(now):
         nonlocal remove
-        remove = skip()
+        remove = skip
 
         try:
             await callable()
