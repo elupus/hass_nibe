@@ -106,9 +106,15 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
     async def async_step_finish(self, user_data=None):
         """Just to finish up the external step."""
-        return self.async_create_entry(
-            title="Nibe Uplink",
-            data=self.user_data)
+        if user_data is not None:
+            return self.async_create_entry(
+                title="Nibe Uplink",
+                data=self.user_data)
+
+        return self.async_show_form(
+            step_id='finish',
+            data_schema=vol.Schema({})
+        )
 
 
 class NibeAuthView(HomeAssistantView):

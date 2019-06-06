@@ -14,10 +14,14 @@
             },
             "auth": {
                 "title": "Authorize home assistant for nibe",
-                "description": "Please navigate to nibe uplinks authorization page [Authorize]({url}). When completed, please return here and enter the code you received",
+                "description": "Please navigate to nibe uplinks authorization page to authorize home aassistant",
                 "data": {
                     "code": "Code included in redirect uri"
                 }
+            },
+            "finish": {
+                "title": "Authorization successful",
+                "description": "Authorization was successfull! Entities will now be added."
             }
         },
         "error": {

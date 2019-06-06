@@ -20,7 +20,8 @@
                 }
             },
             "finish": {
-                "title": "Finish authorization"
+                "title": "Authorization successful",
+                "description": "Authorization was successfull! Entities will now be added."
             }
         },
         "error": {
