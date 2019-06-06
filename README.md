@@ -5,8 +5,8 @@ Preparation
 ------------
 
   * Register an nibe uplink application on: https://api.nibeuplink.com/
-  * Set the redirect url to match `<http or https>://<your_home_assistant_url_or_local_ip>:<port>/api/nibe/auth`
-  * Take note of the **Identifer** (client_id) and the **Secret**
+  * Set the redirect url to match `<http or https>://<your_home_assistant_url_or_local_ip>:<port>/api/nibe/auth`. This is your **Callback url**
+  * Take note of the **Callback url**, **Identifer** (client_id) and the **Secret**
 
 Installation
 ------------
@@ -21,35 +21,34 @@ git clone https://github.com/elupus/hass_nibe.git nibe
 ```
 
   If you are using Windows:
-  * Download the zip file and extract the folder inside to your custom_components folder.
-  * Rename the folder "hass_nibe-master" to "nibe".
-    * *All files, including the .translation folder, should be inside the "nibe" catalog under the custom_components folder.*
-  <img src="/docs/nibe_files_windows.png" alt="Windows folder" />
+  1. Download the zip file and extract the folder inside to your custom_components folder.
+  2. Rename the folder "hass_nibe-master" to "nibe".
+
+     All files, including the .translation folder, should be inside the "nibe" catalog under the custom_components folder.
+     <img src="/docs/nibe_files_windows.png" alt="Windows folder" />
 
 
-  * Add an empty nibe configuration block to your `<config dir>/configuration.yaml`
+  3. Add an empty nibe configuration block to your `<config dir>/configuration.yaml`
 ```yaml
 nibe:
 ```
-  * Restart your Home Assistant
-    * *A notification error message should appear in Home Assistant after the first restart. This contains your system identifier info which is needed later for [Configuration](README.md#configuration)*
+  4. Go to the Integrations page located in Home Assistants Configuration dashboard.
+     <img src="/docs/integrations.png" alt="Integrations page" />
 
-  * Go to the Integrations page located in Home Assistants Configuration dashboard
-  * Scroll all the way down (custom components end up last in the list)
-  <img src="/docs/integrations.png" alt="Integrations page" />
+  5. Click the Nibe Uplink configure button enter data gathered when you registered on nibe uplink homepage.
+     <img src="/docs/nibe_config.png" alt="Configure uplink parameters" />
+     * **Callback url**
+     * **Identifer**: This is your (client_id)
+     * **Secret**
+     * **Write Access**: If you are going to be running smart home thermostants or control boost modes from home assistant this must be enabled.
 
-  * Click the Nibe Uplink configure button
-  * Enter your **Callback url**, your **Identifer** (client_id) and the **Secret**
-  <img src="/docs/nibe_config.png" alt="Configure uplink parameters" />
+  6. The configurator will open a new window/tab directed at nibeuplinks home page. After logging in and
+     accepting access for this client id, the window will close and you will be back in home assistant.
 
-  * The configurator should send you to a authorization page that has generated a long access token.
-  * Copy the long **code segment** and go back to your other window or tab containing the Nibe configurator.
-  * Paste the long code into the field that is displayed, click Submit.
-  <img src="/docs/nibe_authorize.png" alt="Authorize home assistant for nibe" />
+     The system should now have access to the Nibe Uplink API. If you had not specified a system identifer already and error notifification will be added which contains the systems available to you. Take note of the **SystemId** and use to
+     extend your configuration. 
 
-  The system should now have access to the Nibe Uplink API.
-
-  * Add some more info to your [Configuration](README.md#configuration)
+  7. Add some more info to your [Configuration](README.md#configuration)
 ```yaml
   nibe:
       systems:
@@ -59,9 +58,9 @@ nibe:
             climates: True
             water_heaters: True
 ```
-  * Restart your Home assistant again
-    * *The integration page should then display all available entities.* 
-  <img src="/docs/nibe_integration.png" alt="Integration page example" />
+  5. Restart your Home assistant to make changes take effect.
+    The integration page should then display all available entities.
+    <img src="/docs/nibe_integration.png" alt="Integration page example" />
 
 Configuration
 -------------
