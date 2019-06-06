@@ -46,6 +46,7 @@ class NibeEntity(Entity):
         self._groups = groups
         self._device_info = None
         self._parameters = OrderedDict()  # type: ParameterSet
+        self._unsub = []
         if parameters:
             self._parameters.update(parameters)
 
@@ -147,13 +148,22 @@ class NibeEntity(Entity):
         """Handle update of status."""
         pass
 
+    async def async_will_remove_from_hass(self):
+        for unsub in reversed(self._unsub):
+            unsub()
+        self._unsub = None
+
     async def async_added_to_hass(self):
         """Once registed add this entity to member groups."""
-        self.hass.helpers.dispatcher.async_dispatcher_connect(
-            SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated)
+        self._unsub.append(
+            self.hass.helpers.dispatcher.async_dispatcher_connect(
+                SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated)
+        )
 
-        self.hass.helpers.dispatcher.async_dispatcher_connect(
-            SIGNAL_STATUSES_UPDATED, self.async_statuses_updated)
+        self._unsub.append(
+            self.hass.helpers.dispatcher.async_dispatcher_connect(
+                SIGNAL_STATUSES_UPDATED, self.async_statuses_updated)
+        )
 
         for group in self._groups:
             _LOGGER.debug("Adding entity {} to group {}".format(
@@ -172,7 +182,11 @@ class NibeEntity(Entity):
             await self.async_update()
             await self.async_update_ha_state()
 
-        async_track_delta_time(self.hass, SCAN_INTERVAL, update)
+        self._unsub.append(
+            async_track_delta_time(
+                self.hass,
+                SCAN_INTERVAL,
+                update))
 
     async def async_update(self):
         """Update of entity."""

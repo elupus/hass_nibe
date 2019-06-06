@@ -216,6 +216,7 @@ class NibeSystem(object):
         self.notice = []
         self.statuses = set()
         self._device_info = {}
+        self._unsub = []
 
     @property
     def device_info(self):
@@ -224,7 +225,9 @@ class NibeSystem(object):
 
     async def unload(self):
         """Unload system."""
-        pass
+        for unsub in reversed(self._unsub):
+            unsub()
+        self._unsub = []
 
     async def load(self):
         """Load system."""
@@ -248,10 +251,16 @@ class NibeSystem(object):
         await self.update_notifications()
         await self.update_statuses()
 
-        async_track_delta_time(
-            self.hass, SCAN_INTERVAL, self.update_notifications)
-        async_track_delta_time(
-            self.hass, SCAN_INTERVAL, self.update_statuses)
+        self._unsub.append(
+            async_track_delta_time(
+                self.hass,
+                SCAN_INTERVAL,
+                self.update_notifications))
+        self._unsub.append(
+            async_track_delta_time(
+                self.hass,
+                SCAN_INTERVAL,
+                self.update_statuses))
 
     async def update_statuses(self):
         """Update status list."""
