@@ -22,13 +22,21 @@ def async_track_delta_time(hass, delta, callable):
     instead guarantee delta between calls
     """
     remove = None
+    skipped = False
+
+    def skip():
+        nonlocal skipped
+        skipped = True
 
     async def fun(now):
+        nonlocal remove
+        remove = skip()
+
         try:
             await callable()
         finally:
-            nonlocal remove
-            remove = async_call_later(hass, delta, fun)
+            if not skipped:
+                remove = async_call_later(hass, delta, fun)
 
     def remover():
         remove()
