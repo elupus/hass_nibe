@@ -472,7 +472,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         self._system_id = system_id
         self._external_id = external_id
         self._hvac_mode = HVAC_MODE_OFF
-        self._hvac_modes = [HVAC_MODE_OFF, HVAC_MODE_HEAT_COOL]
+        self._hvac_modes = [HVAC_MODE_OFF, HVAC_MODE_HEAT_COOL, HVAC_MODE_AUTO]
         self._hvac_action = CURRENT_HVAC_IDLE
         self._current_temperature_id = current_temperature_id
         self._current_temperature = None
@@ -627,12 +627,12 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             self._current_temperature = None
             _LOGGER.error("Unable to update from sensor: %s", ex)
 
-    async def async_set_operation_mode(self, operation_mode):
+    async def async_set_hvac_mode(self, hvac_mode):
         """Set operation mode."""
-        if operation_mode in self._operation_list:
-            self._current_operation = operation_mode
+        if hvac_mode in self._hvac_modes:
+            self._hvac_mode = hvac_mode
         else:
-            _LOGGER.error("Unrecognized operation mode: %s", operation_mode)
+            _LOGGER.error("Unrecognized hvac mode: %s", hvac_mode)
             return
         await self._async_publish_update()
 
