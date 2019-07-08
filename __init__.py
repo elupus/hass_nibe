@@ -131,17 +131,6 @@ async def async_setup_systems(hass, data: NibeData, entry):
 async def async_setup(hass, config):
     """Configure the nibe uplink component."""
     hass.data[DATA_NIBE] = NibeData(config[DOMAIN])
-
-    """Monkey patch hass to get detected."""
-    try:
-        config_entries.FLOWS.append(DOMAIN)
-    except AttributeError:
-        try:
-            from homeassistant.generated import config_flows
-            config_flows.FLOWS.append(DOMAIN)
-        except AttributeError:
-            _LOGGER.warning("Unable to extend config flow list.")
-
     await async_register_services(hass)
     return True
 
