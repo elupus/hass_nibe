@@ -119,6 +119,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
         self._climate = climate
         self._status = 'DONE'
         self._hvac_action = CURRENT_HVAC_IDLE
+        self._hvac_action_last = CURRENT_HVAC_HEAT
         self._hvac_mode = HVAC_MODE_HEAT_COOL
         self._hvac_modes = [HVAC_MODE_HEAT_COOL]
         self.parse_statuses(statuses)
@@ -146,6 +147,7 @@ class NibeClimate(NibeEntity, ClimateDevice):
         """Extra state attributes."""
         data = OrderedDict()
         data['status'] = self._status
+        data['hvac_action_last'] = self._hvac_action_last
         data['pump_speed_heating_medium'] = \
             self.get_float(PARAM_PUMP_SPEED_HEATING_MEDIUM)
 
@@ -205,8 +207,10 @@ class NibeClimate(NibeEntity, ClimateDevice):
         """Parse status list."""
         if 'Heating' in statuses:
             self._hvac_action = CURRENT_HVAC_HEAT
+            self._hvac_action_last = self._hvac_action
         elif 'Cooling' in statuses:
             self._hvac_action = CURRENT_HVAC_COOL
+            self._hvac_action_last = self._hvac_action
         else:
             self._hvac_action = CURRENT_HVAC_IDLE
 
@@ -314,7 +318,7 @@ class NibeClimateRoom(NibeClimate):
         """Parse data."""
         super().parse_data()
 
-        if self._hvac_action == CURRENT_HVAC_HEAT:
+        if self._hvac_action_last == CURRENT_HVAC_HEAT:
             self._target_id = self._climate.room_setpoint_heat
         else:
             self._target_id = self._climate.room_setpoint_cool
@@ -443,7 +447,7 @@ class NibeClimateSupply(NibeClimate):
         """Parse data."""
         super().parse_data()
 
-        if self._hvac_action == CURRENT_HVAC_HEAT:
+        if self._hvac_action_last == CURRENT_HVAC_HEAT:
             self._target_id = self._climate.calc_supply_temp_heat
             self._adjust_id = self._climate.offset_heat
         else:
