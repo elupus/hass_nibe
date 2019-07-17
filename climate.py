@@ -162,10 +162,8 @@ class NibeClimate(NibeEntity, ClimateDevice):
     @property
     def supported_features(self):
         """Supported features."""
-        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            return SUPPORT_TARGET_TEMPERATURE_RANGE
-        else:
-            return SUPPORT_TARGET_TEMPERATURE
+        return (SUPPORT_TARGET_TEMPERATURE_RANGE |
+                SUPPORT_TARGET_TEMPERATURE)
 
     @property
     def hvac_action(self):
