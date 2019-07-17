@@ -7,14 +7,20 @@ from datetime import timedelta
 from typing import List, Set
 
 from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateDevice
-from homeassistant.components.climate.const import (ATTR_HVAC_MODE,
-                                                    CURRENT_HVAC_HEAT,
-                                                    CURRENT_HVAC_COOL,
-                                                    CURRENT_HVAC_IDLE,
-                                                    HVAC_MODE_AUTO,
-                                                    HVAC_MODE_OFF,
-                                                    HVAC_MODE_HEAT_COOL,
-                                                    SUPPORT_TARGET_TEMPERATURE)
+from homeassistant.components.climate.const import (
+    ATTR_HVAC_MODE,
+    ATTR_TARGET_TEMP_LOW,
+    ATTR_TARGET_TEMP_HIGH,
+    CURRENT_HVAC_HEAT,
+    CURRENT_HVAC_COOL,
+    CURRENT_HVAC_IDLE,
+    HVAC_MODE_AUTO,
+    HVAC_MODE_OFF,
+    HVAC_MODE_HEAT_COOL,
+    HVAC_MODE_HEAT,
+    HVAC_MODE_COOL,
+    SUPPORT_TARGET_TEMPERATURE,
+    SUPPORT_TARGET_TEMPERATURE_RANGE)
 from homeassistant.const import (ATTR_TEMPERATURE, CONF_NAME,
                                  STATE_UNAVAILABLE, STATE_UNKNOWN,
                                  TEMP_CELSIUS)
@@ -119,9 +125,10 @@ class NibeClimate(NibeEntity, ClimateDevice):
         self._climate = climate
         self._status = 'DONE'
         self._hvac_action = CURRENT_HVAC_IDLE
-        self._hvac_action_last = CURRENT_HVAC_HEAT
-        self._hvac_mode = HVAC_MODE_HEAT_COOL
-        self._hvac_modes = [HVAC_MODE_HEAT_COOL]
+        self._hvac_mode = HVAC_MODE_HEAT
+        self._hvac_modes = [HVAC_MODE_HEAT_COOL,
+                            HVAC_MODE_HEAT,
+                            HVAC_MODE_COOL]
         self.parse_statuses(statuses)
 
     @property
@@ -147,7 +154,6 @@ class NibeClimate(NibeEntity, ClimateDevice):
         """Extra state attributes."""
         data = OrderedDict()
         data['status'] = self._status
-        data['hvac_action_last'] = self._hvac_action_last
         data['pump_speed_heating_medium'] = \
             self.get_float(PARAM_PUMP_SPEED_HEATING_MEDIUM)
 
@@ -156,7 +162,10 @@ class NibeClimate(NibeEntity, ClimateDevice):
     @property
     def supported_features(self):
         """Supported features."""
-        return SUPPORT_TARGET_TEMPERATURE
+        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            return SUPPORT_TARGET_TEMPERATURE_RANGE
+        else:
+            return SUPPORT_TARGET_TEMPERATURE
 
     @property
     def hvac_action(self):
@@ -178,6 +187,15 @@ class NibeClimate(NibeEntity, ClimateDevice):
         """Return unique identifier."""
         return "{}_{}".format(self._system_id,
                               self._climate.name)
+
+    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set new target hvac mode.
+
+        This method must be run in the event loop and returns a coroutine.
+        """
+        if hvac_mode in self._hvac_modes:
+            self._hvac_mode = hvac_mode
+            await self.async_update_ha_state()
 
     async def async_set_temperature_internal(self, parameter, data):
         """Set temperature."""
@@ -207,10 +225,8 @@ class NibeClimate(NibeEntity, ClimateDevice):
         """Parse status list."""
         if 'Heating' in statuses:
             self._hvac_action = CURRENT_HVAC_HEAT
-            self._hvac_action_last = self._hvac_action
         elif 'Cooling' in statuses:
             self._hvac_action = CURRENT_HVAC_COOL
-            self._hvac_action_last = self._hvac_action
         else:
             self._hvac_action = CURRENT_HVAC_IDLE
 
@@ -230,7 +246,6 @@ class NibeClimateRoom(NibeClimate):
             statuses,
             climate
         )
-        self._target_id = None
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             '{}_{}_{}_room'.format(
@@ -288,7 +303,28 @@ class NibeClimateRoom(NibeClimate):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        return self.get_float(self._target_id)
+        if self._hvac_mode == HVAC_MODE_HEAT:
+            return self.get_float(self._climate.room_setpoint_heat)
+        elif self._hvac_mode == HVAC_MODE_COOL:
+            return self.get_float(self._climate.room_setpoint_cool)
+        else:
+            return None
+
+    @property
+    def target_temperature_low(self):
+        """Return target temperature."""
+        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            return self.get_float(self._climate.room_setpoint_heat)
+        else:
+            return None
+
+    @property
+    def target_temperature_high(self):
+        """Return target temperature."""
+        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            return self.get_float(self._climate.room_setpoint_cool)
+        else:
+            return None
 
     @property
     def target_temperature_step(self):
@@ -297,31 +333,20 @@ class NibeClimateRoom(NibeClimate):
 
     async def async_set_temperature(self, **kwargs):
         """Set temperature."""
-        data = kwargs.get(ATTR_TEMPERATURE)
-        if data is None:
-            return
+        if ATTR_TARGET_TEMP_HIGH in kwargs:
+            await self.async_set_temperature_internal(
+                self._climate.room_setpoint_cool,
+                kwargs[ATTR_TARGET_TEMP_HIGH])
 
-        await self.async_set_temperature_internal(self._target_id, data)
+        if ATTR_TARGET_TEMP_LOW in kwargs:
+            await self.async_set_temperature_internal(
+                self._climate.room_setpoint_heat,
+                kwargs[ATTR_TARGET_TEMP_LOW])
 
-    @property
-    def device_state_attributes(self):
-        """Return extra state."""
-        data = super().device_state_attributes
-        data['room_temp'] = \
-            self.get_float(self._climate.room_temp)
-        data['room_setpoint_heat'] = \
-            self.get_float(self._climate.room_setpoint_heat)
-        data['room_setpoint_cool'] = \
-            self.get_float(self._climate.room_setpoint_cool)
-
-    def parse_data(self):
-        """Parse data."""
-        super().parse_data()
-
-        if self._hvac_action_last == CURRENT_HVAC_HEAT:
-            self._target_id = self._climate.room_setpoint_heat
-        else:
-            self._target_id = self._climate.room_setpoint_cool
+        if ATTR_TARGET_TEMPERATURE in kwargs:
+            await self.async_set_temperature_internal(
+                self._climate.room_setpoint_heat,
+                kwargs[ATTR_TARGET_TEMPERATURE])
 
 
 class NibeClimateSupply(NibeClimate):
@@ -339,8 +364,6 @@ class NibeClimateSupply(NibeClimate):
             statuses,
             climate
         )
-        self._adjust_id = None
-        self._target_id = None
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             '{}_{}_{}_supply'.format(
@@ -383,20 +406,15 @@ class NibeClimateSupply(NibeClimate):
         """Return unique id of entity."""
         return "{}_{}".format(super().unique_id, "supply")
 
-    def get_target_base(self):
-        """Return temperature."""
-        return (self.get_float(self._target_id, 0) -
-                self.get_float(self._adjust_id, 0))
-
     @property
     def max_temp(self):
-        """Maximum selectable temperature."""
-        return self.get_target_base() + 10.0
+        """Return maximium selectable temperature."""
+        return 50.0
 
     @property
     def min_temp(self):
-        """Minimum selectable temperature."""
-        return self.get_target_base() - 10.0
+        """Return minimum selectable temperature."""
+        return 5.0
 
     @property
     def current_temperature(self):
@@ -406,7 +424,28 @@ class NibeClimateSupply(NibeClimate):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        return self.get_float(self._target_id)
+        if self._hvac_mode == HVAC_MODE_HEAT:
+            return self.get_float(self._climate.calc_supply_temp_heat)
+        elif self._hvac_mode == HVAC_MODE_COOL:
+            return self.get_float(self._climate.calc_supply_temp_cool)
+        else:
+            return None
+
+    @property
+    def target_temperature_low(self):
+        """Return target temperature."""
+        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            return self.get_float(self._climate.calc_supply_temp_heat)
+        else:
+            return None
+
+    @property
+    def target_temperature_high(self):
+        """Return target temperature."""
+        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
+            return self.get_float(self._climate.calc_supply_temp_cool)
+        else:
+            return None
 
     @property
     def target_temperature_step(self):
@@ -415,25 +454,46 @@ class NibeClimateSupply(NibeClimate):
 
     async def async_set_temperature(self, **kwargs):
         """Set current temperature."""
-        data = kwargs.get(ATTR_TEMPERATURE)
-        if data is None:
-            return
-        # calculate what offset was used to calculate the target
-        base = self.get_target_base()
-        data = data - base
+        async def set_temperature(calc_id, offset_id, value):
+            # calculate what offset was used to calculate the target
+            base = (self.get_float(calc_id, 0) -
+                    self.get_float(offset_id, 0))
+            await self.async_set_temperature_internal(
+                offset_id,
+                value - base)
 
-        await self.async_set_temperature_internal(self._adjust_id, data)
+        if ATTR_TARGET_TEMP_HIGH in kwargs:
+            await set_temperature(
+                self._climate.calc_supply_temp_cool,
+                self._climate.offset_cool,
+                kwargs[ATTR_TARGET_TEMP_HIGH],
+            )
+
+        if ATTR_TARGET_TEMP_LOW in kwargs:
+            await set_temperature(
+                self._climate.calc_supply_temp_heat,
+                self._climate.offset_heat,
+                kwargs[ATTR_TARGET_TEMP_LOW],
+            )
+
+        if ATTR_TARGET_TEMPERATURE in kwargs:
+            if self._hvac_mode == HVAC_MODE_HEAT:
+                await set_temperature(
+                    self._climate.calc_supply_temp_heat,
+                    self._climate.offset_heat,
+                    kwargs[ATTR_TARGET_TEMPERATURE],
+                )
+            elif self._hvac_mode == HVAC_MODE_COOL:
+                await set_temperature(
+                    self._climate.calc_supply_temp_cool,
+                    self._climate.offset_cool,
+                    kwargs[ATTR_TARGET_TEMPERATURE],
+                )
 
     @property
     def device_state_attributes(self):
         """Return extra state."""
         data = super().device_state_attributes
-        data['supply_temp'] = \
-            self.get_float(self._climate.supply_temp)
-        data['calc_supply_temp_heat'] = \
-            self.get_float(self._climate.calc_supply_temp_heat)
-        data['calc_supply_temp_cool'] = \
-            self.get_float(self._climate.calc_supply_temp_cool)
         data['offset_heat'] = \
             self.get_float(self._climate.offset_heat)
         data['offset_cool'] = \
@@ -442,17 +502,6 @@ class NibeClimateSupply(NibeClimate):
             self.get_bool(self._climate.external_adjustment_active)
 
         return data
-
-    def parse_data(self):
-        """Parse data."""
-        super().parse_data()
-
-        if self._hvac_action_last == CURRENT_HVAC_HEAT:
-            self._target_id = self._climate.calc_supply_temp_heat
-            self._adjust_id = self._climate.offset_heat
-        else:
-            self._target_id = self._climate.calc_supply_temp_cool
-            self._adjust_id = self._climate.offset_cool
 
 
 class NibeThermostat(ClimateDevice, RestoreEntity):
