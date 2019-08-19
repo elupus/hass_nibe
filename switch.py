@@ -22,14 +22,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = []
     for system in systems.values():
         for parameter_id in system.config[CONF_SWITCHES]:
-            entities.append(
-                NibeSwitch(
-                    uplink,
-                    system.system_id,
-                    parameter_id,
-                    entry
-                )
-            )
+            entities.append(NibeSwitch(uplink, system.system_id, parameter_id, entry))
 
     async_add_entities(entities, True)
 
@@ -37,37 +30,25 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeSwitch(NibeParameterEntity, SwitchDevice):
     """Nibe Switch Entity."""
 
-    def __init__(self,
-                 uplink,
-                 system_id,
-                 parameter_id,
-                 entry):
+    def __init__(self, uplink, system_id, parameter_id, entry):
         """Init."""
         super(NibeSwitch, self).__init__(
-            uplink,
-            system_id,
-            parameter_id,
-            None,
-            [],
-            ENTITY_ID_FORMAT)
+            uplink, system_id, parameter_id, None, [], ENTITY_ID_FORMAT
+        )
 
     @property
     def is_on(self):
         """Return if entity is on."""
         data = self._parameters[self._parameter_id]
         if data:
-            return data['rawValue'] == "1"
+            return data["rawValue"] == "1"
         else:
             return None
 
     async def async_turn_on(self, **kwargs):
         """Turn entity on."""
-        await self._uplink.put_parameter(self._system_id,
-                                         self._parameter_id,
-                                         '1')
+        await self._uplink.put_parameter(self._system_id, self._parameter_id, "1")
 
     async def async_turn_off(self, **kwargs):
         """Turn entity off."""
-        await self._uplink.put_parameter(self._system_id,
-                                         self._parameter_id,
-                                         '0')
+        await self._uplink.put_parameter(self._system_id, self._parameter_id, "0")
