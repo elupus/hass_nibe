@@ -1,0 +1,5 @@
+{
+  "name": "Nibe Uplink",
+  "content_in_root": true,
+  "iot_class": "Cloud Polling"
+}
