@@ -14,7 +14,7 @@ There are 3 different methods of installing the custom component
 
 _While this component can be installed by HACS, it is not included in the default repository of HACS._
 
-1. Add this repository as a custom repository inside HACS settings. Mak sure you select `Integration` as Category
+1. Add this repository as a custom repository inside HACS settings. Make sure you select `Integration` as Category.
 2. Install the component from the Overview page.
 
 ### Git installation
