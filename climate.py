@@ -510,7 +510,8 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             self._target_temperature = old_state.attributes.get(
                 ATTR_TARGET_TEMPERATURE, DEFAULT_THERMOSTAT_TEMPERATURE
             )
-            self._hvac_mode = old_state.attributes.get(ATTR_HVAC_MODE, HVAC_MODE_OFF)
+            if old_state.state:
+                self._hvac_mode = old_state.state
 
         def track_entity_id(tracked_entity_id, update_fun):
             if tracked_entity_id:
