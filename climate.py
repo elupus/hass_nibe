@@ -8,7 +8,6 @@ from typing import List, Set
 
 from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateDevice
 from homeassistant.components.climate.const import (
-    ATTR_HVAC_MODE,
     ATTR_TARGET_TEMP_LOW,
     ATTR_TARGET_TEMP_HIGH,
     CURRENT_HVAC_HEAT,
