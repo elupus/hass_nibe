@@ -145,7 +145,7 @@ class NibeAuthView(HomeAssistantView):
         def check_get(param):
             if param not in request.query:
                 _LOGGER.error("State missing in request.")
-                raise HTTPBadRequest("Parameter {} not found".format(param))
+                raise HTTPBadRequest(text="Parameter {} not found".format(param))
             return request.query[param]
 
         state = check_get("state")
@@ -153,7 +153,7 @@ class NibeAuthView(HomeAssistantView):
 
         if state not in self._flows:
             _LOGGER.error("State unexpected %s", state)
-            raise HTTPBadRequest("State can not be translated into flow")
+            raise HTTPBadRequest(text="State can not be translated into flow")
 
         flow_id = self._flows[state]
         _LOGGER.debug("Received auth request for flow %s", flow_id)
@@ -166,4 +166,4 @@ class NibeAuthView(HomeAssistantView):
                 text="<script>window.close()</script>",
             )
         except data_entry_flow.UnknownFlow:
-            raise HTTPBadRequest("Unkown flow")
+            raise HTTPBadRequest(text="Unkown flow")
