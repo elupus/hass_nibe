@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from homeassistant.components.group import ATTR_ADD_ENTITIES, ATTR_OBJECT_ID
 from homeassistant.components.group import DOMAIN as DOMAIN_GROUP
@@ -43,7 +43,7 @@ class NibeEntity(Entity):
         self._groups = groups
         self._device_info = None
         self._parameters = OrderedDict()  # type: ParameterSet
-        self._unsub = []
+        self._unsub: List[Callable[[], None]] = []
         if parameters:
             self._parameters.update(parameters)
 
