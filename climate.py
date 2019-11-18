@@ -684,14 +684,14 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             valve = None
             systems = []
 
-        data = SetThermostatModel(
-            externalId=self._external_id,
-            name=self._name,
-            actualTemp=actual,
-            targetTemp=target,
-            valvePosition=valve,
-            climateSystems=systems,
-        )
+        data: SetThermostatModel = {
+            "externalId": self._external_id,
+            "name": self._name,
+            "actualTemp": actual,
+            "targetTemp": target,
+            "valvePosition": valve,
+            "climateSystems": systems,
+        }
 
         _LOGGER.debug("Publish thermostat {}".format(data))
         await self._uplink.post_smarthome_thermostats(self._system_id, data)

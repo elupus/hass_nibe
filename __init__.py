@@ -12,7 +12,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
-from nibeuplink import Uplink
+from nibeuplink import Uplink, UplinkSession
 
 from .config_flow import NibeConfigFlow  # noqa
 from .const import (
@@ -120,6 +120,7 @@ class NibeData:
     """Holder for nibe data."""
 
     config = attr.ib()
+    session = attr.ib(default=None, type=UplinkSession)
     uplink = attr.ib(default=None, type=Uplink)
     systems = attr.ib(default=[], type=List["NibeSystem"])
 
@@ -181,7 +182,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
             entry, data={**entry.data, CONF_ACCESS_DATA: data}
         )
 
-    uplink = Uplink(
+    session = UplinkSession(
         client_id=entry.data.get(CONF_CLIENT_ID),
         client_secret=entry.data.get(CONF_CLIENT_SECRET),
         redirect_uri=entry.data.get(CONF_REDIRECT_URI),
@@ -190,10 +191,13 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
         scope=scope,
     )
 
+    uplink = Uplink(session)
+
     data = hass.data[DATA_NIBE]
+    data.session = session
     data.uplink = uplink
 
-    await uplink.refresh_access_token()
+    await session.refresh_access_token()
 
     await async_setup_systems(hass, data, entry)
 
@@ -212,7 +216,7 @@ async def async_unload_entry(hass, entry):
 
     await asyncio.wait([system.unload() for system in data.systems.values()])
 
-    await data.uplink.close()
+    await data.session.close()
     data.systems = []
     data.uplink = None
     data.monitor = None
