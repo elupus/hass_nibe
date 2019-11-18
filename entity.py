@@ -144,6 +144,7 @@ class NibeEntity(Entity):
         pass
 
     async def async_will_remove_from_hass(self):
+        """Handle removal of entity."""
         for unsub in reversed(self._unsub):
             unsub()
         self._unsub = None
