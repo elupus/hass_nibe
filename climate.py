@@ -252,7 +252,7 @@ class NibeClimateRoom(NibeClimate):
         if data:
             return data["unit"]
         else:
-            return None
+            return TEMP_CELSIUS
 
     @property
     def name(self):
