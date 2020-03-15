@@ -74,19 +74,6 @@ async def async_load(hass, uplink):
         ]
         await asyncio.gather(*tasks)
 
-    async def load_statuses(system_id, unit_id):
-        data = await uplink.get_unit_status(system_id, unit_id)
-        tasks = [
-            load_parameter_group(
-                x["title"],
-                system_id,
-                "{}_{}".format(unit_id, x["title"]),
-                x["parameters"],
-            )
-            for x in data
-        ]
-        await asyncio.gather(*tasks)
-
     for system in systems.values():
         for sensor_id in system.config[CONF_SENSORS]:
             await load_sensor(system.system_id, sensor_id)
@@ -95,8 +82,6 @@ async def async_load(hass, uplink):
             if unit[CONF_CATEGORIES]:
                 await load_categories(system.system_id, unit[CONF_UNIT])
 
-            if unit[CONF_STATUSES]:
-                await load_statuses(system.system_id, unit[CONF_UNIT])
     return sensors
 
 

@@ -56,13 +56,14 @@ def none_as_true(data):
         return cv.boolean(data)
 
 
-UNIT_SCHEMA = vol.Schema(
+UNIT_SCHEMA = vol.Schema(vol.All(
+    cv.deprecated(CONF_STATUSES),
     {
         vol.Required(CONF_UNIT): cv.positive_int,
         vol.Optional(CONF_CATEGORIES, default=False): none_as_true,
         vol.Optional(CONF_STATUSES, default=False): none_as_true,
     }
-)
+))
 
 THERMOSTAT_SCHEMA = vol.Schema(
     {
