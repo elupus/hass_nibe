@@ -49,7 +49,7 @@ class NibeFan(NibeEntity, FanEntity):
 
     def __init__(self, uplink: Uplink, system_id: int, ventilation: VentilationSystem):
         """Init."""
-        super().__init__(uplink, system_id, [])
+        super().__init__(uplink, system_id)
 
         self._ventilation = ventilation
         self.entity_id = ENTITY_ID_FORMAT.format(

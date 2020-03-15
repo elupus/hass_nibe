@@ -94,7 +94,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
 
     def __init__(self, uplink, system_id: int, statuses: Set[str], hwsys):
         """Init."""
-        super().__init__(uplink, system_id, [])
+        super().__init__(uplink, system_id)
 
         self._name = hwsys.name
         self._current_operation = STATE_OFF

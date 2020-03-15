@@ -36,7 +36,7 @@ class NibeBinarySensor(NibeParameterEntity, BinarySensorDevice):
     def __init__(self, uplink, system_id, parameter_id, entry):
         """Init."""
         super(NibeBinarySensor, self).__init__(
-            uplink, system_id, parameter_id, None, [], ENTITY_ID_FORMAT
+            uplink, system_id, parameter_id, None, ENTITY_ID_FORMAT
         )
 
     @property

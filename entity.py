@@ -6,9 +6,6 @@ from collections import OrderedDict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from homeassistant.components.group import ATTR_ADD_ENTITIES, ATTR_OBJECT_ID
-from homeassistant.components.group import DOMAIN as DOMAIN_GROUP
-from homeassistant.components.group import SERVICE_SET
 from homeassistant.helpers.entity import Entity
 
 from nibeuplink import Uplink
@@ -33,15 +30,12 @@ class NibeEntity(Entity):
         self,
         uplink: Uplink,
         system_id: int,
-        groups: List[str],
         parameters: Optional[ParameterSet] = None,
     ):
         """Initialize base class."""
         super().__init__()
         self._uplink = uplink
         self._system_id = system_id
-        self._groups = groups
-        self._device_info = None
         self._parameters = OrderedDict()  # type: ParameterSet
         self._unsub: List[Callable[[], None]] = []
         if parameters:
@@ -150,7 +144,7 @@ class NibeEntity(Entity):
         self._unsub = None
 
     async def async_added_to_hass(self):
-        """Once registed add this entity to member groups."""
+        """Handle when entity is added to home assistant."""
         self._unsub.append(
             self.hass.helpers.dispatcher.async_dispatcher_connect(
                 SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated
@@ -162,16 +156,6 @@ class NibeEntity(Entity):
                 SIGNAL_STATUSES_UPDATED, self.async_statuses_updated
             )
         )
-
-        for group in self._groups:
-            _LOGGER.debug("Adding entity {} to group {}".format(self.entity_id, group))
-            self.hass.async_add_job(
-                self.hass.services.async_call(
-                    DOMAIN_GROUP,
-                    SERVICE_SET,
-                    {ATTR_OBJECT_ID: group, ATTR_ADD_ENTITIES: [self.entity_id]},
-                )
-            )
 
         async def update():
             await self.async_update()
@@ -218,11 +202,10 @@ class NibeParameterEntity(NibeEntity):
         system_id,
         parameter_id,
         data=None,
-        groups=[],
         entity_id_format=None,
     ):
         """Initialize base class for parameters."""
-        super().__init__(uplink, system_id, groups, parameters={parameter_id: data})
+        super().__init__(uplink, system_id, parameters={parameter_id: data})
         self._parameter_id = parameter_id
         self._name = None
         self._unit = None
