@@ -30,5 +30,19 @@
         "abort": {
             "already_configured": "Uplink is already configured"
         }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {}
+            },
+            "systems": {
+                "data": {
+                    "systems": "Selected systems"
+                },
+                "description": "Please select which nibe systems to track",
+                "title": "System selection"
+            }
+        }
     }
 }
