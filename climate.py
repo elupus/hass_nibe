@@ -48,7 +48,6 @@ from .const import (
     ATTR_TARGET_TEMPERATURE,
     ATTR_VALVE_POSITION,
     CONF_CLIMATE_SYSTEMS,
-    CONF_CLIMATES,
     CONF_CURRENT_TEMPERATURE,
     CONF_THERMOSTATS,
     CONF_VALVE_POSITION,
@@ -101,7 +100,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         *[
             add_active(system)
             for system in systems.values()
-            if system.config[CONF_CLIMATES]
         ]
     )
 

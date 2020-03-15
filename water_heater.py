@@ -20,7 +20,7 @@ from homeassistant.exceptions import PlatformNotReady
 
 from nibeuplink import get_active_hotwater
 
-from .const import CONF_WATER_HEATERS, DATA_NIBE
+from .const import DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
 
@@ -83,7 +83,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
         *[
             add_active(system)
             for system in systems.values()
-            if system.config[CONF_WATER_HEATERS]
         ]
     )
 

@@ -74,7 +74,10 @@ THERMOSTAT_SCHEMA = vol.Schema(
     }
 )
 
-SYSTEM_SCHEMA = vol.Schema(
+SYSTEM_SCHEMA = vol.Schema(vol.All(
+    cv.deprecated(CONF_CLIMATES),
+    cv.deprecated(CONF_WATER_HEATERS),
+    cv.deprecated(CONF_FANS),
     {
         vol.Required(CONF_SYSTEM): cv.positive_int,
         vol.Optional(CONF_UNITS, default=[]): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
@@ -90,7 +93,7 @@ SYSTEM_SCHEMA = vol.Schema(
             cv.positive_int: THERMOSTAT_SCHEMA
         },
     }
-)
+))
 
 NIBE_SCHEMA = vol.Schema(
     {
