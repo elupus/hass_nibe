@@ -47,7 +47,6 @@ async def async_load(hass, uplink):
         entity = await group.Group.async_create_group(
             hass,
             name=name,
-            control=False,
             object_id="{}_{}_{}".format(DOMAIN_NIBE, system_id, object_id),
         )
 
