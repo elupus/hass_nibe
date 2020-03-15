@@ -58,8 +58,6 @@ nibe:
     - system: <required system identifier>
       units:
         - unit: 0
-      climates: True
-      water_heaters: True
 ```
 
 6. Restart your Home assistant to make changes take effect.
@@ -72,12 +70,6 @@ Minimal configuration
 
 ```yaml
 nibe:
-  systems:
-    - system: <required system identifier>
-      units:
-        - unit: 0
-      climates: True
-      water_heaters: True
 ```
 
 Full configuration description
@@ -96,9 +88,6 @@ nibe:
           # Optional load of status entities
           categories: True
 
-          # Optional load of status entities
-          statuses: True
-
       # Optional list of additional parameters to retrieve, can be done here or on the sensor platform.
       sensors:
         - <parameter identifier>
@@ -107,15 +96,6 @@ nibe:
       # Optional list of switches (note, for ability to change, you need to use writeaccess and have payed license).
       switches:
         - hot_water_boost
-
-      # Optional load climate entities
-      climates: True
-
-      # Optional load water_heaters entities
-      water_heaters: True
-
-      # Optional fan entities
-      fans: True
 
       # Optional smart thermostats.
       thermostats:
