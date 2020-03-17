@@ -3,7 +3,7 @@
 import attr
 import asyncio
 import logging
-from typing import List, Dict, Union, T
+from typing import List, Dict, Union, T, Mapping
 
 import voluptuous as vol
 
@@ -149,15 +149,17 @@ class NibeData:
     systems = attr.ib(default=[], type=List["NibeSystem"])
 
 
-def _get_merged_config(data: NibeData, entry: config_entries.ConfigEntry):
-    config = dict(entry.options)
-    config.update(data.config)
+def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
+    config = dict(config)
+    for system in entry.data[CONF_SYSTEMS].keys():
+        if system not in config[CONF_SYSTEMS]:
+            config[CONF_SYSTEMS][system] = SYSTEM_SCHEMA({})
     return config
 
 
 async def async_setup_systems(hass, data: NibeData, entry):
     """Configure each system."""
-    config = _get_merged_config(data, entry)
+    config = _get_merged_config(data.config, entry)
 
     systems = {
         system_id: NibeSystem(

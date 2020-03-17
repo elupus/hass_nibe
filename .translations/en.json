@@ -19,23 +19,6 @@
                     "code": "Code included in redirect uri"
                 }
             },
-            "finish": {
-                "title": "Authorization successful",
-                "description": "Authorization was successfull! Entities will now be added."
-            }
-        },
-        "error": {
-            "code": "Couldn't get an access token from code. Further information may be in home assitant log"
-        },
-        "abort": {
-            "already_configured": "Uplink is already configured"
-        }
-    },
-    "options": {
-        "step": {
-            "init": {
-                "data": {}
-            },
             "systems": {
                 "data": {
                     "systems": "Selected systems"
@@ -43,6 +26,12 @@
                 "description": "Please select which nibe systems to track",
                 "title": "System selection"
             }
+        },
+        "error": {
+            "code": "Couldn't get an access token from code. Further information may be in home assitant log"
+        },
+        "abort": {
+            "already_configured": "Uplink is already configured"
         }
     }
 }

@@ -1,6 +1,5 @@
 """Nibe uplink configuration."""
 
-import copy
 import logging
 from typing import Dict  # noqa
 import voluptuous as vol
@@ -9,9 +8,8 @@ from aiohttp.web import Request, Response, HTTPBadRequest
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components.http import HomeAssistantView
 import homeassistant.helpers.config_validation as cv
-from homeassistant.core import callback
 
-from nibeuplink import UplinkSession
+from nibeuplink import UplinkSession, Uplink
 
 from .const import (
     AUTH_CALLBACK_NAME,
@@ -38,12 +36,6 @@ class NibeConfigFlow(config_entries.ConfigFlow):
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        """Return the Options Flow."""
-        return OptionsFlowHandler(config_entry)
-
     def __init__(self):
         """Init."""
         self.access_data = None
@@ -65,6 +57,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 scope=scope,
             )
 
+            self.uplink = Uplink(session, throttle=0.0)
             self.session = session
             self.user_data = user_input
             return await self.async_step_auth()
@@ -110,7 +103,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 errors["base"] = "code"
             else:
                 self.user_data[CONF_ACCESS_DATA] = self.session.access_data
-                return self.async_external_step_done(next_step_id="finish")
+                return self.async_external_step_done(next_step_id="systems")
 
         global _view
         if not _view:
@@ -122,45 +115,21 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
         return self.async_external_step(step_id="auth", url=url)
 
-    async def async_step_finish(self, user_data=None):
-        """Just to finish up the external step."""
-        if user_data is not None:
-            return self.async_create_entry(title="Nibe Uplink", data=self.user_data)
-
-        return self.async_show_form(step_id="finish", data_schema=vol.Schema({}))
-
-
-class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle a option flow for a Konnected Panel."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Initialize options flow."""
-        self.entry = config_entry
-        self.options = copy.deepcopy(dict(config_entry.options))
-
-    async def async_step_init(self, user_input=None):
-        """Handle options flow."""
-        self.uplink = self.hass.data[DATA_NIBE].uplink
-
-        return await self.async_step_systems()
-
     async def async_step_systems(self, user_input=None):
         """Configure selected systems."""
-        systems_conf = self.options.get(CONF_SYSTEMS, {})
         if user_input is not None:
-            systems_conf = {
-                key: systems_conf.get(key, {})
+            self.user_data[CONF_SYSTEMS] = {
+                key: {}
                 for key in user_input[CONF_SYSTEMS]
             }
-            self.options[CONF_SYSTEMS] = systems_conf
 
-            return self.async_create_entry(title="", data=self.options)
+            return self.async_create_entry(title="", data=self.user_data)
 
         systems = await self.uplink.get_systems()
         systems_dict = {
             str(x["systemId"]): f"{x['name']} ({x['productName']})" for x in systems
         }
-        systems_sel = list(systems_conf.keys())
+        systems_sel = list(systems_dict.keys())
 
         return self.async_show_form(
             step_id="systems",
