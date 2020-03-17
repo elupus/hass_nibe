@@ -277,7 +277,7 @@ class NibeSystem(object):
             "identifiers": {(DOMAIN, self.system_id)},
             "manufacturer": "NIBE Energy Systems",
             "model": self.system.get("productName"),
-            "name": self.system.get("name"),
+            "name": f"{self.system.get('name')} - {self.system_id}",
         }
 
         device_registry = await self.hass.helpers.device_registry.async_get_registry()
