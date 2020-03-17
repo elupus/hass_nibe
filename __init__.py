@@ -102,9 +102,9 @@ SYSTEM_SCHEMA = vol.Schema(vol.All(
         vol.Optional(CONF_SYSTEM): cv.positive_int,
         vol.Optional(CONF_UNITS, default=[]): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
         vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_CLIMATES, default=False): none_as_true,
-        vol.Optional(CONF_WATER_HEATERS, default=False): none_as_true,
-        vol.Optional(CONF_FANS, default=False): none_as_true,
+        vol.Optional(CONF_CLIMATES): none_as_true,
+        vol.Optional(CONF_WATER_HEATERS): none_as_true,
+        vol.Optional(CONF_FANS): none_as_true,
         vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
         vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(
             cv.ensure_list, [cv.string]
