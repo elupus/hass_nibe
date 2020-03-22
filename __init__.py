@@ -151,9 +151,10 @@ class NibeData:
 
 def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
     config = dict(config)
-    for system in entry.data[CONF_SYSTEMS].keys():
-        if system not in config[CONF_SYSTEMS]:
-            config[CONF_SYSTEMS][system] = SYSTEM_SCHEMA({})
+    if CONF_SYSTEMS in entry.data:
+        for system in entry.data[CONF_SYSTEMS].keys():
+            if system not in config[CONF_SYSTEMS]:
+                config[CONF_SYSTEMS][system] = SYSTEM_SCHEMA({})
     return config
 
 
