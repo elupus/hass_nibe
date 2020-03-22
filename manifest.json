@@ -6,9 +6,6 @@
   "requirements": [
     "nibeuplink==1.0.2"
   ],
-  "dependencies": [
-    "group"
-  ],
   "codeowners": [
     "@elupus"
   ]
