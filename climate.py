@@ -49,6 +49,7 @@ from .const import (
     ATTR_VALVE_POSITION,
     CONF_CLIMATE_SYSTEMS,
     CONF_CURRENT_TEMPERATURE,
+    CONF_TARGET_TEMPERATURE,
     CONF_THERMOSTATS,
     CONF_VALVE_POSITION,
     DATA_NIBE,
@@ -91,6 +92,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     thermostat_id,
                     thermostat_config.get(CONF_NAME),
                     thermostat_config.get(CONF_CURRENT_TEMPERATURE),
+                    thermostat_config.get(CONF_TARGET_TEMPERATURE),
                     thermostat_config.get(CONF_VALVE_POSITION),
                     thermostat_config.get(CONF_CLIMATE_SYSTEMS),
                 )
@@ -225,6 +227,7 @@ class NibeClimateRoom(NibeClimate):
     ):
         """Init."""
         super().__init__(uplink, system_id, statuses, climate)
+        self._target_id = None
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             "{}_{}_{}_room".format(DOMAIN_NIBE, system_id, str(climate.name))
@@ -280,18 +283,21 @@ class NibeClimateRoom(NibeClimate):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        if self._hvac_mode == HVAC_MODE_HEAT:
-            return self.get_float(self._climate.room_setpoint_heat)
-        elif self._hvac_mode == HVAC_MODE_COOL:
-            return self.get_float(self._climate.room_setpoint_cool)
-        else:
-            return None
+        return self.get_float(self._target_id)
+
+        #if self._hvac_mode == HVAC_MODE_HEAT:
+        #    return self.get_float(self._climate.room_setpoint_heat)
+        #elif self._hvac_mode == HVAC_MODE_COOL:
+        #    return self.get_float(self._climate.room_setpoint_cool)
+        #else:
+        #    return None
 
     @property
     def target_temperature_low(self):
         """Return target temperature."""
         if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            return self.get_float(self._climate.room_setpoint_heat)
+            #return self.get_float(self._climate.room_setpoint_heat)
+            return self.get_float(self._target_id)
         else:
             return None
 
@@ -317,12 +323,12 @@ class NibeClimateRoom(NibeClimate):
 
         if ATTR_TARGET_TEMP_LOW in kwargs:
             await self.async_set_temperature_internal(
-                self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMP_LOW]
+                self._target_id, kwargs[ATTR_TARGET_TEMP_LOW]
             )
 
         if ATTR_TARGET_TEMPERATURE in kwargs:
             await self.async_set_temperature_internal(
-                self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMPERATURE]
+                self._target_id, kwargs[ATTR_TARGET_TEMPERATURE]
             )
 
 
@@ -334,6 +340,8 @@ class NibeClimateSupply(NibeClimate):
     ):
         """Init."""
         super().__init__(uplink, system_id, statuses, climate)
+
+        self._target_id = None
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             "{}_{}_{}_supply".format(DOMAIN_NIBE, system_id, str(climate.name))
@@ -392,18 +400,21 @@ class NibeClimateSupply(NibeClimate):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        if self._hvac_mode == HVAC_MODE_HEAT:
-            return self.get_float(self._climate.calc_supply_temp_heat)
-        elif self._hvac_mode == HVAC_MODE_COOL:
-            return self.get_float(self._climate.calc_supply_temp_cool)
-        else:
-            return None
+        return self.get_float(self._target_id)
+
+        #if self._hvac_mode == HVAC_MODE_HEAT:
+        #    return self.get_float(self._climate.calc_supply_temp_heat)
+        #elif self._hvac_mode == HVAC_MODE_COOL:
+        #    return self.get_float(self._climate.calc_supply_temp_cool)
+        #else:
+        #  return None
 
     @property
     def target_temperature_low(self):
         """Return target temperature."""
         if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            return self.get_float(self._climate.calc_supply_temp_heat)
+            #return self.get_float(self._climate.calc_supply_temp_heat)
+            return self.get_float(self._target_id)
         else:
             return None
 
@@ -479,6 +490,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         external_id: int,
         name: str,
         current_temperature_id: str,
+        target_temperature_id: str,
         valve_position_id: str,
         systems: List[int],
     ):
@@ -492,6 +504,8 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
         self._hvac_action = CURRENT_HVAC_IDLE
         self._current_temperature_id = current_temperature_id
         self._current_temperature = None
+        self._target_temperature_id = target_temperature_id
+        self._target_temperature = None
         self._valve_position_id = valve_position_id
         self._valve_position = None
         self._systems = systems
@@ -523,6 +537,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
                 async_track_state_change(self.hass, tracked_entity_id, changed)
 
         track_entity_id(self._current_temperature_id, self._update_current_temperature)
+        track_entity_id(self._target_temperature_id, self._update_target_temperature)
         track_entity_id(self._valve_position_id, self._update_valve_position)
 
         self._schedule()
@@ -625,6 +640,18 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             self._current_temperature = None
             _LOGGER.error("Unable to update from sensor: %s", ex)
 
+    def _update_target_temperature(self, state):
+        if state is None:
+            return
+        try:
+            if state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                self._target_temperature = None
+            else:
+                self._target_temperature = float(state.state)
+        except ValueError as ex:
+            self._target_temperature = None
+            _LOGGER.error("Unable to update from sensor: %s", ex)
+
     def _update_valve_position(self, state):
         if state is None:
             return
@@ -634,7 +661,7 @@ class NibeThermostat(ClimateDevice, RestoreEntity):
             else:
                 self._valve_position = float(state.state)
         except ValueError as ex:
-            self._current_temperature = None
+            self._valve_position = None
             _LOGGER.error("Unable to update from sensor: %s", ex)
 
     async def async_set_hvac_mode(self, hvac_mode):

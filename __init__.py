@@ -30,6 +30,7 @@ from .const import (
     CONF_SYSTEM,
     CONF_SYSTEMS,
     CONF_THERMOSTATS,
+    CONF_TARGET_TEMPERATURE,
     CONF_UNIT,
     CONF_UNITS,
     CONF_VALVE_POSITION,
@@ -90,6 +91,7 @@ THERMOSTAT_SCHEMA = vol.Schema(
         vol.Optional(CONF_CLIMATE_SYSTEMS, default=[1]): vol.All(cv.ensure_list, [int]),
         vol.Required(CONF_NAME): str,
         vol.Optional(CONF_CURRENT_TEMPERATURE): cv.entity_id,
+        vol.Optional(CONF_TARGET_TEMPERATURE): cv.entity_id,
         vol.Optional(CONF_VALVE_POSITION): cv.entity_id,
     }
 )
