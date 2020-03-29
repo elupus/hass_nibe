@@ -283,21 +283,23 @@ class NibeClimateRoom(NibeClimate):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        return self.get_float(self._target_id)
-
-        #if self._hvac_mode == HVAC_MODE_HEAT:
-        #    return self.get_float(self._climate.room_setpoint_heat)
-        #elif self._hvac_mode == HVAC_MODE_COOL:
-        #    return self.get_float(self._climate.room_setpoint_cool)
-        #else:
-        #    return None
+        if self._target_id:
+            return self.get_float(self._target_id)
+        elif self._hvac_mode == HVAC_MODE_HEAT:
+            return self.get_float(self._climate.room_setpoint_heat)
+        elif self._hvac_mode == HVAC_MODE_COOL:
+            return self.get_float(self._climate.room_setpoint_cool)
+        else:
+            return None
 
     @property
     def target_temperature_low(self):
         """Return target temperature."""
         if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            #return self.get_float(self._climate.room_setpoint_heat)
-            return self.get_float(self._target_id)
+            if self._target_id:
+                return self.get_float(self._target_id)
+            else:
+                return self.get_float(self._climate.room_setpoint_heat)
         else:
             return None
 
@@ -317,19 +319,19 @@ class NibeClimateRoom(NibeClimate):
     async def async_set_temperature(self, **kwargs):
         """Set temperature."""
         if ATTR_TARGET_TEMP_HIGH in kwargs:
-            await self.async_set_temperature_internal(
-                self._climate.room_setpoint_cool, kwargs[ATTR_TARGET_TEMP_HIGH]
-            )
+            if self._target_id:
+                await self.async_set_temperature_internal(self._target_id, kwargs[ATTR_TARGET_TEMP_HIGH])
+            else:
+                await self.async_set_temperature_internal(self._climate.room_setpoint_cool, kwargs[ATTR_TARGET_TEMP_HIGH])
 
         if ATTR_TARGET_TEMP_LOW in kwargs:
-            await self.async_set_temperature_internal(
-                self._target_id, kwargs[ATTR_TARGET_TEMP_LOW]
-            )
+            if self._target_id:
+                await self.async_set_temperature_internal(self._target_id, kwargs[ATTR_TARGET_TEMP_LOW])
+            else:
+                await self.async_set_temperature_internal(self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMP_LOW])
 
         if ATTR_TARGET_TEMPERATURE in kwargs:
-            await self.async_set_temperature_internal(
-                self._target_id, kwargs[ATTR_TARGET_TEMPERATURE]
-            )
+            await self.async_set_temperature_internal(self._target_id, kwargs[ATTR_TARGET_TEMPERATURE])
 
 
 class NibeClimateSupply(NibeClimate):
@@ -400,21 +402,23 @@ class NibeClimateSupply(NibeClimate):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        return self.get_float(self._target_id)
-
-        #if self._hvac_mode == HVAC_MODE_HEAT:
-        #    return self.get_float(self._climate.calc_supply_temp_heat)
-        #elif self._hvac_mode == HVAC_MODE_COOL:
-        #    return self.get_float(self._climate.calc_supply_temp_cool)
-        #else:
-        #  return None
+        if self._target_id:
+            return self.get_float(self._target_id)
+        elif self._hvac_mode == HVAC_MODE_HEAT:
+            return self.get_float(self._climate.calc_supply_temp_heat)
+        elif self._hvac_mode == HVAC_MODE_COOL:
+            return self.get_float(self._climate.calc_supply_temp_cool)
+        else:
+            return None
 
     @property
     def target_temperature_low(self):
         """Return target temperature."""
         if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            #return self.get_float(self._climate.calc_supply_temp_heat)
-            return self.get_float(self._target_id)
+            if self._target_id:
+                return self.get_float(self._target_id)
+            else:
+                return self.get_float(self._climate.calc_supply_temp_heat)
         else:
             return None
 
@@ -422,7 +426,10 @@ class NibeClimateSupply(NibeClimate):
     def target_temperature_high(self):
         """Return target temperature."""
         if self._hvac_mode == HVAC_MODE_HEAT_COOL:
-            return self.get_float(self._climate.calc_supply_temp_cool)
+            if self._target_id:
+                return self.get_float(self._target_id)
+            else:
+                return self.get_float(self._climate.calc_supply_temp_cool)
         else:
             return None
 
