@@ -331,7 +331,10 @@ class NibeClimateRoom(NibeClimate):
                 await self.async_set_temperature_internal(self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMP_LOW])
 
         if ATTR_TARGET_TEMPERATURE in kwargs:
-            await self.async_set_temperature_internal(self._target_id, kwargs[ATTR_TARGET_TEMPERATURE])
+            if self._target_id:
+                await self.async_set_temperature_internal(self._target_id, kwargs[ATTR_TARGET_TEMPERATURE])
+            else:
+                await self.async_set_temperature_internal(self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMPERATURE])
 
 
 class NibeClimateSupply(NibeClimate):
