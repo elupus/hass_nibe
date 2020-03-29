@@ -108,6 +108,9 @@ nibe:
           # Optional name of a home assistant entity representing current temperature
           current_temperature: input_number.current
 
+          # Optional name of a home assistant entity representing target temperature
+          target_temperature: input_number.target
+
           # Optional name of a home assistant entity representing valve position of
           # a thermostat. At the moment it's use case is unknown.
           # valve_position: input_number.valve
