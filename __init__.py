@@ -183,7 +183,12 @@ async def async_setup_systems(hass, data: NibeData, entry):
 
 async def async_setup(hass, config):
     """Configure the nibe uplink component."""
-    hass.data[DATA_NIBE] = NibeData(config[DOMAIN])
+    if DOMAIN in config:
+        data = NibeData(config[DOMAIN])
+    else:
+        data = NibeData(NIBE_SCHEMA({}))
+
+    hass.data[DATA_NIBE] = data
     await async_register_services(hass)
     return True
 
