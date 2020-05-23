@@ -1,7 +1,7 @@
 """Nibe Switch."""
 import logging
 
-from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchDevice
+from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchEntity
 from homeassistant.exceptions import PlatformNotReady
 
 from .const import CONF_SWITCHES, DATA_NIBE
@@ -27,7 +27,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities, True)
 
 
-class NibeSwitch(NibeParameterEntity, SwitchDevice):
+class NibeSwitch(NibeParameterEntity, SwitchEntity):
     """Nibe Switch Entity."""
 
     def __init__(self, uplink, system_id, parameter_id, entry):

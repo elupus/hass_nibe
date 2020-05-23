@@ -13,7 +13,7 @@ from homeassistant.components.water_heater import (
     STATE_HEAT_PUMP,
     STATE_HIGH_DEMAND,
     SUPPORT_OPERATION_MODE,
-    WaterHeaterDevice,
+    WaterHeaterEntity,
 )
 from homeassistant.const import STATE_OFF
 from homeassistant.exceptions import PlatformNotReady
@@ -89,7 +89,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities, True)
 
 
-class NibeWaterHeater(NibeEntity, WaterHeaterDevice):
+class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     """Water heater entity."""
 
     def __init__(self, uplink, system_id: int, statuses: Set[str], hwsys):
