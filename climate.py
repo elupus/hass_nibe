@@ -209,7 +209,9 @@ class NibeClimate(NibeEntity, ClimateEntity):
 
     def parse_statuses(self, statuses: Set[str]):
         """Parse status list."""
-        if "Heating" in statuses:
+        if "Cooling (Passive)" in statuses:
+            self._hvac_action = CURRENT_HVAC_COOL
+        elif "Heating" in statuses:
             self._hvac_action = CURRENT_HVAC_HEAT
         elif "Cooling" in statuses:
             self._hvac_action = CURRENT_HVAC_COOL
