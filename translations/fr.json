@@ -1,0 +1,37 @@
+{
+    "config": {
+        "title": "Nibe Uplink",
+        "step": {
+            "user": {
+                "title": "Configurer les paramètres Uplink",
+                "description": "Veuillez configurer une application sur la page Nibe Uplinks [Application]({application}). The redirect url must point to your Home Assistant instance, but does not need to be publically reachable, it need only be reachable from this computer. Ensure it points to the api endpoint ({suffix})",
+                "data": {
+                    "redirect_uri": "Callback URL",
+                    "client_id": "Identifier",
+                    "client_secret": "Secret",
+                    "writeaccess": "Accès en écriture (nécessite un abonnement)"
+                }
+            },
+            "auth": {
+                "title": "Autoriser Home Assistant pour le Nibe",
+                "description": "Veuillez naviguer vers la page d'autorisation de Nibe Uplink pour autoriser Home Assistant",
+                "data": {
+                    "code": "Code inclus dans l'URI de redirection"
+                }
+            },
+            "systems": {
+                "data": {
+                    "systems": "Systèmes sélectionnés"
+                },
+                "description": "Veuillez sélectionner quel système Nibe à suivre",
+                "title": "Sélection du système"
+            }
+        },
+        "error": {
+            "code": "Impossible d'obtenir un jeton d'accès à partir du code. Des informations complémentaires peuvent être trouvés dans les journaux de Home Assistant"
+        },
+        "abort": {
+            "already_configured": "Uplink est déjà configuré"
+        }
+    }
+}
