@@ -62,7 +62,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             self.user_data = user_input
             return await self.async_step_auth()
 
-        url = "{}{}".format(self.hass.config.api.base_url, AUTH_CALLBACK_URL)
+        url = "{}{}".format(self.hass.helpers.network.get_url(prefer_external=True), AUTH_CALLBACK_URL)
 
         config = self.hass.data[DATA_NIBE].config
 
