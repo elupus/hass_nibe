@@ -96,12 +96,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 )
             )
 
-    await asyncio.gather(
-        *[
-            add_active(system)
-            for system in systems.values()
-        ]
-    )
+    await asyncio.gather(*[add_active(system) for system in systems.values()])
 
     async_add_entities(entities, True)
 
@@ -498,10 +493,9 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         self._valve_position = None
         self._systems = systems
         self._target_temperature = DEFAULT_THERMOSTAT_TEMPERATURE
-        self._scheduled_update = None
 
     async def async_added_to_hass(self):
-        """Run whe?n entity about to be added."""
+        """Run when entity about to be added."""
         await super().async_added_to_hass()
         # Check If we have an old state
         old_state = await self.async_get_last_state()
@@ -522,18 +516,17 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
 
                 update_fun(self.hass.states.get(tracked_entity_id))
 
-                async_track_state_change(self.hass, tracked_entity_id, changed)
+                self.async_on_remove(
+                    async_track_state_change(self.hass, tracked_entity_id, changed)
+                )
 
         track_entity_id(self._current_temperature_id, self._update_current_temperature)
         track_entity_id(self._valve_position_id, self._update_valve_position)
 
-        self._schedule()
-
-    def _schedule(self):
-        if self._scheduled_update:
-            self._scheduled_update()
-        self._scheduled_update = async_track_time_interval(
-            self.hass, self._async_publish, timedelta(minutes=15)
+        self.async_on_remove(
+            async_track_time_interval(
+                self.hass, self._async_publish, timedelta(minutes=15)
+            )
         )
 
     @property
@@ -657,8 +650,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         await self._async_publish_update()
 
     async def _async_publish_update(self):
-        self._schedule()
-        await self._async_publish()
+        self.hass.add_job(self._async_publish())
         await self.async_update_ha_state()
 
     async def _async_publish(self, time=None):
