@@ -13,6 +13,7 @@ from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_COOL,
     CURRENT_HVAC_IDLE,
+    CURRENT_HVAC_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_OFF,
     HVAC_MODE_HEAT_COOL,
@@ -486,7 +487,6 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         self._external_id = external_id
         self._hvac_mode = HVAC_MODE_OFF
         self._hvac_modes = [HVAC_MODE_OFF, HVAC_MODE_HEAT_COOL, HVAC_MODE_AUTO]
-        self._hvac_action = CURRENT_HVAC_IDLE
         self._current_temperature_id = current_temperature_id
         self._current_temperature = None
         self._valve_position_id = valve_position_id
@@ -583,7 +583,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
     @property
     def hvac_action(self):
         """Return current operation ie. heat, cool, idle."""
-        return self._hvac_action
+        return None
 
     @property
     def current_temperature(self):
