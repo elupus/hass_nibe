@@ -211,17 +211,21 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
 
     async def async_set_operation_mode(self, operation_mode):
         """Set new target operation mode."""
+        if operation_mode == OPERATION_BOOST_ONE_TIME:
+            boost = 1
+        elif operation_mode == OPERATION_AUTO:
+            boost = 0
+        else:
+            raise Exception(f"Operation mode {operation_mode} not supported in nibe api")
+
         try:
-            if operation_mode in HA_BOOST_TO_NIBE:
-                await self._uplink.put_parameter(
-                    self._system_id,
-                    self._hwsys.hot_water_boost,
-                    HA_BOOST_TO_NIBE[operation_mode],
-                )
-            else:
-                _LOGGER.error("Operation mode %s not supported", operation_mode)
+            await self._uplink.put_parameter(
+                self._system_id,
+                self._hwsys.hot_water_boost,
+                boost,
+            )
         except aiohttp.client_exceptions.ClientResponseError as e:
-            _LOGGER.error("Error trying to set mode %s", str(e))
+            raise Exception(f"Failed to set hot water boost to {boost}") from e
 
     @property
     def unique_id(self):
