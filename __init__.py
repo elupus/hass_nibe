@@ -216,14 +216,13 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
         access_data_write=access_data_write,
         scope=scope,
     )
+    await session.open()
 
     uplink = Uplink(session)
 
     data = hass.data[DATA_NIBE]
     data.session = session
     data.uplink = uplink
-
-    await session.refresh_access_token()
 
     await async_setup_systems(hass, data, entry)
 

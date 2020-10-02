@@ -56,6 +56,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 redirect_uri=user_input[CONF_REDIRECT_URI],
                 scope=scope,
             )
+            await session.open()
 
             self.uplink = Uplink(session, throttle=0.0)
             self.session = session
