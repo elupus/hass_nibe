@@ -13,7 +13,6 @@ from homeassistant.components.climate.const import (
     CURRENT_HVAC_HEAT,
     CURRENT_HVAC_COOL,
     CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_OFF,
     HVAC_MODE_AUTO,
     HVAC_MODE_OFF,
     HVAC_MODE_HEAT_COOL,
