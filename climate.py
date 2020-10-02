@@ -593,7 +593,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
     @property
     def target_temperature(self):
         """Return target temperature."""
-        if self._hvac_mode != HVAC_MODE_OFF:
+        if self._hvac_mode == HVAC_MODE_HEAT_COOL:
             return self._target_temperature
         else:
             return None
