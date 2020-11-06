@@ -174,7 +174,7 @@ async def async_setup_systems(hass, config, uplink, entry):
     config = _get_merged_config(config, entry)
 
     systems = {
-        system_id: NibeSystem(hass, uplink, int(system_id), system_cfg, entry.entry_id)
+        system_id: NibeSystem(hass, uplink, system_id, system_cfg, entry.entry_id)
         for system_id, system_cfg in config[CONF_SYSTEMS].items()
     }
 
@@ -269,7 +269,7 @@ async def async_unload_entry(hass, entry):
 class NibeSystem(object):
     """Object representing a system."""
 
-    def __init__(self, hass, uplink, system_id, config, entry_id):
+    def __init__(self, hass, uplink: Uplink, system_id: int, config: Dict[str, Any], entry_id: str):
         """Init."""
         self.hass = hass
         self.config = config

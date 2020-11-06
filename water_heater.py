@@ -16,7 +16,7 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import STATE_OFF
 from homeassistant.exceptions import PlatformNotReady
-from nibeuplink import get_active_hotwater
+from nibeuplink import Uplink, get_active_hotwater
 
 from .const import DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
@@ -85,7 +85,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     """Water heater entity."""
 
-    def __init__(self, uplink, system_id: int, statuses: Set[str], hwsys):
+    def __init__(self, uplink: Uplink, system_id: int, statuses: Set[str], hwsys):
         """Init."""
         super().__init__(uplink, system_id)
 

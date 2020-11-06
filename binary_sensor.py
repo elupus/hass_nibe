@@ -33,7 +33,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeBinarySensor(NibeParameterEntity, BinarySensorEntity):
     """Binary sensor."""
 
-    def __init__(self, uplink, system_id, parameter_id, entry):
+    def __init__(self, uplink, system_id: int, parameter_id, entry):
         """Init."""
         super(NibeBinarySensor, self).__init__(
             uplink, system_id, parameter_id, None, ENTITY_ID_FORMAT
