@@ -3,6 +3,7 @@
 import logging
 from collections import defaultdict
 
+from custom_components.nibe import NibeData
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
@@ -26,7 +27,8 @@ async def async_load(hass, uplink):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE]
+    systems = data.systems
 
     sensors = defaultdict(gen_dict)
 
@@ -99,7 +101,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeSensor(NibeParameterEntity, Entity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink: Uplink, system_id: int, parameter_id, entry, data, device_info):
+    def __init__(
+        self, uplink: Uplink, system_id: int, parameter_id, entry, data, device_info
+    ):
         """Init."""
         super(NibeSensor, self).__init__(
             uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, Dict, List, Mapping, T, Union
+from typing import Any, Callable, Dict, List, Mapping, Set, Union
 
 import attr
 import homeassistant.helpers.config_validation as cv
@@ -55,7 +55,10 @@ def none_as_true(data):
         return cv.boolean(data)
 
 
-def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T]:
+T = Dict[Any, Any]
+
+
+def ensure_system_dict(value: Union[Dict[str, T], List[T], None]) -> Dict[str, T]:
     """Wrap value in list if it is not one."""
     if value is None:
         return {}
@@ -67,12 +70,12 @@ def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T
                 )
             ]
         )
-        value = value_schema(value)
-        return {x[CONF_SYSTEM]: x for x in value}
+        value2: List[T] = value_schema(value)
+        return {str(x[CONF_SYSTEM]): x for x in value2}
     if isinstance(value, dict):
         return value
-    value = SYSTEM_SCHEMA(value)
-    return {value[CONF_SYSTEM]: value}
+    value2 = SYSTEM_SCHEMA(value)
+    return {str(value[CONF_SYSTEM]): value}
 
 
 UNIT_SCHEMA = vol.Schema(
@@ -155,7 +158,7 @@ class NibeData:
     config = attr.ib()
     session = attr.ib(default=None, type=UplinkSession)
     uplink = attr.ib(default=None, type=Uplink)
-    systems = attr.ib(default=[], type=List["NibeSystem"])
+    systems = attr.ib(default=[], type=Dict[str, "NibeSystem"])
     stack = attr.ib(type=AsyncExitStack, factory=AsyncExitStack)
     skip_reload = attr.ib(type=int, default=0)
 
@@ -175,7 +178,7 @@ async def async_setup_systems(hass, config, uplink, entry):
     config = _get_merged_config(config, entry)
 
     systems = {
-        system_id: NibeSystem(hass, uplink, system_id, system_cfg, entry.entry_id)
+        system_id: NibeSystem(hass, uplink, int(system_id), system_cfg, entry.entry_id)
         for system_id, system_cfg in config[CONF_SYSTEMS].items()
     }
 
@@ -263,7 +266,9 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
             )
         )
         uplink = await stack.enter_async_context(Uplink(session))
-        systems = await stack.enter_async_context(async_setup_systems(hass, data.config, uplink, entry))
+        systems = await stack.enter_async_context(
+            async_setup_systems(hass, data.config, uplink, entry)
+        )
         await stack.enter_async_context(async_forward_platforms(hass, entry))
         data.stack = stack.pop_all()
 
@@ -278,7 +283,7 @@ async def async_unload_entry(hass, entry):
     data: NibeData = hass.data[DATA_NIBE]
     data.session = None
     data.uplink = None
-    data.systems = []
+    data.systems = {}
 
     await data.stack.aclose()
     return True
@@ -287,7 +292,14 @@ async def async_unload_entry(hass, entry):
 class NibeSystem(object):
     """Object representing a system."""
 
-    def __init__(self, hass, uplink: Uplink, system_id: int, config: Dict[str, Any], entry_id: str):
+    def __init__(
+        self,
+        hass,
+        uplink: Uplink,
+        system_id: int,
+        config: Dict[str, Any],
+        entry_id: str,
+    ):
         """Init."""
         self.hass = hass
         self.config = config
@@ -295,10 +307,10 @@ class NibeSystem(object):
         self.entry_id = entry_id
         self.system = None
         self.uplink = uplink
-        self.notice = []
-        self.statuses = set()
-        self._device_info = {}
-        self._unsub = []
+        self.notice: List[Any] = []
+        self.statuses: Set[str] = set()
+        self._device_info: Dict[str, Any] = {}
+        self._unsub: List[Callable] = []
 
     @property
     def device_info(self):

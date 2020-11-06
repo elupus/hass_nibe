@@ -2,13 +2,13 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from homeassistant.components.fan import ENTITY_ID_FORMAT, SUPPORT_SET_SPEED, FanEntity
 from homeassistant.exceptions import PlatformNotReady
 from nibeuplink import Uplink, VentilationSystem, get_active_ventilations
 
-from . import NibeSystem
+from . import NibeData, NibeSystem
 from .const import DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
@@ -27,9 +27,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE].uplink  # type: Uplink
-    systems = hass.data[DATA_NIBE].systems  # type: List[NibeSystem]
-
+    data: NibeData = hass.data[DATA_NIBE]
+    uplink = data.uplink
+    systems = data.systems
     entities = []
 
     async def add_active(system: NibeSystem):
