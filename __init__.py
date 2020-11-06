@@ -170,11 +170,20 @@ class NibeData:
 
 def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
     config = dict(config)
-    if CONF_SYSTEMS in entry.data:
-        for system in entry.data[CONF_SYSTEMS].keys():
-            if system not in config[CONF_SYSTEMS]:
-                config[CONF_SYSTEMS][system] = SYSTEM_SCHEMA({})
-    return config
+    for system_id, system_data in entry.data.get(CONF_SYSTEMS, {}).items():
+        system_config = config[CONF_SYSTEMS].get(system_id)
+        if system_config is None:
+            config[CONF_SYSTEMS][system_id] = system_data
+            continue
+
+        for unit_id, unit_data in system_data.get(CONF_UNITS, {}).items():
+            unit_config = system_config[CONF_UNITS].get(unit_id)
+            if unit_config is None:
+                system_config[CONF_UNITS][unit_id] = unit_data
+                continue
+            unit_config.update(unit_data)
+
+    return NIBE_SCHEMA(config)
 
 
 @asynccontextmanager

@@ -1,23 +1,27 @@
 """Nibe uplink configuration."""
-
+import copy
 import logging
-from typing import Dict  # noqa
+from abc import abstractmethod
+from typing import Any, AsyncIterator, Dict
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from aiohttp.web import HTTPBadRequest, Request, Response
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.core import callback  # noqa
 from nibeuplink import Uplink, UplinkSession
 
 from .const import (
     AUTH_CALLBACK_NAME,
     AUTH_CALLBACK_URL,
     CONF_ACCESS_DATA,
+    CONF_CATEGORIES,
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
     CONF_REDIRECT_URI,
     CONF_SYSTEMS,
+    CONF_UNITS,
     CONF_UPLINK_APPLICATION_URL,
     CONF_WRITEACCESS,
     DATA_NIBE,
@@ -39,6 +43,12 @@ class NibeConfigFlow(config_entries.ConfigFlow):
         """Init."""
         self.access_data = None
         self.user_data = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Return the Options Flow."""
+        return OptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -144,6 +154,91 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 }
             ),
         )
+
+
+class FunctionFlowHandler(config_entries.OptionsFlow):
+    """Handle a option flow for a Konnected Panel."""
+
+    _step_iter: AsyncIterator[Dict[str, Any]]
+
+    def __init__(self, config_entry: config_entries.ConfigEntry):
+        """Initialize options flow."""
+        self._step_iter = self.run()
+
+    @abstractmethod
+    async def run(self):
+        """Run the options flow."""
+        pass
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        try:
+            if user_input is not None:
+                result = await self._step_iter.asend(user_input)
+            else:
+                result = await self._step_iter.__anext__()
+        except StopAsyncIteration:
+            return self.async_abort("abort")
+
+        if "step_id" in result:
+            name = f"async_step_{result['step_id']}"
+            if not hasattr(self, name):
+                setattr(self, name, self.async_step_init)
+
+        return result
+
+
+class OptionsFlowHandler(FunctionFlowHandler):
+    """Handle a option flow for a Konnected Panel."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry):
+        """Initialize options flow."""
+        self._entry = config_entry
+        self._config = copy.deepcopy(dict(config_entry.data))
+        super().__init__(config_entry)
+
+    async def run(self):
+        """Run the options flow."""
+        uplink: Uplink = self.hass.data[DATA_NIBE].uplink
+
+        systems = await uplink.get_systems()
+        systems_config = self._config[CONF_SYSTEMS]
+
+        for system in systems:
+            system_config = systems_config.setdefault(str(system["systemId"]), {})
+
+            units = await uplink.get_units(system["systemId"])
+            units_configs = system_config.setdefault(CONF_UNITS, {})
+            for unit in units:
+                units_configs.setdefault(str(unit["systemUnitId"]), {})
+
+            categories_schema = cv.multi_select(
+                {str(unit["systemUnitId"]): unit["name"] for unit in units}
+            )
+            categories_selected = {
+                unit_id
+                for unit_id, unit_config in units_configs.items()
+                if unit_config.get(CONF_CATEGORIES, False)
+            }
+
+            data = yield self.async_show_form(
+                step_id="system",
+                description_placeholders=system,
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_CATEGORIES,
+                            default=categories_selected,
+                        ): categories_schema
+                    }
+                ),
+            )
+
+            for unit_id, units_config in units_configs.items():
+                units_config[CONF_CATEGORIES] = unit_id in data[CONF_CATEGORIES]
+
+        self.hass.config_entries.async_update_entry(self._entry, data=self._config)
+        yield self.async_create_entry(title="", data={})
 
 
 class NibeAuthView(HomeAssistantView):
