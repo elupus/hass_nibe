@@ -55,37 +55,34 @@ def none_as_true(data):
         return cv.boolean(data)
 
 
-T = Dict[Any, Any]
+def dictify(item_schema, item_key):
+    """Convert to direct lookup dict."""
 
+    def list_to_dict(data: List[Dict[Any, Any]]) -> Dict[str, Dict[Any, Any]]:
+        return {str(value[item_key]): value for value in data}
 
-def ensure_system_dict(value: Union[Dict[str, T], List[T], None]) -> Dict[str, T]:
-    """Wrap value in list if it is not one."""
-    if value is None:
-        return {}
-    if isinstance(value, list):
-        value_schema = vol.Schema(
-            [
-                vol.Schema(
-                    {vol.Required(CONF_SYSTEM): cv.positive_int}, extra=vol.ALLOW_EXTRA
-                )
-            ]
-        )
-        value2: List[T] = value_schema(value)
-        return {str(x[CONF_SYSTEM]): x for x in value2}
-    if isinstance(value, dict):
-        return value
-    value2 = SYSTEM_SCHEMA(value)
-    return {str(value[CONF_SYSTEM]): value}
+    def value_to_dict(value: Dict[Any, Any]) -> Dict[str, Dict[Any, Any]]:
+        return {str(value[item_key]): value}
+
+    key_schema = vol.Schema(
+        {vol.Required(item_key): vol.Coerce(int)}, extra=vol.ALLOW_EXTRA
+    )
+
+    return vol.Or(
+        {vol.Coerce(str): item_schema},
+        vol.All([vol.All(key_schema, item_schema)], list_to_dict),
+        vol.All(item_schema, key_schema, value_to_dict),
+    )
 
 
 UNIT_SCHEMA = vol.Schema(
     vol.All(
-        cv.deprecated(CONF_STATUSES),
         {
-            vol.Required(CONF_UNIT): cv.positive_int,
+            vol.Optional(CONF_UNIT): cv.positive_int,
             vol.Optional(CONF_CATEGORIES, default=False): none_as_true,
             vol.Optional(CONF_STATUSES, default=False): none_as_true,
         },
+        cv.deprecated(CONF_STATUSES),
     )
 )
 
@@ -105,9 +102,7 @@ SYSTEM_SCHEMA = vol.Schema(
         cv.deprecated(CONF_FANS),
         {
             vol.Optional(CONF_SYSTEM): cv.positive_int,
-            vol.Optional(CONF_UNITS, default=[]): vol.All(
-                cv.ensure_list, [UNIT_SCHEMA]
-            ),
+            vol.Optional(CONF_UNITS, default={}): dictify(UNIT_SCHEMA, CONF_UNIT),
             vol.Optional(CONF_SENSORS, default=[]): vol.All(
                 cv.ensure_list, [cv.string]
             ),
@@ -133,9 +128,7 @@ NIBE_SCHEMA = vol.Schema(
         vol.Optional(CONF_CLIENT_ID): cv.string,
         vol.Optional(CONF_CLIENT_SECRET): cv.string,
         vol.Optional(CONF_WRITEACCESS): cv.boolean,
-        vol.Optional(CONF_SYSTEMS, default={}): vol.All(
-            ensure_system_dict, {vol.Coerce(str): SYSTEM_SCHEMA}
-        ),
+        vol.Optional(CONF_SYSTEMS, default={}): dictify(SYSTEM_SCHEMA, CONF_SYSTEM),
     }
 )
 
@@ -158,7 +151,7 @@ class NibeData:
     config = attr.ib()
     session = attr.ib(default=None, type=UplinkSession)
     uplink = attr.ib(default=None, type=Uplink)
-    systems = attr.ib(default=[], type=Dict[str, "NibeSystem"])
+    systems = attr.ib(default={}, type=Dict[str, "NibeSystem"])
     stack = attr.ib(type=AsyncExitStack, factory=AsyncExitStack)
     skip_reload = attr.ib(type=int, default=0)
 

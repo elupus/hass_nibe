@@ -9,7 +9,7 @@ from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
 from nibeuplink import Uplink
 
-from .const import CONF_CATEGORIES, CONF_SENSORS, CONF_UNIT, CONF_UNITS, DATA_NIBE
+from .const import CONF_CATEGORIES, CONF_SENSORS, CONF_UNITS, DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
 
@@ -63,9 +63,9 @@ async def async_load(hass, uplink):
         for sensor_id in system.config[CONF_SENSORS]:
             await load_sensor(system.system_id, sensor_id)
 
-        for unit in system.config[CONF_UNITS]:
+        for unit_id, unit in system.config[CONF_UNITS].items():
             if unit[CONF_CATEGORIES]:
-                await load_categories(system.system_id, unit[CONF_UNIT])
+                await load_categories(system.system_id, unit_id)
 
     return sensors
 
