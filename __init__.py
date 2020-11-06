@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Dict, List, Mapping, T, Union
 
 import attr
@@ -155,6 +156,7 @@ class NibeData:
     session = attr.ib(default=None, type=UplinkSession)
     uplink = attr.ib(default=None, type=Uplink)
     systems = attr.ib(default=[], type=List["NibeSystem"])
+    stack = attr.ib(type=AsyncExitStack, factory=AsyncExitStack)
 
 
 def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
@@ -166,27 +168,41 @@ def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
     return config
 
 
-async def async_setup_systems(hass, data: NibeData, entry):
+@asynccontextmanager
+async def async_setup_systems(hass, config, uplink, entry):
     """Configure each system."""
-    config = _get_merged_config(data.config, entry)
+    config = _get_merged_config(config, entry)
 
     systems = {
-        system_id: NibeSystem(
-            hass, data.uplink, int(system_id), system_cfg, entry.entry_id
-        )
+        system_id: NibeSystem(hass, uplink, int(system_id), system_cfg, entry.entry_id)
         for system_id, system_cfg in config[CONF_SYSTEMS].items()
     }
 
-    data.systems = systems
+    await asyncio.gather(*[system.load() for system in systems.values()])
+    yield systems
+    await asyncio.gather(*[system.unload() for system in systems.values()])
 
-    tasks = [system.load() for system in systems.values()]
 
-    await asyncio.gather(*tasks)
+@asynccontextmanager
+async def async_forward_platforms(hass, entry):
+    """Context manager for handling forwarded platforms setup and teardown."""
 
     for platform in FORWARD_PLATFORMS:
         hass.async_add_job(
             hass.config_entries.async_forward_entry_setup(entry, platform)
         )
+
+    yield
+
+    if not all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in FORWARD_PLATFORMS
+            ]
+        )
+    ):
+        raise Exception("Unable to unload all platforms")
 
 
 async def async_setup(hass, config):
@@ -216,43 +232,37 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
             entry, data={**entry.data, CONF_ACCESS_DATA: data}
         )
 
-    session = UplinkSession(
-        client_id=entry.data.get(CONF_CLIENT_ID),
-        client_secret=entry.data.get(CONF_CLIENT_SECRET),
-        redirect_uri=entry.data.get(CONF_REDIRECT_URI),
-        access_data=entry.data.get(CONF_ACCESS_DATA),
-        access_data_write=access_data_write,
-        scope=scope,
-    )
-    await session.open()
-
-    uplink = Uplink(session)
-
     data = hass.data[DATA_NIBE]
+    async with data.stack as stack:
+        session = await stack.enter_async_context(
+            UplinkSession(
+                client_id=entry.data.get(CONF_CLIENT_ID),
+                client_secret=entry.data.get(CONF_CLIENT_SECRET),
+                redirect_uri=entry.data.get(CONF_REDIRECT_URI),
+                access_data=entry.data.get(CONF_ACCESS_DATA),
+                access_data_write=access_data_write,
+                scope=scope,
+            )
+        )
+        uplink = await stack.enter_async_context(Uplink(session))
+        systems = await stack.enter_async_context(async_setup_systems(hass, data.config, uplink, entry))
+        await stack.enter_async_context(async_forward_platforms(hass, entry))
+        data.stack = stack.pop_all()
+
+    data.systems = systems
     data.session = session
     data.uplink = uplink
-
-    await async_setup_systems(hass, data, entry)
-
     return True
 
 
 async def async_unload_entry(hass, entry):
     """Unload a configuration entity."""
-    data = hass.data[DATA_NIBE]
-    await asyncio.wait(
-        [
-            hass.config_entries.async_forward_entry_unload(entry, platform)
-            for platform in FORWARD_PLATFORMS
-        ]
-    )
-
-    await asyncio.wait([system.unload() for system in data.systems.values()])
-
-    await data.session.close()
-    data.systems = []
+    data: NibeData = hass.data[DATA_NIBE]
+    data.session = None
     data.uplink = None
-    data.monitor = None
+    data.systems = []
+
+    await data.stack.aclose()
     return True
 
 
