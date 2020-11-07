@@ -33,5 +33,17 @@
         "abort": {
             "already_configured": "Uplink is already configured"
         }
+    },
+    "options": {
+        "step": {
+            "init": {},
+            "system": {
+                "title": "Configure System",
+                "description": "Configure system {name}\nType: {productName}\nId: {systemId}",
+                "data": {
+                    "categories": "Units to retrieve service categories from"
+                }
+            }
+        }
     }
 }
