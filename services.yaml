@@ -3,6 +3,10 @@ set_smarthome_mode:
   fields:
     system: {description: System identifcation to send command to., example: "12345"}
     mode: {description: "Mode to select. Can be DEFAULT_OPERATION, AWAY_FROM_HOME or VACATION", example: "DEFAULT_OPERATION"}
+get_smarthome_mode:
+  description: Get system smarthome mode.
+  fields:
+    system: {description: System identifcation to send command to., example: "12345"}
 set_parameter:
   description: Set a nibe uplink parameter.
   fields:
