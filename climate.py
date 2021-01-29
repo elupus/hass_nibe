@@ -39,11 +39,10 @@ from nibeuplink import (
     PARAM_PUMP_SPEED_HEATING_MEDIUM,
     ClimateSystem,
     SetThermostatModel,
-    Uplink,
     get_active_climate,
 )
 
-from . import NibeSystem
+from . import NibeData, NibeSystem
 from .const import (
     ATTR_TARGET_TEMPERATURE,
     ATTR_VALVE_POSITION,
@@ -66,9 +65,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE].uplink  # type: Uplink
-    systems = hass.data[DATA_NIBE].systems  # type: List[NibeSystem]
-
+    data: NibeData = hass.data[DATA_NIBE]
+    uplink = data.uplink
+    systems = data.systems
     entities = []
 
     async def add_active(system: NibeSystem):

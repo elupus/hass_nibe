@@ -1,16 +1,17 @@
 """Sensors for nibe."""
 
+from custom_components.nibe import NibeData
 import logging
 from collections import defaultdict
 
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
+from nibeuplink import Uplink
 
 from .const import (
     CONF_CATEGORIES,
     CONF_SENSORS,
-    CONF_UNIT,
     CONF_UNITS,
     DATA_NIBE,
 )
@@ -31,7 +32,8 @@ async def async_load(hass, uplink):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE]
+    systems = data.systems
 
     sensors = defaultdict(gen_dict)
 
@@ -58,9 +60,9 @@ async def async_load(hass, uplink):
         for sensor_id in system.config[CONF_SENSORS]:
             await load_sensor(system.system_id, sensor_id)
 
-        for unit in system.config[CONF_UNITS]:
+        for unit_id, unit in system.config[CONF_UNITS].items():
             if unit[CONF_CATEGORIES]:
-                await load_categories(system.system_id, unit[CONF_UNIT])
+                await load_categories(system.system_id, unit_id)
 
     return sensors
 
@@ -96,7 +98,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeSensor(NibeParameterEntity, Entity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink, system_id, parameter_id, entry, data, device_info):
+    def __init__(self, uplink: Uplink, system_id: int, parameter_id, entry, data, device_info):
         """Init."""
         super(NibeSensor, self).__init__(
             uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT

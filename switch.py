@@ -1,8 +1,10 @@
 """Nibe Switch."""
+from custom_components.nibe import NibeData
 import logging
 
 from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchEntity
 from homeassistant.exceptions import PlatformNotReady
+from nibeuplink import Uplink
 
 from .const import CONF_SWITCHES, DATA_NIBE
 from .entity import NibeParameterEntity
@@ -16,8 +18,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE].uplink
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
     for system in systems.values():
@@ -30,7 +33,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeSwitch(NibeParameterEntity, SwitchEntity):
     """Nibe Switch Entity."""
 
-    def __init__(self, uplink, system_id, parameter_id, entry):
+    def __init__(self, uplink: Uplink, system_id: int, parameter_id, entry):
         """Init."""
         super(NibeSwitch, self).__init__(
             uplink, system_id, parameter_id, None, ENTITY_ID_FORMAT

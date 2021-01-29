@@ -1,5 +1,6 @@
 """Binary sensors for nibe uplink."""
 
+from custom_components.nibe import NibeData
 import logging
 
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT, BinarySensorEntity
@@ -17,8 +18,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE].uplink
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
     for system in systems.values():
@@ -33,7 +35,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeBinarySensor(NibeParameterEntity, BinarySensorEntity):
     """Binary sensor."""
 
-    def __init__(self, uplink, system_id, parameter_id, entry):
+    def __init__(self, uplink, system_id: int, parameter_id, entry):
         """Init."""
         super(NibeBinarySensor, self).__init__(
             uplink, system_id, parameter_id, None, ENTITY_ID_FORMAT

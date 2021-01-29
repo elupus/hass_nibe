@@ -1,6 +1,7 @@
 """Water heater entity for nibe uplink."""
 
 import asyncio
+from custom_components.nibe import NibeData, NibeSystem
 import logging
 from collections import OrderedDict
 from typing import Set
@@ -18,7 +19,7 @@ from homeassistant.components.water_heater import (
 from homeassistant.const import STATE_OFF
 from homeassistant.exceptions import PlatformNotReady
 
-from nibeuplink import get_active_hotwater
+from nibeuplink import get_active_hotwater, Uplink
 
 from .const import DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
@@ -67,12 +68,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if DATA_NIBE not in hass.data:
         raise PlatformNotReady
 
-    uplink = hass.data[DATA_NIBE].uplink
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
 
-    async def add_active(system):
+    async def add_active(system: NibeSystem):
         hwsyses = await get_active_hotwater(uplink, system.system_id)
         for hwsys in hwsyses.values():
             entities.append(
@@ -92,7 +94,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     """Water heater entity."""
 
-    def __init__(self, uplink, system_id: int, statuses: Set[str], hwsys):
+    def __init__(self, uplink: Uplink, system_id: int, statuses: Set[str], hwsys):
         """Init."""
         super().__init__(uplink, system_id)
 

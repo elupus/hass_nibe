@@ -3,7 +3,8 @@
 import attr
 import asyncio
 import logging
-from typing import List, Dict, Union, T, Mapping
+from contextlib import AsyncExitStack, asynccontextmanager
+from typing import Any, Callable, List, Dict, Set, Mapping
 
 import voluptuous as vol
 
@@ -11,6 +12,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
+
 from nibeuplink import Uplink, UplinkSession
 
 from .config_flow import NibeConfigFlow  # noqa
@@ -55,35 +57,51 @@ def none_as_true(data):
         return cv.boolean(data)
 
 
-def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T]:
-    """Wrap value in list if it is not one."""
-    if value is None:
-        return {}
-    if isinstance(value, list):
-        value_schema = vol.Schema([
-            vol.Schema({
-                vol.Required(CONF_SYSTEM): cv.positive_int
-            }, extra=vol.ALLOW_EXTRA)
-        ])
-        value = value_schema(value)
-        return {
-            x[CONF_SYSTEM]: x
-            for x in value
-        }
-    if isinstance(value, dict):
-        return value
-    value = SYSTEM_SCHEMA(value)
-    return {value[CONF_SYSTEM]: value}
+def dictify(item_schema, item_key):
+    """Convert to direct lookup dict."""
+
+    def list_to_dict(data: List[Dict[Any, Any]]) -> Dict[str, Dict[Any, Any]]:
+        return {str(value[item_key]): value for value in data}
+
+    def value_to_dict(value: Dict[Any, Any]) -> Dict[str, Dict[Any, Any]]:
+        return {str(value[item_key]): value}
+
+    key_schema = vol.Schema(
+        {vol.Required(item_key): vol.Coerce(int)}, extra=vol.ALLOW_EXTRA
+    )
+
+    return vol.Or(
+        {vol.Coerce(str): item_schema},
+        vol.All([vol.All(key_schema, item_schema)], list_to_dict),
+        vol.All(item_schema, key_schema, value_to_dict),
+    )
 
 
-UNIT_SCHEMA = vol.Schema(vol.All(
-    cv.deprecated(CONF_STATUSES),
-    {
-        vol.Required(CONF_UNIT): cv.positive_int,
-        vol.Optional(CONF_CATEGORIES, default=False): none_as_true,
-        vol.Optional(CONF_STATUSES, default=False): none_as_true,
-    }
-))
+def deprecate_remove(key):
+    """Return validator that check for deprecation and remove field."""
+    validator = cv.deprecated(key)
+
+    def validate(value):
+        if not isinstance(value, dict):
+            raise vol.Invalid("Value not a dict")
+        result = validator(value)
+        if key in result:
+            result = dict(result)
+            del result[key]
+        return result
+
+    return validate
+
+
+UNIT_SCHEMA = vol.Schema(
+    vol.All(
+        deprecate_remove(CONF_STATUSES),
+        {
+            vol.Optional(CONF_UNIT): cv.positive_int,
+            vol.Optional(CONF_CATEGORIES, default=False): none_as_true,
+        },
+    )
+)
 
 THERMOSTAT_SCHEMA = vol.Schema(
     {
@@ -94,26 +112,29 @@ THERMOSTAT_SCHEMA = vol.Schema(
     }
 )
 
-SYSTEM_SCHEMA = vol.Schema(vol.All(
-    cv.deprecated(CONF_CLIMATES),
-    cv.deprecated(CONF_WATER_HEATERS),
-    cv.deprecated(CONF_FANS),
-    {
-        vol.Optional(CONF_SYSTEM): cv.positive_int,
-        vol.Optional(CONF_UNITS, default=[]): vol.All(cv.ensure_list, [UNIT_SCHEMA]),
-        vol.Optional(CONF_SENSORS, default=[]): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_CLIMATES): none_as_true,
-        vol.Optional(CONF_WATER_HEATERS): none_as_true,
-        vol.Optional(CONF_FANS): none_as_true,
-        vol.Optional(CONF_SWITCHES, default=[]): vol.All(cv.ensure_list, [cv.string]),
-        vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(
-            cv.ensure_list, [cv.string]
-        ),
-        vol.Optional(CONF_THERMOSTATS, default={}): {
-            cv.positive_int: THERMOSTAT_SCHEMA
+SYSTEM_SCHEMA = vol.Schema(
+    vol.All(
+        deprecate_remove(CONF_CLIMATES),
+        deprecate_remove(CONF_WATER_HEATERS),
+        deprecate_remove(CONF_FANS),
+        {
+            vol.Optional(CONF_SYSTEM): cv.positive_int,
+            vol.Optional(CONF_UNITS, default={}): dictify(UNIT_SCHEMA, CONF_UNIT),
+            vol.Optional(CONF_SENSORS, default=[]): vol.All(
+                cv.ensure_list, [cv.string]
+            ),
+            vol.Optional(CONF_SWITCHES, default=[]): vol.All(
+                cv.ensure_list, [cv.string]
+            ),
+            vol.Optional(CONF_BINARY_SENSORS, default=[]): vol.All(
+                cv.ensure_list, [cv.string]
+            ),
+            vol.Optional(CONF_THERMOSTATS, default={}): {
+                cv.positive_int: THERMOSTAT_SCHEMA
+            },
         },
-    }
-))
+    )
+)
 
 NIBE_SCHEMA = vol.Schema(
     {
@@ -121,9 +142,7 @@ NIBE_SCHEMA = vol.Schema(
         vol.Optional(CONF_CLIENT_ID): cv.string,
         vol.Optional(CONF_CLIENT_SECRET): cv.string,
         vol.Optional(CONF_WRITEACCESS): cv.boolean,
-        vol.Optional(CONF_SYSTEMS, default={}): vol.All(
-            ensure_system_dict, {vol.Coerce(str): SYSTEM_SCHEMA}
-        ),
+        vol.Optional(CONF_SYSTEMS, default={}): dictify(SYSTEM_SCHEMA, CONF_SYSTEM),
     }
 )
 
@@ -146,39 +165,64 @@ class NibeData:
     config = attr.ib()
     session = attr.ib(default=None, type=UplinkSession)
     uplink = attr.ib(default=None, type=Uplink)
-    systems = attr.ib(default=[], type=List["NibeSystem"])
+    systems = attr.ib(default={}, type=Dict[str, "NibeSystem"])
+    stack = attr.ib(type=AsyncExitStack, factory=AsyncExitStack)
+    skip_reload = attr.ib(type=int, default=0)
 
 
 def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
     config = dict(config)
-    if CONF_SYSTEMS in entry.data:
-        for system in entry.data[CONF_SYSTEMS].keys():
-            if system not in config[CONF_SYSTEMS]:
-                config[CONF_SYSTEMS][system] = SYSTEM_SCHEMA({})
-    return config
+    for system_id, system_data in entry.data.get(CONF_SYSTEMS, {}).items():
+        system_config = config[CONF_SYSTEMS].get(system_id)
+        if system_config is None:
+            config[CONF_SYSTEMS][system_id] = system_data
+            continue
+
+        for unit_id, unit_data in system_data.get(CONF_UNITS, {}).items():
+            unit_config = system_config[CONF_UNITS].get(unit_id)
+            if unit_config is None:
+                system_config[CONF_UNITS][unit_id] = unit_data
+                continue
+            unit_config.update(unit_data)
+
+    return NIBE_SCHEMA(config)
 
 
-async def async_setup_systems(hass, data: NibeData, entry):
+@asynccontextmanager
+async def async_setup_systems(hass, config, uplink, entry):
     """Configure each system."""
-    config = _get_merged_config(data.config, entry)
+    config = _get_merged_config(config, entry)
 
     systems = {
-        system_id: NibeSystem(
-            hass, data.uplink, int(system_id), system_cfg, entry.entry_id
-        )
+        system_id: NibeSystem(hass, uplink, int(system_id), system_cfg, entry.entry_id)
         for system_id, system_cfg in config[CONF_SYSTEMS].items()
     }
 
-    data.systems = systems
+    await asyncio.gather(*[system.load() for system in systems.values()])
+    yield systems
+    await asyncio.gather(*[system.unload() for system in systems.values()])
 
-    tasks = [system.load() for system in systems.values()]
 
-    await asyncio.gather(*tasks)
+@asynccontextmanager
+async def async_forward_platforms(hass, entry):
+    """Context manager for handling forwarded platforms setup and teardown."""
 
     for platform in FORWARD_PLATFORMS:
         hass.async_add_job(
             hass.config_entries.async_forward_entry_setup(entry, platform)
         )
+
+    yield
+
+    if not all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in FORWARD_PLATFORMS
+            ]
+        )
+    ):
+        raise Exception("Unable to unload all platforms")
 
 
 async def async_setup(hass, config):
@@ -193,9 +237,21 @@ async def async_setup(hass, config):
     return True
 
 
+async def async_update_listener(hass, entry: config_entries.ConfigEntry):
+    """Handle changes to config."""
+    data: NibeData = hass.data[DATA_NIBE]
+    if data.skip_reload == 0:
+        _LOGGER.debug("Config updated: %s", entry.as_dict()["data"])
+        await hass.config_entries.async_reload(entry.entry_id)
+    else:
+        data.skip_reload -= 1
+
+
 async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     """Set up an access point from a config entry."""
     _LOGGER.debug("Setup nibe entry")
+
+    data: NibeData = hass.data[DATA_NIBE]
 
     scope = None
     if entry.data.get(CONF_WRITEACCESS):
@@ -203,55 +259,63 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     else:
         scope = ["READSYSTEM"]
 
-    def access_data_write(data):
-        hass.config_entries.async_update_entry(
-            entry, data={**entry.data, CONF_ACCESS_DATA: data}
+    def access_data_write(access_data):
+        data.skip_reload += 1
+        changed = hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_ACCESS_DATA: access_data}
         )
+        if not changed:
+            data.skip_reload -= 1
 
-    session = UplinkSession(
-        client_id=entry.data.get(CONF_CLIENT_ID),
-        client_secret=entry.data.get(CONF_CLIENT_SECRET),
-        redirect_uri=entry.data.get(CONF_REDIRECT_URI),
-        access_data=entry.data.get(CONF_ACCESS_DATA),
-        access_data_write=access_data_write,
-        scope=scope,
-    )
-    await session.open()
+    async with data.stack as stack:
 
-    uplink = Uplink(session)
+        stack.callback(entry.add_update_listener(async_update_listener))
 
-    data = hass.data[DATA_NIBE]
+        session = await stack.enter_async_context(
+            UplinkSession(
+                client_id=entry.data.get(CONF_CLIENT_ID),
+                client_secret=entry.data.get(CONF_CLIENT_SECRET),
+                redirect_uri=entry.data.get(CONF_REDIRECT_URI),
+                access_data=entry.data.get(CONF_ACCESS_DATA),
+                access_data_write=access_data_write,
+                scope=scope,
+            )
+        )
+        uplink = await stack.enter_async_context(Uplink(session))
+        systems = await stack.enter_async_context(
+            async_setup_systems(hass, data.config, uplink, entry)
+        )
+        await stack.enter_async_context(async_forward_platforms(hass, entry))
+        data.stack = stack.pop_all()
+
+    data.systems = systems
     data.session = session
     data.uplink = uplink
-
-    await async_setup_systems(hass, data, entry)
-
     return True
 
 
 async def async_unload_entry(hass, entry):
     """Unload a configuration entity."""
-    data = hass.data[DATA_NIBE]
-    await asyncio.wait(
-        [
-            hass.config_entries.async_forward_entry_unload(entry, platform)
-            for platform in FORWARD_PLATFORMS
-        ]
-    )
-
-    await asyncio.wait([system.unload() for system in data.systems.values()])
-
-    await data.session.close()
-    data.systems = []
+    data: NibeData = hass.data[DATA_NIBE]
+    data.session = None
     data.uplink = None
-    data.monitor = None
+    data.systems = {}
+
+    await data.stack.aclose()
     return True
 
 
 class NibeSystem(object):
     """Object representing a system."""
 
-    def __init__(self, hass, uplink, system_id, config, entry_id):
+    def __init__(
+        self,
+        hass,
+        uplink: Uplink,
+        system_id: int,
+        config: Dict[str, Any],
+        entry_id: str,
+    ):
         """Init."""
         self.hass = hass
         self.config = config
@@ -259,10 +323,10 @@ class NibeSystem(object):
         self.entry_id = entry_id
         self.system = None
         self.uplink = uplink
-        self.notice = []
-        self.statuses = set()
-        self._device_info = {}
-        self._unsub = []
+        self.notice: List[Any] = []
+        self.statuses: Set[str] = set()
+        self._device_info: Dict[str, Any] = {}
+        self._unsub: List[Callable] = []
 
     @property
     def device_info(self):

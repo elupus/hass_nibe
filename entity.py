@@ -198,8 +198,8 @@ class NibeParameterEntity(NibeEntity):
 
     def __init__(
         self,
-        uplink,
-        system_id,
+        uplink: Uplink,
+        system_id: int,
         parameter_id,
         data=None,
         entity_id_format=None,
