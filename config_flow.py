@@ -173,11 +173,10 @@ class FunctionFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         try:
-            if user_input is not None:
-                result = await self._step_iter.asend(user_input)
-            else:
-                result = await self._step_iter.__anext__()
-        except StopAsyncIteration:
+            result = await self._step_iter.asend(user_input)
+        except StopAsyncIteration as exc:
+            if exc.value:
+                return exc.value
             return self.async_abort("abort")
 
         if "step_id" in result:
@@ -238,7 +237,7 @@ class OptionsFlowHandler(FunctionFlowHandler):
                 units_config[CONF_CATEGORIES] = unit_id in data[CONF_CATEGORIES]
 
         self.hass.config_entries.async_update_entry(self._entry, data=self._config)
-        yield self.async_create_entry(title="", data={})
+        return self.async_create_entry(title="", data={})
 
 
 class NibeAuthView(HomeAssistantView):
