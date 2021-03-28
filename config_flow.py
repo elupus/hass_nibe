@@ -65,7 +65,10 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
         url = "{}{}".format(self.hass.helpers.network.get_url(prefer_external=True), AUTH_CALLBACK_URL)
 
-        config = self.hass.data[DATA_NIBE].config
+        if DATA_NIBE in self.hass.data:
+            config = self.hass.data[DATA_NIBE].config
+        else:
+            config = {}
 
         return self.async_show_form(
             step_id="user",
