@@ -6,7 +6,6 @@ from collections import OrderedDict
 from typing import Set
 
 import aiohttp
-
 from homeassistant.components.water_heater import (
     ENTITY_ID_FORMAT,
     STATE_ECO,
@@ -17,7 +16,6 @@ from homeassistant.components.water_heater import (
 )
 from homeassistant.const import STATE_OFF
 from homeassistant.exceptions import PlatformNotReady
-
 from nibeuplink import get_active_hotwater
 
 from .const import DATA_NIBE

@@ -1,13 +1,12 @@
 """Support for nibe uplink."""
 
-import attr
 import asyncio
 import logging
-from typing import List, Dict, Union, T, Mapping
+from typing import Dict, List, Mapping, T, Union
 
-import voluptuous as vol
-
+import attr
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
@@ -23,6 +22,7 @@ from .const import (
     CONF_CLIMATE_SYSTEMS,
     CONF_CLIMATES,
     CONF_CURRENT_TEMPERATURE,
+    CONF_FANS,
     CONF_REDIRECT_URI,
     CONF_SENSORS,
     CONF_STATUSES,
@@ -38,7 +38,6 @@ from .const import (
     DATA_NIBE,
     DOMAIN,
     SCAN_INTERVAL,
-    CONF_FANS,
     SIGNAL_PARAMETERS_UPDATED,
     SIGNAL_STATUSES_UPDATED,
 )

@@ -1,22 +1,21 @@
 """Services for nibe uplink."""
-import logging
 import json
+import logging
 
-import voluptuous as vol
-
-from homeassistant.helpers.event import async_call_later
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.const import ATTR_NAME, ATTR_TEMPERATURE
+from homeassistant.helpers.event import async_call_later
 
 from .const import (
     ATTR_TARGET_TEMPERATURE,
     ATTR_VALVE_POSITION,
     DATA_NIBE,
     DOMAIN,
+    SERVICE_GET_PARAMETER,
     SERVICE_SET_PARAMETER,
     SERVICE_SET_SMARTHOME_MODE,
     SERVICE_SET_THERMOSTAT,
-    SERVICE_GET_PARAMETER,
 )
 
 _LOGGER = logging.getLogger(__name__)

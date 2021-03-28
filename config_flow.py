@@ -2,14 +2,13 @@
 
 import logging
 from typing import Dict  # noqa
-import voluptuous as vol
-from aiohttp.web import Request, Response, HTTPBadRequest
 
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
+from aiohttp.web import HTTPBadRequest, Request, Response
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components.http import HomeAssistantView
-import homeassistant.helpers.config_validation as cv
-
-from nibeuplink import UplinkSession, Uplink
+from nibeuplink import Uplink, UplinkSession
 
 from .const import (
     AUTH_CALLBACK_NAME,
@@ -18,9 +17,9 @@ from .const import (
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
     CONF_REDIRECT_URI,
+    CONF_SYSTEMS,
     CONF_UPLINK_APPLICATION_URL,
     CONF_WRITEACCESS,
-    CONF_SYSTEMS,
     DATA_NIBE,
     DOMAIN,
 )

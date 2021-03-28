@@ -4,10 +4,9 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Union, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from homeassistant.helpers.entity import Entity
-
 from nibeuplink import Uplink
 
 from .const import DOMAIN as DOMAIN_NIBE

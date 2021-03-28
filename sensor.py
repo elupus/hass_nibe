@@ -7,13 +7,7 @@ from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
 
-from .const import (
-    CONF_CATEGORIES,
-    CONF_SENSORS,
-    CONF_UNIT,
-    CONF_UNITS,
-    DATA_NIBE,
-)
+from .const import CONF_CATEGORIES, CONF_SENSORS, CONF_UNIT, CONF_UNITS, DATA_NIBE
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
 
