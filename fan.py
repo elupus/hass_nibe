@@ -37,9 +37,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for ventilation in ventilations.values():
             entities.append(NibeFan(uplink, system.system_id, ventilation))
 
-    await asyncio.gather(
-        *[add_active(system) for system in systems.values()]
-    )
+    await asyncio.gather(*[add_active(system) for system in systems.values()])
 
     async_add_entities(entities, True)
 

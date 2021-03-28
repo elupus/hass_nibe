@@ -63,7 +63,9 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             self.user_data = user_input
             return await self.async_step_auth()
 
-        url = "{}{}".format(self.hass.helpers.network.get_url(prefer_external=True), AUTH_CALLBACK_URL)
+        url = "{}{}".format(
+            self.hass.helpers.network.get_url(prefer_external=True), AUTH_CALLBACK_URL
+        )
 
         if DATA_NIBE in self.hass.data:
             config = self.hass.data[DATA_NIBE].config
@@ -122,10 +124,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
     async def async_step_systems(self, user_input=None):
         """Configure selected systems."""
         if user_input is not None:
-            self.user_data[CONF_SYSTEMS] = {
-                key: {}
-                for key in user_input[CONF_SYSTEMS]
-            }
+            self.user_data[CONF_SYSTEMS] = {key: {} for key in user_input[CONF_SYSTEMS]}
 
             return self.async_create_entry(title="", data=self.user_data)
 
@@ -140,9 +139,9 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             description_placeholders={},
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        CONF_SYSTEMS, default=systems_sel
-                    ): cv.multi_select(systems_dict)
+                    vol.Required(CONF_SYSTEMS, default=systems_sel): cv.multi_select(
+                        systems_dict
+                    )
                 }
             ),
         )

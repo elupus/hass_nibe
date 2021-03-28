@@ -43,7 +43,15 @@ async def async_load(hass, uplink):
 
         for category in data:
             device_info = {
-                "identifiers": {(DOMAIN_NIBE, system_id, "categories", unit_id, category["categoryId"])},
+                "identifiers": {
+                    (
+                        DOMAIN_NIBE,
+                        system_id,
+                        "categories",
+                        unit_id,
+                        category["categoryId"],
+                    )
+                },
                 "via_device": (DOMAIN_NIBE, system_id),
                 "name": f"Category: {category['name']}",
                 "model": "System Category",
