@@ -3,7 +3,11 @@
 import logging
 from collections import defaultdict
 
-from homeassistant.components.sensor import ENTITY_ID_FORMAT
+from homeassistant.components.sensor import (
+    ENTITY_ID_FORMAT,
+    STATE_CLASS_MEASUREMENT,
+    SensorEntity,
+)
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.entity import Entity
 
@@ -95,7 +99,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entites_done, False)
 
 
-class NibeSensor(NibeParameterEntity, Entity):
+class NibeSensor(NibeParameterEntity, SensorEntity):
     """Nibe Sensor."""
 
     def __init__(self, uplink, system_id, parameter_id, entry, data, device_info):
@@ -104,6 +108,13 @@ class NibeSensor(NibeParameterEntity, Entity):
             uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT
         )
         self._device_info = device_info
+
+    @property
+    def state_class(self):
+        if self._unit:
+            return STATE_CLASS_MEASUREMENT
+        else:
+            return None
 
     @property
     def device_info(self):
