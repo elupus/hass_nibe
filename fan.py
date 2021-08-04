@@ -2,9 +2,14 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
-from homeassistant.components.fan import ENTITY_ID_FORMAT, SUPPORT_SET_SPEED, FanEntity
+from homeassistant.components.fan import (
+    ENTITY_ID_FORMAT,
+    SUPPORT_PRESET_MODE,
+    SUPPORT_SET_SPEED,
+    FanEntity,
+)
 from homeassistant.exceptions import PlatformNotReady
 from nibeuplink import Uplink, VentilationSystem, get_active_ventilations
 
@@ -17,9 +22,6 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 SPEED_AUTO = "auto"
 SPEED_BOOST = "boost"
-
-NIBE_BOOST_TO_SPEED = {0: SPEED_AUTO, 1: SPEED_BOOST}
-HA_SPEED_TO_NIBE = {v: k for k, v in NIBE_BOOST_TO_SPEED.items()}
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -76,23 +78,28 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def is_on(self):
         """Return true if the entity is on."""
-        return self.get_value(self._ventilation.fan_speed) is not None
+        fan_speed = self.get_value(self._ventilation.fan_speed)
+        if fan_speed:
+            return True
+        return False
 
     @property
-    def state(self) -> str:
-        """Return current fan state."""
-        return self.get_value(self._ventilation.fan_speed)
+    def percentage(self) -> Optional[int]:
+        return self.get_float(self._ventilation.fan_speed)
 
     @property
-    def speed(self) -> str:
-        """Return the current speed."""
+    def preset_mode(self) -> Optional[str]:
+        """Return the current preset mode, e.g., auto, smart, interval, favorite."""
         boost = self.get_raw(self._ventilation.ventilation_boost)
-        return NIBE_BOOST_TO_SPEED.get(boost, str(boost))
+        if boost:
+            return SPEED_BOOST
+        else:
+            return SPEED_AUTO
 
     @property
-    def speed_list(self) -> list:
-        """Get the list of available speeds."""
-        return list(NIBE_BOOST_TO_SPEED.values())
+    def preset_modes(self):
+        """Return a list of available preset modes."""
+        return [SPEED_AUTO, SPEED_BOOST]
 
     @property
     def state_attributes(self) -> dict:
@@ -108,8 +115,6 @@ class NibeFan(NibeEntity, FanEntity):
     def device_state_attributes(self) -> Dict[str, Optional[str]]:
         """Return extra state."""
         data = {}
-        data["fan_speed"] = self.get_value(self._ventilation.fan_speed)
-        data["fan_speed_raw"] = self.get_raw(self._ventilation.fan_speed)
         data["extract_air"] = self.get_value(self._ventilation.extract_air)
         data["exhaust_air"] = self.get_value(self._ventilation.exhaust_air)
         data["ventilation_boost"] = self.get_value(self._ventilation.ventilation_boost)
@@ -119,28 +124,33 @@ class NibeFan(NibeEntity, FanEntity):
         return data
 
     # pylint: disable=arguments-differ
-    async def async_turn_on(self, speed: str = None, **kwargs) -> None:
+    async def async_turn_on(self, preset: str = None, **kwargs) -> None:
         """Turn on the fan."""
-        await self.async_set_speed(speed or SPEED_AUTO)
+        if preset:
+            await self.async_set_preset_mode(preset)
 
-    async def async_set_speed(self, speed: str) -> None:
-        """Set the speed of the fan."""
-        if speed in HA_SPEED_TO_NIBE and self._ventilation.ventilation_boost:
-            await self._uplink.put_parameter(
-                self._system_id,
-                self._ventilation.ventilation_boost,
-                HA_SPEED_TO_NIBE[speed],
-            )
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode of the fan"""
+        if preset_mode == SPEED_BOOST:
+            value = 1
         else:
-            _LOGGER.error("Unsupported speed %s", speed)
-            raise NotImplementedError()
+            value = 0
 
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return SUPPORT_SET_SPEED
+        await self._uplink.put_parameter(
+            self._system_id,
+            self._ventilation.ventilation_boost,
+            value,
+        )
+
+    async def async_set_percentage(self, percentage: int) -> None:
+        raise NotImplementedError("Can't set exact speed")
 
     @property
     def unique_id(self) -> str:
         """Return a unique identifier for a this parameter."""
         return "{}_{}".format(self._system_id, self._ventilation.fan_speed)
+
+    @property
+    def supported_features(self) -> Optional[int]:
+        """Return supported features."""
+        return SUPPORT_PRESET_MODE | SUPPORT_SET_SPEED
