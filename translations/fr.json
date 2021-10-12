@@ -33,5 +33,10 @@
         "abort": {
             "already_configured": "Uplink est déjà configuré"
         }
+    },
+    "system_health": {
+        "info": {
+            "api_endpoint_reachable": "Point de terminaison de l'API NibeUplink accessible"
+        }
     }
 }
