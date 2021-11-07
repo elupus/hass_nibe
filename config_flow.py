@@ -1,9 +1,8 @@
 """Nibe uplink configuration."""
+from __future__ import annotations
 
 import logging
-from typing import Dict  # noqa
 
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from aiohttp.web import HTTPBadRequest, Request, Response
 from homeassistant import config_entries, data_entry_flow
@@ -20,7 +19,7 @@ from .const import (
     CONF_SYSTEMS,
     CONF_UPLINK_APPLICATION_URL,
     CONF_WRITEACCESS,
-    DATA_NIBE,
+    DATA_NIBE_CONFIG,
     DOMAIN,
 )
 
@@ -66,8 +65,8 @@ class NibeConfigFlow(config_entries.ConfigFlow):
             self.hass.helpers.network.get_url(prefer_external=True), AUTH_CALLBACK_URL
         )
 
-        if DATA_NIBE in self.hass.data:
-            config = self.hass.data[DATA_NIBE].config
+        if DATA_NIBE_CONFIG in self.hass.data:
+            config = self.hass.data[DATA_NIBE_CONFIG]
         else:
             config = {}
 
@@ -108,7 +107,7 @@ class NibeConfigFlow(config_entries.ConfigFlow):
                 errors["base"] = "code"
             else:
                 self.user_data[CONF_ACCESS_DATA] = self.session.access_data
-                return self.async_external_step_done(next_step_id="systems")
+                return self.async_external_step_done(next_step_id="confirm")
 
         global _view
         if not _view:
@@ -120,30 +119,13 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
         return self.async_external_step(step_id="auth", url=url)
 
-    async def async_step_systems(self, user_input=None):
+    async def async_step_confirm(self, user_input=None):
         """Configure selected systems."""
         if user_input is not None:
-            self.user_data[CONF_SYSTEMS] = {key: {} for key in user_input[CONF_SYSTEMS]}
-
             return self.async_create_entry(title="", data=self.user_data)
 
-        systems = await self.uplink.get_systems()
-        systems_dict = {
-            str(x["systemId"]): f"{x['name']} ({x['productName']})" for x in systems
-        }
-        systems_sel = list(systems_dict.keys())
-
-        return self.async_show_form(
-            step_id="systems",
-            description_placeholders={},
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SYSTEMS, default=systems_sel): cv.multi_select(
-                        systems_dict
-                    )
-                }
-            ),
-        )
+        self._set_confirm_only()
+        return self.async_show_form(step_id="confirm")
 
 
 class NibeAuthView(HomeAssistantView):
@@ -157,7 +139,7 @@ class NibeAuthView(HomeAssistantView):
     def __init__(self) -> None:
         """Initialize instance of the view."""
         super().__init__()
-        self._flows = {}  # type: Dict[str, str]
+        self._flows: dict[str, str] = {}
 
     def register_flow(self, state, flow_id):
         """Register a flow in the view."""

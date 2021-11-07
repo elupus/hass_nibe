@@ -8,10 +8,11 @@ from homeassistant.components.sensor import (
     STATE_CLASS_MEASUREMENT,
     SensorEntity,
 )
-from homeassistant.exceptions import PlatformNotReady
-from homeassistant.helpers.entity import Entity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
-from .const import CONF_CATEGORIES, CONF_SENSORS, CONF_UNIT, CONF_UNITS, DATA_NIBE
+from . import NibeData
+from .const import CONF_SENSORS, DATA_NIBE_ENTRIES
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
 
@@ -24,12 +25,10 @@ def gen_dict():
     return {"device_info": None, "data": None}
 
 
-async def async_load(hass, uplink):
+async def async_load(data: NibeData):
     """Load the sensors."""
-    if DATA_NIBE not in hass.data:
-        raise PlatformNotReady
-
-    systems = hass.data[DATA_NIBE].systems
+    uplink = data.uplink
+    systems = data.systems
 
     sensors = defaultdict(gen_dict)
 
@@ -64,17 +63,19 @@ async def async_load(hass, uplink):
         for sensor_id in system.config[CONF_SENSORS]:
             await load_sensor(system.system_id, sensor_id)
 
-        for unit in system.config[CONF_UNITS]:
-            if unit[CONF_CATEGORIES]:
-                await load_categories(system.system_id, unit[CONF_UNIT])
+        for unit_id in system.units.keys():
+            await load_categories(system.system_id, unit_id)
 
     return sensors
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     """Set up the device based on a config entry."""
-    uplink = hass.data[DATA_NIBE].uplink
-    sensors = await async_load(hass, uplink)
+    data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
+    uplink = data.uplink
+    sensors = await async_load(data)
     entites_update = []
     entites_done = []
 
@@ -86,7 +87,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
             uplink,
             system_id,
             parameter_id,
-            entry,
             data=config["data"],
             device_info=config["device_info"],
         )
@@ -102,7 +102,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class NibeSensor(NibeParameterEntity, SensorEntity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink, system_id, parameter_id, entry, data, device_info):
+    def __init__(self, uplink, system_id, parameter_id, data, device_info):
         """Init."""
         super(NibeSensor, self).__init__(
             uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT
@@ -111,6 +111,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
 
     @property
     def state_class(self):
+        """Return state class of unit."""
         if self._unit:
             return STATE_CLASS_MEASUREMENT
         else:

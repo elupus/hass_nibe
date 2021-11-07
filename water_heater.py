@@ -14,11 +14,13 @@ from homeassistant.components.water_heater import (
     SUPPORT_OPERATION_MODE,
     WaterHeaterEntity,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_OFF
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.core import HomeAssistant
 from nibeuplink import get_active_hotwater
 
-from .const import DATA_NIBE
+from . import NibeData, NibeSystem
+from .const import DATA_NIBE_ENTRIES
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
 
@@ -60,17 +62,17 @@ NIBE_BOOST_TO_OPERATION = {
 HA_BOOST_TO_NIBE = {v: k for k, v in NIBE_BOOST_TO_OPERATION.items()}
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     """Set up the climate device based on a config entry."""
-    if DATA_NIBE not in hass.data:
-        raise PlatformNotReady
-
-    uplink = hass.data[DATA_NIBE].uplink
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
 
-    async def add_active(system):
+    async def add_active(system: NibeSystem):
         hwsyses = await get_active_hotwater(uplink, system.system_id)
         for hwsys in hwsyses.values():
             entities.append(

@@ -1,24 +1,27 @@
 """Binary sensors for nibe uplink."""
+from __future__ import annotations
 
 import logging
 
 from homeassistant.components.binary_sensor import ENTITY_ID_FORMAT, BinarySensorEntity
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
-from .const import CONF_BINARY_SENSORS, DATA_NIBE
+from . import NibeData
+from .const import CONF_BINARY_SENSORS, DATA_NIBE_ENTRIES
 from .entity import NibeParameterEntity
 
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     """Set up the device based on a config entry."""
-    if DATA_NIBE not in hass.data:
-        raise PlatformNotReady
-
-    uplink = hass.data[DATA_NIBE].uplink
-    systems = hass.data[DATA_NIBE].systems
+    data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
     for system in systems.values():

@@ -1,8 +1,9 @@
 """FAN for nibe."""
+from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional
 
 from homeassistant.components.fan import (
     ENTITY_ID_FORMAT,
@@ -10,11 +11,12 @@ from homeassistant.components.fan import (
     SUPPORT_SET_SPEED,
     FanEntity,
 )
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from nibeuplink import Uplink, VentilationSystem, get_active_ventilations
 
-from . import NibeSystem
-from .const import DATA_NIBE
+from . import NibeData, NibeSystem
+from .const import DATA_NIBE_ENTRIES
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeEntity
 
@@ -24,13 +26,13 @@ SPEED_AUTO = "auto"
 SPEED_BOOST = "boost"
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     """Set up the climate device based on a config entry."""
-    if DATA_NIBE not in hass.data:
-        raise PlatformNotReady
-
-    uplink = hass.data[DATA_NIBE].uplink  # type: Uplink
-    systems = hass.data[DATA_NIBE].systems  # type: List[NibeSystem]
+    data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
 
@@ -85,6 +87,7 @@ class NibeFan(NibeEntity, FanEntity):
 
     @property
     def percentage(self) -> Optional[int]:
+        """Return the current percentage."""
         return self.get_float(self._ventilation.fan_speed)
 
     @property
@@ -130,7 +133,7 @@ class NibeFan(NibeEntity, FanEntity):
             await self.async_set_preset_mode(preset)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set the preset mode of the fan"""
+        """Set the preset mode of the fan."""
         if preset_mode == SPEED_BOOST:
             value = 1
         else:
@@ -143,6 +146,7 @@ class NibeFan(NibeEntity, FanEntity):
         )
 
     async def async_set_percentage(self, percentage: int) -> None:
+        """Set an exact percentage."""
         raise NotImplementedError("Can't set exact speed")
 
     @property

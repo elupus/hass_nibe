@@ -14,17 +14,13 @@
             },
             "auth": {
                 "title": "Authorize home assistant for nibe",
-                "description": "Please navigate to nibe uplinks authorization page to authorize home aassistant",
+                "description": "Please navigate to Nibe Uplink authorization page to authorize Home Assistant",
                 "data": {
                     "code": "Code included in redirect uri"
                 }
             },
-            "systems": {
-                "data": {
-                    "systems": "Selected systems"
-                },
-                "description": "Please select which nibe systems to track",
-                "title": "System selection"
+            "confirm": {
+                "description": "Authorization successfull, continue to add systems to your instance."
             }
         },
         "error": {

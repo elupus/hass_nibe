@@ -6,11 +6,12 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.const import ATTR_NAME, ATTR_TEMPERATURE
 from homeassistant.helpers.event import async_call_later
+from nibeuplink.uplink import Uplink
 
 from .const import (
     ATTR_TARGET_TEMPERATURE,
     ATTR_VALVE_POSITION,
-    DATA_NIBE,
+    DATA_NIBE_ENTRIES,
     DOMAIN,
     SERVICE_GET_PARAMETER,
     SERVICE_SET_PARAMETER,
@@ -56,19 +57,29 @@ async def async_register_services(hass):
     """Register public services."""
     from nibeuplink import SMARTHOME_MODES, SetThermostatModel
 
+    def _find_uplink(system: int) -> Uplink:
+        from . import NibeData
+
+        entries: dict[str, NibeData] = hass.data[DATA_NIBE_ENTRIES]
+        for data in entries.values():
+            if system in data.systems:
+                return data.uplink
+        else:
+            raise Exception(f"Can't find uplink with system identifier {system}")
+
     async def set_smarthome_mode(call):
         """Set smarthome mode."""
-        uplink = hass.data[DATA_NIBE].uplink
+        uplink = _find_uplink(call.data["system"])
         await uplink.put_smarthome_mode(call.data["system"], call.data["mode"])
 
     async def set_parameter(call):
-        uplink = hass.data[DATA_NIBE].uplink
+        uplink = _find_uplink(call.data["system"])
         await uplink.put_parameter(
             call.data["system"], call.data["parameter"], call.data["value"]
         )
 
     async def get_parameter(call):
-        uplink = hass.data[DATA_NIBE].uplink
+        uplink = _find_uplink(call.data["system"])
         data = await uplink.get_parameter(call.data["system"], call.data["parameter"])
 
         hass.components.persistent_notification.async_create(
@@ -76,7 +87,7 @@ async def async_register_services(hass):
         )
 
     async def set_thermostat(call):
-        uplink = hass.data[DATA_NIBE].uplink
+        uplink = _find_uplink(call.data["system"])
 
         def scaled(value, multi=10):
             if value is None:

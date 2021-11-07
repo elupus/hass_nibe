@@ -1,4 +1,5 @@
 """Climate entities for nibe uplink."""
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -21,6 +22,7 @@ from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_TARGET_TEMPERATURE_RANGE,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     CONF_NAME,
@@ -28,7 +30,7 @@ from homeassistant.const import (
     STATE_UNKNOWN,
     TEMP_CELSIUS,
 )
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import (
     async_track_state_change,
     async_track_time_interval,
@@ -38,11 +40,10 @@ from nibeuplink import (
     PARAM_PUMP_SPEED_HEATING_MEDIUM,
     ClimateSystem,
     SetThermostatModel,
-    Uplink,
     get_active_climate,
 )
 
-from . import NibeSystem
+from . import NibeData, NibeSystem
 from .const import (
     ATTR_TARGET_TEMPERATURE,
     ATTR_VALVE_POSITION,
@@ -50,7 +51,7 @@ from .const import (
     CONF_CURRENT_TEMPERATURE,
     CONF_THERMOSTATS,
     CONF_VALVE_POSITION,
-    DATA_NIBE,
+    DATA_NIBE_ENTRIES,
     DEFAULT_THERMOSTAT_TEMPERATURE,
 )
 from .const import DOMAIN as DOMAIN_NIBE
@@ -60,13 +61,13 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     """Set up the climate device based on a config entry."""
-    if DATA_NIBE not in hass.data:
-        raise PlatformNotReady
-
-    uplink = hass.data[DATA_NIBE].uplink  # type: Uplink
-    systems = hass.data[DATA_NIBE].systems  # type: List[NibeSystem]
+    data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
+    uplink = data.uplink
+    systems = data.systems
 
     entities = []
 

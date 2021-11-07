@@ -1,11 +1,14 @@
 """Support for nibe uplink."""
+from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Dict, List, Mapping, T, Union
+from dataclasses import dataclass
+from typing import Dict, List, T, Union
 
 import attr
 import homeassistant.helpers.config_validation as cv
+import nibeuplink
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
@@ -16,7 +19,6 @@ from .config_flow import NibeConfigFlow  # noqa
 from .const import (
     CONF_ACCESS_DATA,
     CONF_BINARY_SENSORS,
-    CONF_CATEGORIES,
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
     CONF_CLIMATE_SYSTEMS,
@@ -25,17 +27,16 @@ from .const import (
     CONF_FANS,
     CONF_REDIRECT_URI,
     CONF_SENSORS,
-    CONF_STATUSES,
     CONF_SWITCHES,
     CONF_SYSTEM,
     CONF_SYSTEMS,
     CONF_THERMOSTATS,
-    CONF_UNIT,
     CONF_UNITS,
     CONF_VALVE_POSITION,
     CONF_WATER_HEATERS,
     CONF_WRITEACCESS,
-    DATA_NIBE,
+    DATA_NIBE_CONFIG,
+    DATA_NIBE_ENTRIES,
     DOMAIN,
     SCAN_INTERVAL,
     SIGNAL_PARAMETERS_UPDATED,
@@ -44,14 +45,6 @@ from .const import (
 from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def none_as_true(data):
-    """Return a none value as a truth."""
-    if data is None:
-        return True
-    else:
-        return cv.boolean(data)
 
 
 def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T]:
@@ -74,17 +67,6 @@ def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T
     return {value[CONF_SYSTEM]: value}
 
 
-UNIT_SCHEMA = vol.Schema(
-    vol.All(
-        cv.deprecated(CONF_STATUSES),
-        {
-            vol.Required(CONF_UNIT): cv.positive_int,
-            vol.Optional(CONF_CATEGORIES, default=False): none_as_true,
-            vol.Optional(CONF_STATUSES, default=False): none_as_true,
-        },
-    )
-)
-
 THERMOSTAT_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_CLIMATE_SYSTEMS, default=[1]): vol.All(cv.ensure_list, [int]),
@@ -99,17 +81,16 @@ SYSTEM_SCHEMA = vol.Schema(
         cv.deprecated(CONF_CLIMATES),
         cv.deprecated(CONF_WATER_HEATERS),
         cv.deprecated(CONF_FANS),
+        cv.deprecated(CONF_UNITS),
         {
+            vol.Remove(CONF_CLIMATES): object,
+            vol.Remove(CONF_WATER_HEATERS): object,
+            vol.Remove(CONF_FANS): object,
+            vol.Remove(CONF_UNITS): list,
             vol.Optional(CONF_SYSTEM): cv.positive_int,
-            vol.Optional(CONF_UNITS, default=[]): vol.All(
-                cv.ensure_list, [UNIT_SCHEMA]
-            ),
             vol.Optional(CONF_SENSORS, default=[]): vol.All(
                 cv.ensure_list, [cv.string]
             ),
-            vol.Optional(CONF_CLIMATES): none_as_true,
-            vol.Optional(CONF_WATER_HEATERS): none_as_true,
-            vol.Optional(CONF_FANS): none_as_true,
             vol.Optional(CONF_SWITCHES, default=[]): vol.All(
                 cv.ensure_list, [cv.string]
             ),
@@ -147,58 +128,53 @@ FORWARD_PLATFORMS = (
 )
 
 
-@attr.s
+@dataclass
 class NibeData:
     """Holder for nibe data."""
 
-    config = attr.ib()
-    session = attr.ib(default=None, type=UplinkSession)
-    uplink = attr.ib(default=None, type=Uplink)
-    systems = attr.ib(default=[], type=List["NibeSystem"])
-
-
-def _get_merged_config(config: Mapping, entry: config_entries.ConfigEntry):
-    config = dict(config)
-    if CONF_SYSTEMS in entry.data:
-        for system in entry.data[CONF_SYSTEMS].keys():
-            if system not in config[CONF_SYSTEMS]:
-                config[CONF_SYSTEMS][system] = SYSTEM_SCHEMA({})
-    return config
-
-
-async def async_setup_systems(hass, data: NibeData, entry):
-    """Configure each system."""
-    config = _get_merged_config(data.config, entry)
-
-    systems = {
-        system_id: NibeSystem(
-            hass, data.uplink, int(system_id), system_cfg, entry.entry_id
-        )
-        for system_id, system_cfg in config[CONF_SYSTEMS].items()
-    }
-
-    data.systems = systems
-
-    tasks = [system.load() for system in systems.values()]
-
-    await asyncio.gather(*tasks)
-
-    for platform in FORWARD_PLATFORMS:
-        hass.async_add_job(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
-        )
+    session: UplinkSession
+    uplink: Uplink
+    systems: dict[int, NibeSystem] = attr.ib(default=[])
 
 
 async def async_setup(hass, config):
     """Configure the nibe uplink component."""
+    hass.data[DATA_NIBE_ENTRIES] = {}
     if DOMAIN in config:
-        data = NibeData(config[DOMAIN])
+        hass.data[DATA_NIBE_CONFIG] = config[DOMAIN]
     else:
-        data = NibeData(NIBE_SCHEMA({}))
-
-    hass.data[DATA_NIBE] = data
+        hass.data[DATA_NIBE_CONFIG] = NIBE_SCHEMA({})
     await async_register_services(hass)
     return True
+
+
+def _get_system_config(hass, system_id: int):
+    config = hass.data[DATA_NIBE_CONFIG]
+    system = config[CONF_SYSTEMS].get(system_id)
+    if system:
+        return system
+    return SYSTEM_SCHEMA({})
+
+
+async def async_load_systems(hass, uplink: Uplink, entry: config_entries.ConfigEntry):
+    """Load all systems."""
+    systems_raw = await uplink.get_systems()
+
+    systems = {
+        int(system["systemId"]): NibeSystem(
+            hass,
+            uplink,
+            system,
+            entry.entry_id,
+            _get_system_config(hass, int(system["systemId"])),
+        )
+        for system in systems_raw
+    }
+
+    tasks = [system.load() for system in systems.values()]
+    await asyncio.gather(*tasks)
+
+    return systems
 
 
 async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
@@ -227,19 +203,21 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     await session.open()
 
     uplink = Uplink(session)
+    systems = await async_load_systems(hass, uplink, entry)
 
-    data = hass.data[DATA_NIBE]
-    data.session = session
-    data.uplink = uplink
+    hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = NibeData(session, uplink, systems)
 
-    await async_setup_systems(hass, data, entry)
+    for platform in FORWARD_PLATFORMS:
+        hass.async_add_job(
+            hass.config_entries.async_forward_entry_setup(entry, platform)
+        )
 
     return True
 
 
 async def async_unload_entry(hass, entry):
     """Unload a configuration entity."""
-    data = hass.data[DATA_NIBE]
+    data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
     await asyncio.wait(
         [
             hass.config_entries.async_forward_entry_unload(entry, platform)
@@ -250,27 +228,34 @@ async def async_unload_entry(hass, entry):
     await asyncio.wait([system.unload() for system in data.systems.values()])
 
     await data.session.close()
-    data.systems = []
-    data.uplink = None
-    data.monitor = None
+    hass.data[DATA_NIBE_ENTRIES].pop(entry.entry_id)
+
     return True
 
 
-class NibeSystem(object):
+class NibeSystem:
     """Object representing a system."""
 
-    def __init__(self, hass, uplink, system_id, config, entry_id):
+    def __init__(
+        self,
+        hass,
+        uplink: Uplink,
+        system: nibeuplink.typing.System,
+        entry_id: str,
+        config: dict,
+    ):
         """Init."""
         self.hass = hass
-        self.config = config
-        self.system_id = system_id
+        self.system_id = system["systemId"]
         self.entry_id = entry_id
-        self.system = None
+        self.system = system
         self.uplink = uplink
         self.notice = []
         self.statuses = set()
         self._device_info = {}
         self._unsub = []
+        self.config = config
+        self.units: dict[int, nibeuplink.typing.SystemUnit] = {}
 
     @property
     def device_info(self):
@@ -285,8 +270,6 @@ class NibeSystem(object):
 
     async def load(self):
         """Load system."""
-        self.system = await self.uplink.get_system(self.system_id)
-        _LOGGER.debug("Loading system: {}".format(self.system))
 
         self._device_info = {
             "identifiers": {(DOMAIN, self.system_id)},
@@ -302,6 +285,9 @@ class NibeSystem(object):
 
         await self.update_notifications()
         await self.update_statuses()
+
+        units = await self.uplink.get_units(self.system_id)
+        self.units = {int(unit["systemUnitId"]): unit for unit in units}
 
         self._unsub.append(
             async_track_delta_time(self.hass, SCAN_INTERVAL, self.update_notifications)
