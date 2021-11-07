@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from homeassistant.helpers.entity import Entity
 from nibeuplink import Uplink
@@ -36,7 +36,6 @@ class NibeEntity(Entity):
         self._uplink = uplink
         self._system_id = system_id
         self._parameters = OrderedDict()  # type: ParameterSet
-        self._unsub: List[Callable[[], None]] = []
         if parameters:
             self._parameters.update(parameters)
 
@@ -136,21 +135,15 @@ class NibeEntity(Entity):
         """Handle update of status."""
         pass
 
-    async def async_will_remove_from_hass(self):
-        """Handle removal of entity."""
-        for unsub in reversed(self._unsub):
-            unsub()
-        self._unsub = None
-
     async def async_added_to_hass(self):
         """Handle when entity is added to home assistant."""
-        self._unsub.append(
+        self.async_on_remove(
             self.hass.helpers.dispatcher.async_dispatcher_connect(
                 SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated
             )
         )
 
-        self._unsub.append(
+        self.async_on_remove(
             self.hass.helpers.dispatcher.async_dispatcher_connect(
                 SIGNAL_STATUSES_UPDATED, self.async_statuses_updated
             )
@@ -160,7 +153,7 @@ class NibeEntity(Entity):
             await self.async_update()
             await self.async_update_ha_state()
 
-        self._unsub.append(async_track_delta_time(self.hass, SCAN_INTERVAL, update))
+        self.async_on_remove(async_track_delta_time(self.hass, SCAN_INTERVAL, update))
 
     async def async_update(self):
         """Update of entity."""
