@@ -112,7 +112,7 @@ NIBE_SCHEMA = vol.Schema(
         vol.Optional(CONF_CLIENT_SECRET): cv.string,
         vol.Optional(CONF_WRITEACCESS): cv.boolean,
         vol.Optional(CONF_SYSTEMS, default={}): vol.All(
-            ensure_system_dict, {vol.Coerce(str): SYSTEM_SCHEMA}
+            ensure_system_dict, {vol.Coerce(int): SYSTEM_SCHEMA}
         ),
     }
 )
