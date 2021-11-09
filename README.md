@@ -50,43 +50,24 @@ nibe:
 4. The configurator will open a new window/tab directed at nibeuplinks home page. After logging in and accepting access for this client id, the window will close and you will be back in home assistant.<br>
    The system should now have access to the Nibe Uplink API. If you had not specified a system identifer already and error notifification will be added which contains the systems available to you. Take note of the **SystemId** and use to extend your configuration.
 
-5. Add some more info to your [Configuration](README.md#configuration)
-
-```yaml
-nibe:
-  systems:
-    - system: <required system identifier>
-      units:
-        - unit: 0
-```
-
-6. Restart your Home assistant to make changes take effect.
-   The integration page should then display all available entities.
-   ![Integration page example](./docs/nibe_integration.png)
-
 ## Configuration
-
-Minimal configuration
-
-```yaml
-nibe:
-```
 
 Full configuration description
 
 ```yaml
 nibe:
+  # Default client identifier
+  client_id: xxx
+
+  # Default client secret
+  client_secret: yyy
+
+  # Default redirect url
+  redirect_uri: 'http://localhost:8123/api/nibe/auth'
+
   systems:
-    # required system identifier
+    # System identifier to add extra entities too
     - system: <system identifier>
-
-      # list of units to retrieve data for
-      units:
-        # unit to retrieve data for (0 is the master unit and should always exist)
-        - unit: <unit identifier>
-
-          # Optional load of status entities
-          categories: True
 
       # Optional list of additional parameters to retrieve, can be done here or on the sensor platform.
       sensors:
