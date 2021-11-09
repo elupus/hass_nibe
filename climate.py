@@ -5,7 +5,6 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import timedelta
-from typing import List, Set
 
 from homeassistant.components.climate import ENTITY_ID_FORMAT, ClimateEntity
 from homeassistant.components.climate.const import (
@@ -105,7 +104,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
     """Base class for nibe climate entities."""
 
     def __init__(
-        self, uplink, system_id: int, statuses: Set[str], climate: ClimateSystem
+        self, uplink, system_id: int, statuses: set[str], climate: ClimateSystem
     ):
         """Init."""
         super(NibeClimate, self).__init__(uplink, system_id)
@@ -194,7 +193,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
         finally:
             _LOGGER.debug("Put parameter response {}".format(self._status))
 
-    async def async_statuses_updated(self, system_id: int, statuses: Set[str]):
+    async def async_statuses_updated(self, system_id: int, statuses: set[str]):
         """Statuses have been updated."""
         if system_id != self._system_id:
             return
@@ -202,7 +201,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
         self.parse_data()
         self.async_schedule_update_ha_state()
 
-    def parse_statuses(self, statuses: Set[str]):
+    def parse_statuses(self, statuses: set[str]):
         """Parse status list."""
         if "Cooling (Passive)" in statuses:
             self._hvac_action = CURRENT_HVAC_COOL
@@ -218,7 +217,7 @@ class NibeClimateRoom(NibeClimate):
     """Climate entity for a room temperature sensor."""
 
     def __init__(
-        self, uplink, system_id: int, statuses: Set[str], climate: ClimateSystem
+        self, uplink, system_id: int, statuses: set[str], climate: ClimateSystem
     ):
         """Init."""
         super().__init__(uplink, system_id, statuses, climate)
@@ -327,7 +326,7 @@ class NibeClimateSupply(NibeClimate):
     """Climate entity for supply temperature."""
 
     def __init__(
-        self, uplink, system_id: int, statuses: Set[str], climate: ClimateSystem
+        self, uplink, system_id: int, statuses: set[str], climate: ClimateSystem
     ):
         """Init."""
         super().__init__(uplink, system_id, statuses, climate)
@@ -477,7 +476,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         name: str,
         current_temperature_id: str,
         valve_position_id: str,
-        systems: List[int],
+        systems: list[int],
     ):
         """Init."""
         self._name = name

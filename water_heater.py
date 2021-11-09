@@ -1,9 +1,9 @@
 """Water heater entity for nibe uplink."""
+from __future__ import annotations
 
 import asyncio
 import logging
 from collections import OrderedDict
-from typing import Set
 
 import aiohttp
 from homeassistant.components.water_heater import (
@@ -87,7 +87,7 @@ async def async_setup_entry(
 class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     """Water heater entity."""
 
-    def __init__(self, uplink, system_id: int, statuses: Set[str], hwsys):
+    def __init__(self, uplink, system_id: int, statuses: set[str], hwsys):
         """Init."""
         super().__init__(uplink, system_id)
 
@@ -233,7 +233,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
             self._hwsys.hot_water_production,
         )
 
-    async def async_statuses_updated(self, system_id: int, statuses: Set[str]):
+    async def async_statuses_updated(self, system_id: int, statuses: set[str]):
         """React to statuses updated."""
         if system_id != self._system_id:
             return
@@ -241,7 +241,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
         self.parse_data()
         self.async_schedule_update_ha_state()
 
-    def parse_statuses(self, statuses: Set[str]):
+    def parse_statuses(self, statuses: set[str]):
         """Parse status values."""
         if "Hot Water" in statuses:
             self._is_on = True

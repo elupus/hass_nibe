@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, T, Union
+from typing import Callable, TypeVar
 
 import attr
 import homeassistant.helpers.config_validation as cv
@@ -45,9 +45,10 @@ from .const import (
 from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
-def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T]:
+def ensure_system_dict(value: dict[int, T] | list[T] | None) -> dict[int, T]:
     """Wrap value in list if it is not one."""
     if value is None:
         return {}
@@ -59,12 +60,12 @@ def ensure_system_dict(value: Union[Dict[int, T], List[T], None]) -> Dict[int, T
                 )
             ]
         )
-        value = value_schema(value)
-        return {x[CONF_SYSTEM]: x for x in value}
+        value_dict = value_schema(value)
+        return {x[CONF_SYSTEM]: x for x in value_dict}
     if isinstance(value, dict):
         return value
-    value = SYSTEM_SCHEMA(value)
-    return {value[CONF_SYSTEM]: value}
+    value_any = SYSTEM_SCHEMA(value)
+    return {value_any[CONF_SYSTEM]: value_any}
 
 
 THERMOSTAT_SCHEMA = vol.Schema(
@@ -250,10 +251,10 @@ class NibeSystem:
         self.entry_id = entry_id
         self.system = system
         self.uplink = uplink
-        self.notice = []
-        self.statuses = set()
-        self._device_info = {}
-        self._unsub = []
+        self.notice: list[dict] = []
+        self.statuses: set[str] = set()
+        self._device_info: dict = {}
+        self._unsub: list[Callable] = []
         self.config = config
         self.units: dict[int, nibeuplink.typing.SystemUnit] = {}
 

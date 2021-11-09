@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Dict, Optional
 
 from homeassistant.components.fan import (
     ENTITY_ID_FORMAT,
@@ -86,12 +85,12 @@ class NibeFan(NibeEntity, FanEntity):
         return False
 
     @property
-    def percentage(self) -> Optional[int]:
+    def percentage(self) -> int | None:
         """Return the current percentage."""
         return self.get_float(self._ventilation.fan_speed)
 
     @property
-    def preset_mode(self) -> Optional[str]:
+    def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., auto, smart, interval, favorite."""
         boost = self.get_raw(self._ventilation.ventilation_boost)
         if boost:
@@ -115,7 +114,7 @@ class NibeFan(NibeEntity, FanEntity):
         return data
 
     @property
-    def device_state_attributes(self) -> Dict[str, Optional[str]]:
+    def device_state_attributes(self) -> dict[str, str | None]:
         """Return extra state."""
         data = {}
         data["extract_air"] = self.get_value(self._ventilation.extract_air)
@@ -138,7 +137,7 @@ class NibeFan(NibeEntity, FanEntity):
             value = 1
         else:
             value = 0
-
+        assert self._ventilation.ventilation_boost, "Ventilation boost not supported"
         await self._uplink.put_parameter(
             self._system_id,
             self._ventilation.ventilation_boost,
@@ -155,6 +154,6 @@ class NibeFan(NibeEntity, FanEntity):
         return "{}_{}".format(self._system_id, self._ventilation.fan_speed)
 
     @property
-    def supported_features(self) -> Optional[int]:
+    def supported_features(self) -> int | None:
         """Return supported features."""
         return SUPPORT_PRESET_MODE | SUPPORT_SET_SPEED

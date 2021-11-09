@@ -1,4 +1,5 @@
 """Sensors for nibe."""
+from __future__ import annotations
 
 import logging
 from collections import defaultdict
@@ -30,7 +31,7 @@ async def async_load(data: NibeData):
     uplink = data.uplink
     systems = data.systems
 
-    sensors = defaultdict(gen_dict)
+    sensors: dict[tuple[int, int], dict] = defaultdict(gen_dict)
 
     async def load_sensor(system_id, sensor_id):
         sensors.setdefault((system_id, sensor_id), gen_dict())

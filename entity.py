@@ -1,20 +1,20 @@
 """Base entites for nibe."""
+from __future__ import annotations
 
 import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
 from homeassistant.helpers.entity import Entity
 from nibeuplink import Uplink
+from nibeuplink.typing import Parameter, ParameterId
 
 from .const import DOMAIN as DOMAIN_NIBE
 from .const import SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED
 from .services import async_track_delta_time
 
-ParameterId = Union[str, int]
-Parameter = Dict[str, Any]
 ParameterSet = Dict[ParameterId, Optional[Parameter]]
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,23 +29,23 @@ class NibeEntity(Entity):
         self,
         uplink: Uplink,
         system_id: int,
-        parameters: Optional[ParameterSet] = None,
+        parameters: ParameterSet | None = None,
     ):
         """Initialize base class."""
         super().__init__()
         self._uplink = uplink
         self._system_id = system_id
-        self._parameters = OrderedDict()  # type: ParameterSet
+        self._parameters: ParameterSet = OrderedDict()
         if parameters:
             self._parameters.update(parameters)
 
-    def get_parameters(self, parameter_ids: List[Optional[ParameterId]]):
+    def get_parameters(self, parameter_ids: list[ParameterId | None]):
         """Register a parameter for retrieval."""
         for parameter_id in parameter_ids:
             if parameter_id and parameter_id not in self._parameters:
                 self._parameters[parameter_id] = None
 
-    def get_bool(self, parameter_id: Optional[ParameterId]):
+    def get_bool(self, parameter_id: ParameterId | None):
         """Get bool parameter."""
         if not parameter_id:
             return None
@@ -55,7 +55,7 @@ class NibeEntity(Entity):
         else:
             return bool(data["value"])
 
-    def get_float(self, parameter_id: Optional[ParameterId], default=None):
+    def get_float(self, parameter_id: ParameterId | None, default=None):
         """Get float parameter."""
         if not parameter_id:
             return None
@@ -65,7 +65,7 @@ class NibeEntity(Entity):
         else:
             return float(data["value"])
 
-    def get_value(self, parameter_id: Optional[ParameterId], default=None):
+    def get_value(self, parameter_id: ParameterId | None, default=None):
         """Get value in display format."""
         if not parameter_id:
             return None
@@ -75,7 +75,7 @@ class NibeEntity(Entity):
         else:
             return data["value"]
 
-    def get_raw(self, parameter_id: Optional[ParameterId], default=None):
+    def get_raw(self, parameter_id: ParameterId | None, default=None):
         """Get value in display format."""
         if not parameter_id:
             return None
@@ -85,7 +85,7 @@ class NibeEntity(Entity):
         else:
             return data["rawValue"]
 
-    def get_scale(self, parameter_id: Optional[ParameterId]):
+    def get_scale(self, parameter_id: ParameterId | None):
         """Calculate scale of parameter."""
         if not parameter_id:
             return None
@@ -110,7 +110,7 @@ class NibeEntity(Entity):
         pass
 
     async def async_parameters_updated(
-        self, system_id: int, data: Dict[str, Dict[str, Any]]
+        self, system_id: int, data: dict[str, dict[str, Any]]
     ):
         """Handle updated parameter."""
         if system_id != self._system_id:
