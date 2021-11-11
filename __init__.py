@@ -256,7 +256,6 @@ class NibeSystem:
         self._device_info: dict = {}
         self._unsub: list[Callable] = []
         self.config = config
-        self.units: dict[int, nibeuplink.typing.SystemUnit] = {}
 
     @property
     def device_info(self):
@@ -286,9 +285,6 @@ class NibeSystem:
 
         await self.update_notifications()
         await self.update_statuses()
-
-        units = await self.uplink.get_units(self.system_id)
-        self.units = {int(unit["systemUnitId"]): unit for unit in units}
 
         self._unsub.append(
             async_track_delta_time(self.hass, SCAN_INTERVAL, self.update_notifications)

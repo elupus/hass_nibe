@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
@@ -11,8 +10,9 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from nibeuplink.typing import CategoryType, SystemUnit
 
-from . import NibeData
+from . import NibeData, NibeSystem
 from .const import CONF_SENSORS, DATA_NIBE_ENTRIES
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
@@ -21,83 +21,81 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
-def gen_dict():
-    """Generate a default dict."""
-    return {"device_info": None, "data": None}
-
-
-async def async_load(data: NibeData):
-    """Load the sensors."""
-    uplink = data.uplink
-    systems = data.systems
-
-    sensors: dict[tuple[int, int], dict] = defaultdict(gen_dict)
-
-    async def load_sensor(system_id, sensor_id):
-        sensors.setdefault((system_id, sensor_id), gen_dict())
-
-    async def load_categories(system_id, unit_id):
-        data = await uplink.get_categories(system_id, True, unit_id)
-
-        for category in data:
-            device_info = {
-                "identifiers": {
-                    (
-                        DOMAIN_NIBE,
-                        system_id,
-                        "categories",
-                        unit_id,
-                        category["categoryId"],
-                    )
-                },
-                "via_device": (DOMAIN_NIBE, system_id),
-                "name": f"Category: {category['name']}",
-                "model": "System Category",
-                "manufacturer": "NIBE Energy Systems",
-            }
-            for x in category["parameters"]:
-                entry = sensors[(system_id, x["parameterId"])]
-                entry["data"] = x
-                entry["device_info"] = device_info
-
-    for system in systems.values():
-        for sensor_id in system.config[CONF_SENSORS]:
-            await load_sensor(system.system_id, sensor_id)
-
-        for unit_id in system.units.keys():
-            await load_categories(system.system_id, unit_id)
-
-    return sensors
-
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     """Set up the device based on a config entry."""
     data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
     uplink = data.uplink
-    sensors = await async_load(data)
-    entites_update = []
-    entites_done = []
 
-    for (system_id, parameter_id), config in sensors.items():
-        if parameter_id == 0:
-            continue
+    done: set[tuple[int, int]] = set()
 
-        entity = NibeSensor(
-            uplink,
-            system_id,
-            parameter_id,
-            data=config["data"],
-            device_info=config["device_info"],
+    def once(system_id: int, parameter_id: int):
+        nonlocal done
+        key = (system_id, parameter_id)
+        if key in done:
+            return False
+        done.add(key)
+        return True
+
+    def add_category(system: NibeSystem, category: CategoryType, unit: SystemUnit):
+        device_info = {
+            "identifiers": {
+                (
+                    DOMAIN_NIBE,
+                    system.system_id,
+                    "categories",
+                    unit["systemUnitId"],
+                    category["categoryId"],
+                )
+            },
+            "via_device": (DOMAIN_NIBE, system.system_id),
+            "name": f"{system.device_info['name']} : {unit['name']} : {category['name']}",
+            "model": f"{unit['product']} : {category['name']}",
+            "manufacturer": system.device_info["manufacturer"],
+        }
+
+        async_add_entities(
+            [
+                NibeSensor(
+                    uplink,
+                    system.system_id,
+                    parameter["parameterId"],
+                    data=parameter,
+                    device_info=device_info,
+                )
+                for parameter in category["parameters"]
+                if once(system.system_id, parameter["parameterId"])
+            ]
         )
-        if config["data"]:
-            entites_done.append(entity)
-        else:
-            entites_update.append(entity)
 
-    async_add_entities(entites_update, True)
-    async_add_entities(entites_done, False)
+    def add_sensors(system: NibeSystem):
+        async_add_entities(
+            [
+                NibeSensor(
+                    uplink,
+                    system.system_id,
+                    sensor_id,
+                    device_info=system.device_info,
+                )
+                for sensor_id in system.config[CONF_SENSORS]
+                if once(system.system_id, sensor_id)
+            ],
+            True,
+        )
+
+    async def load_system(system: NibeSystem):
+        units = await uplink.get_units(system.system_id)
+        for unit in units:
+            categories = await uplink.get_categories(
+                system.system_id, True, unit["systemUnitId"]
+            )
+            for category in categories:
+                add_category(system, category, unit)
+        add_sensors(system)
+
+    for system in data.systems.values():
+        await load_system(system)
 
 
 class NibeSensor(NibeParameterEntity, SensorEntity):
