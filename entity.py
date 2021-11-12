@@ -5,17 +5,17 @@ import asyncio
 import logging
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Dict, Optional, cast
 
 from homeassistant.helpers.entity import Entity
-from nibeuplink import Uplink
-from nibeuplink.typing import Parameter, ParameterId, ParameterType
+from nibeuplink.typing import ParameterId, ParameterType
 
+from . import NibeSystem
 from .const import DOMAIN as DOMAIN_NIBE
 from .const import SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED
 from .services import async_track_delta_time
 
-ParameterSet = Dict[ParameterId, Optional[Parameter]]
+ParameterSet = Dict[ParameterId, Optional[ParameterType]]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,14 +27,13 @@ class NibeEntity(Entity):
 
     def __init__(
         self,
-        uplink: Uplink,
-        system_id: int,
+        system: NibeSystem,
         parameters: ParameterSet | None = None,
     ):
         """Initialize base class."""
         super().__init__()
-        self._uplink = uplink
-        self._system_id = system_id
+        self._uplink = system.uplink
+        self._system_id = system.system_id
         self._parameters: ParameterSet = OrderedDict()
         self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
         self._attr_should_poll = False
@@ -101,9 +100,7 @@ class NibeEntity(Entity):
         """Parse data to update internal variables."""
         pass
 
-    async def async_parameters_updated(
-        self, system_id: int, data: dict[str, dict[str, Any]]
-    ):
+    async def async_parameters_updated(self, system_id: int, data: ParameterSet):
         """Handle updated parameter."""
         if system_id != self._system_id:
             return
@@ -111,13 +108,13 @@ class NibeEntity(Entity):
         changed = False
         for key, value in data.items():
             if key in self._parameters:
-                value2 = dict(value)
+                value2 = dict(value) if value else {}
                 value2["timeout"] = datetime.now() + timedelta(
                     seconds=(SCAN_INTERVAL * 2)
                 )
                 _LOGGER.debug("Data changed for %s %s", self.entity_id, key)
                 changed = True
-                self._parameters[key] = value2
+                self._parameters[key] = cast(ParameterType, value2)
 
         if changed:
             self.parse_data()
@@ -182,17 +179,16 @@ class NibeParameterEntity(NibeEntity):
 
     def __init__(
         self,
-        uplink: Uplink,
-        system_id: int,
+        system: NibeSystem,
         parameter_id: ParameterId,
         data: ParameterType | None = None,
         entity_id_format: str | None = None,
     ):
         """Initialize base class for parameters."""
-        super().__init__(uplink, system_id, parameters={parameter_id: data})
+        super().__init__(system, parameters={parameter_id: data})
         self._parameter_id = parameter_id
         self._value = None
-        self._attr_unique_id = "{}_{}".format(system_id, parameter_id)
+        self._attr_unique_id = "{}_{}".format(system.system_id, parameter_id)
         self._attr_name = None
         self._attr_icon = None
 
@@ -201,7 +197,7 @@ class NibeParameterEntity(NibeEntity):
 
         if entity_id_format:
             self.entity_id = entity_id_format.format(
-                "{}_{}_{}".format(DOMAIN_NIBE, system_id, str(parameter_id))
+                "{}_{}_{}".format(DOMAIN_NIBE, system.system_id, str(parameter_id))
             )
 
     @property

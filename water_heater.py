@@ -17,7 +17,7 @@ from homeassistant.components.water_heater import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_OFF
 from homeassistant.core import HomeAssistant
-from nibeuplink import Uplink, get_active_hotwater
+from nibeuplink import get_active_hotwater
 from nibeuplink.types import HotWaterSystem
 
 from . import NibeData, NibeSystem
@@ -76,9 +76,7 @@ async def async_setup_entry(
     async def add_active(system: NibeSystem):
         hwsyses = await get_active_hotwater(uplink, system.system_id)
         for hwsys in hwsyses.values():
-            entities.append(
-                NibeWaterHeater(uplink, system.system_id, system.statuses, hwsys)
-            )
+            entities.append(NibeWaterHeater(system, hwsys))
 
     await asyncio.gather(*[add_active(system) for system in systems.values()])
 
@@ -88,16 +86,14 @@ async def async_setup_entry(
 class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     """Water heater entity."""
 
-    def __init__(
-        self, uplink: Uplink, system_id: int, statuses: set[str], hwsys: HotWaterSystem
-    ):
+    def __init__(self, system: NibeSystem, hwsys: HotWaterSystem):
         """Init."""
-        super().__init__(uplink, system_id)
+        super().__init__(system)
 
         self._attr_name = hwsys.name
         self._attr_current_operation = STATE_OFF
         self._attr_unique_id = "{}_{}_{}".format(
-            system_id,
+            system.system_id,
             hwsys.hot_water_charging,
             hwsys.hot_water_production,
         )
@@ -124,7 +120,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
                 self._hwsys.hot_water_boost,
             ]
         )
-        self.parse_statuses(statuses)
+        self.parse_statuses(system.statuses)
 
     @property
     def temperature_unit(self):

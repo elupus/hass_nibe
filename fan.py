@@ -12,7 +12,7 @@ from homeassistant.components.fan import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from nibeuplink import Uplink, VentilationSystem, get_active_ventilations
+from nibeuplink import VentilationSystem, get_active_ventilations
 
 from . import NibeData, NibeSystem
 from .const import DATA_NIBE_ENTRIES
@@ -38,7 +38,7 @@ async def async_setup_entry(
     async def add_active(system: NibeSystem):
         ventilations = await get_active_ventilations(uplink, system.system_id)
         for ventilation in ventilations.values():
-            entities.append(NibeFan(uplink, system.system_id, ventilation))
+            entities.append(NibeFan(system, ventilation))
 
     await asyncio.gather(*[add_active(system) for system in systems.values()])
 
@@ -48,18 +48,18 @@ async def async_setup_entry(
 class NibeFan(NibeEntity, FanEntity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink: Uplink, system_id: int, ventilation: VentilationSystem):
+    def __init__(self, system: NibeSystem, ventilation: VentilationSystem):
         """Init."""
-        super().__init__(uplink, system_id)
+        super().__init__(system)
 
         self._ventilation = ventilation
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}_{}".format(DOMAIN_NIBE, system_id, str(ventilation.name).lower())
+            "{}_{}_{}".format(
+                DOMAIN_NIBE, system.system_id, str(ventilation.name).lower()
+            )
         )
         self._attr_name = ventilation.name
-        self._attr_unique_id = "{}_{}".format(
-            self._system_id, self._ventilation.fan_speed
-        )
+        self._attr_unique_id = "{}_{}".format(system.system_id, ventilation.fan_speed)
 
         self.get_parameters(
             [

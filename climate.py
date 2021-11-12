@@ -40,7 +40,6 @@ from nibeuplink import (
     PARAM_PUMP_SPEED_HEATING_MEDIUM,
     ClimateSystem,
     SetThermostatModel,
-    Uplink,
     get_active_climate,
 )
 
@@ -75,20 +74,15 @@ async def async_setup_entry(
     async def add_active(system: NibeSystem):
         climates = await get_active_climate(uplink, system.system_id)
         for climate in climates.values():
-            entities.append(
-                NibeClimateSupply(uplink, system.system_id, system.statuses, climate)
-            )
-            entities.append(
-                NibeClimateRoom(uplink, system.system_id, system.statuses, climate)
-            )
+            entities.append(NibeClimateSupply(system, climate))
+            entities.append(NibeClimateRoom(system, climate))
 
     for system in systems.values():
         thermostats = system.config[CONF_THERMOSTATS]
         for thermostat_id, thermostat_config in thermostats.items():
             entities.append(
                 NibeThermostat(
-                    uplink,
-                    system.system_id,
+                    system,
                     thermostat_id,
                     thermostat_config.get(CONF_NAME),
                     thermostat_config.get(CONF_CURRENT_TEMPERATURE),
@@ -105,11 +99,9 @@ async def async_setup_entry(
 class NibeClimate(NibeEntity, ClimateEntity):
     """Base class for nibe climate entities."""
 
-    def __init__(
-        self, uplink: Uplink, system_id: int, statuses: set[str], climate: ClimateSystem
-    ):
+    def __init__(self, system: NibeSystem, climate: ClimateSystem):
         """Init."""
-        super().__init__(uplink, system_id)
+        super().__init__(system)
 
         self.get_parameters([PARAM_PUMP_SPEED_HEATING_MEDIUM])
 
@@ -123,7 +115,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
             SUPPORT_TARGET_TEMPERATURE_RANGE | SUPPORT_TARGET_TEMPERATURE
         )
         self._attr_unique_id = "{}_{}".format(self._system_id, self._climate.name)
-        self.parse_statuses(statuses)
+        self.parse_statuses(system.statuses)
 
     @property
     def device_state_attributes(self):
@@ -182,14 +174,12 @@ class NibeClimate(NibeEntity, ClimateEntity):
 class NibeClimateRoom(NibeClimate):
     """Climate entity for a room temperature sensor."""
 
-    def __init__(
-        self, uplink: Uplink, system_id: int, statuses: set[str], climate: ClimateSystem
-    ):
+    def __init__(self, system: NibeSystem, climate: ClimateSystem):
         """Init."""
-        super().__init__(uplink, system_id, statuses, climate)
+        super().__init__(system, climate)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}_{}_room".format(DOMAIN_NIBE, system_id, str(climate.name))
+            "{}_{}_{}_room".format(DOMAIN_NIBE, system.system_id, str(climate.name))
         )
 
         self._attr_name = "{} Room".format(self._climate.name)
@@ -272,14 +262,12 @@ class NibeClimateRoom(NibeClimate):
 class NibeClimateSupply(NibeClimate):
     """Climate entity for supply temperature."""
 
-    def __init__(
-        self, uplink, system_id: int, statuses: set[str], climate: ClimateSystem
-    ):
+    def __init__(self, system: NibeSystem, climate: ClimateSystem):
         """Init."""
-        super().__init__(uplink, system_id, statuses, climate)
+        super().__init__(system, climate)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}_{}_supply".format(DOMAIN_NIBE, system_id, str(climate.name))
+            "{}_{}_{}_supply".format(DOMAIN_NIBE, system.system_id, str(climate.name))
         )
         self._attr_name = "{} Supply".format(self._climate.name)
         self._attr_unique_id = "{}_{}".format(super().unique_id, "supply")
@@ -397,8 +385,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
 
     def __init__(
         self,
-        uplink: Uplink,
-        system_id: int,
+        system: NibeSystem,
         external_id: int,
         name: str,
         current_temperature_id: str,
@@ -407,8 +394,8 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
     ):
         """Init."""
         self._attr_name = name
-        self._uplink = uplink
-        self._system_id = system_id
+        self._uplink = system.uplink
+        self._system_id = system.system_id
         self._external_id = external_id
         self._attr_hvac_mode = HVAC_MODE_OFF
         self._attr_hvac_modes = [HVAC_MODE_OFF, HVAC_MODE_HEAT_COOL, HVAC_MODE_AUTO]

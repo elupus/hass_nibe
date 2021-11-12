@@ -15,11 +15,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import DEVICE_CLASS_TIMESTAMP, ENTITY_CATEGORY_DIAGNOSTIC
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
-from nibeuplink import Uplink
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from nibeuplink.typing import CategoryType, ParameterId, ParameterType, SystemUnit
 
 from . import NibeData, NibeSystem
@@ -68,8 +64,7 @@ async def async_setup_entry(
         async_add_entities(
             [
                 NibeSensor(
-                    uplink,
-                    system.system_id,
+                    system,
                     parameter["parameterId"],
                     data=parameter,
                     device_info=device_info,
@@ -83,8 +78,7 @@ async def async_setup_entry(
         async_add_entities(
             [
                 NibeSensor(
-                    uplink,
-                    system.system_id,
+                    system,
                     sensor_id,
                     data=None,
                     device_info=system.device_info,
@@ -96,10 +90,7 @@ async def async_setup_entry(
         )
 
         async_add_entities(
-            [
-                NibeSystemSensor(system.coordinator, system, description)
-                for description in SYSTEM_SENSORS
-            ]
+            [NibeSystemSensor(system, description) for description in SYSTEM_SENSORS]
         )
 
     async def load_system(system: NibeSystem):
@@ -121,16 +112,13 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
 
     def __init__(
         self,
-        uplink: Uplink,
-        system_id: int,
+        system: NibeSystem,
         parameter_id: ParameterId,
         data: ParameterType | None,
         device_info: dict,
     ):
         """Init."""
-        super(NibeSensor, self).__init__(
-            uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT
-        )
+        super(NibeSensor, self).__init__(system, parameter_id, data, ENTITY_ID_FORMAT)
         self._attr_device_info = device_info
 
     @property
@@ -186,12 +174,11 @@ class NibeSystemSensor(CoordinatorEntity[None], SensorEntity):
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator,
         system: NibeSystem,
         description: NibeSystemSensorEntityDescription,
     ):
         """Initialize sensor."""
-        super().__init__(coordinator)
+        super().__init__(system.coordinator)
         self.entity_description = description
         self._system = system
         self._attr_device_info = self._system.device_info
