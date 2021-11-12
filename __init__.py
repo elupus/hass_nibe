@@ -6,14 +6,15 @@ import logging
 from dataclasses import dataclass
 from typing import Callable, TypeVar
 
-import attr
 import homeassistant.helpers.config_validation as cv
 import nibeuplink
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
+from nibeuplink.typing import System
 
 from .config_flow import NibeConfigFlow  # noqa
 from .const import (
@@ -135,7 +136,8 @@ class NibeData:
 
     session: UplinkSession
     uplink: Uplink
-    systems: dict[int, NibeSystem] = attr.ib(default=[])
+    systems: dict[int, NibeSystem]
+    coordinator: DataUpdateCoordinator | None = None
 
 
 async def async_setup(hass, config):
@@ -155,27 +157,6 @@ def _get_system_config(hass, system_id: int):
     if system:
         return system
     return SYSTEM_SCHEMA({})
-
-
-async def async_load_systems(hass, uplink: Uplink, entry: config_entries.ConfigEntry):
-    """Load all systems."""
-    systems_raw = await uplink.get_systems()
-
-    systems = {
-        int(system["systemId"]): NibeSystem(
-            hass,
-            uplink,
-            system,
-            entry.entry_id,
-            _get_system_config(hass, int(system["systemId"])),
-        )
-        for system in systems_raw
-    }
-
-    tasks = [system.load() for system in systems.values()]
-    await asyncio.gather(*tasks)
-
-    return systems
 
 
 async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
@@ -204,9 +185,34 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     await session.open()
 
     uplink = Uplink(session)
-    systems = await async_load_systems(hass, uplink, entry)
 
-    hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = NibeData(session, uplink, systems)
+    data = NibeData(session, uplink, {})
+    hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = data
+
+    async def _async_add_system(system_raw: System, config: dict):
+        system = NibeSystem(
+            hass,
+            uplink,
+            system_raw,
+            entry.entry_id,
+            config,
+        )
+        await system.load()
+
+        data.systems[system.system_id] = system
+
+    async def _async_refresh():
+        systems_raw = await uplink.get_systems()
+        for system_raw in systems_raw:
+            system_id = int(system_raw["systemId"])
+            if system := data.systems.get(system_id):
+                await system.async_refresh(system_raw)
+            else:
+                await _async_add_system(system_raw, _get_system_config(hass, system_id))
+
+    await _async_refresh()
+
+    entry.async_on_unload(async_track_delta_time(hass, SCAN_INTERVAL, _async_refresh))
 
     for platform in FORWARD_PLATFORMS:
         hass.async_add_job(
@@ -236,6 +242,8 @@ async def async_unload_entry(hass, entry):
 
 class NibeSystem:
     """Object representing a system."""
+
+    coordinator: DataUpdateCoordinator
 
     def __init__(
         self,
@@ -268,6 +276,12 @@ class NibeSystem:
             unsub()
         self._unsub = []
 
+    async def async_refresh(self, system: nibeuplink.typing.System):
+        """Update the system."""
+        if system != self.system:
+            self.system = system
+            await self.coordinator.async_refresh()
+
     async def load(self):
         """Load system."""
 
@@ -283,15 +297,18 @@ class NibeSystem:
             config_entry_id=self.entry_id, **self._device_info
         )
 
-        await self.update_notifications()
-        await self.update_statuses()
+        async def _update():
+            await self.update_notifications()
+            await self.update_statuses()
 
-        self._unsub.append(
-            async_track_delta_time(self.hass, SCAN_INTERVAL, self.update_notifications)
+        self.coordinator = DataUpdateCoordinator(
+            self.hass,
+            _LOGGER,
+            name=f"Nibe Uplink: {self.system_id}",
+            update_interval=None,
+            update_method=_update,
         )
-        self._unsub.append(
-            async_track_delta_time(self.hass, SCAN_INTERVAL, self.update_statuses)
-        )
+        await self.coordinator.async_config_entry_first_refresh()
 
     async def update_statuses(self):
         """Update status list."""

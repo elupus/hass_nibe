@@ -2,14 +2,23 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import Callable
 
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     STATE_CLASS_MEASUREMENT,
     SensorEntity,
+    SensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import DEVICE_CLASS_TIMESTAMP, ENTITY_CATEGORY_DIAGNOSTIC
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 from nibeuplink.typing import CategoryType, SystemUnit
 
 from . import NibeData, NibeSystem
@@ -84,6 +93,13 @@ async def async_setup_entry(
             True,
         )
 
+        async_add_entities(
+            [
+                NibeSystemSensor(system.coordinator, system, description)
+                for description in SYSTEM_SENSORS
+            ]
+        )
+
     async def load_system(system: NibeSystem):
         units = await uplink.get_units(system.system_id)
         for unit in units:
@@ -127,3 +143,53 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
     def state(self):
         """Return the state of the sensor."""
         return self._value
+
+
+@dataclass
+class NibeSystemSensorEntityDescription(SensorEntityDescription):
+    """Description of a nibe system sensor."""
+
+    state_fn: Callable[[NibeSystem], StateType] = lambda x: None
+
+
+SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription] = (
+    NibeSystemSensorEntityDescription(
+        key="lastActivityDate",
+        name="Last Activity",
+        device_class=DEVICE_CLASS_TIMESTAMP,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        state_fn=lambda x: x.system["lastActivityDate"],
+    ),
+    NibeSystemSensorEntityDescription(
+        key="connectionStatus",
+        name="Connection Status",
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        state_fn=lambda x: x.system["connectionStatus"],
+    ),
+)
+
+
+class NibeSystemSensor(CoordinatorEntity[None], SensorEntity):
+    """Generic system sensor."""
+
+    entity_description: NibeSystemSensorEntityDescription
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        system: NibeSystem,
+        description: NibeSystemSensorEntityDescription,
+    ):
+        """Initialize sensor."""
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._system = system
+        self._attr_device_info = self._system.device_info
+        self._attr_unique_id = "{}_system_{}".format(
+            self._system.system_id, self.entity_description.key.lower()
+        )
+
+    @property
+    def state(self) -> StateType:
+        """Get the state data from system class."""
+        return self.entity_description.state_fn(self._system)
