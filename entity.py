@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 from homeassistant.helpers.entity import Entity
 from nibeuplink import Uplink
-from nibeuplink.typing import Parameter, ParameterId
+from nibeuplink.typing import Parameter, ParameterId, ParameterType
 
 from .const import DOMAIN as DOMAIN_NIBE
 from .const import SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED
@@ -36,6 +36,8 @@ class NibeEntity(Entity):
         self._uplink = uplink
         self._system_id = system_id
         self._parameters: ParameterSet = OrderedDict()
+        self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
+        self._attr_should_poll = False
         if parameters:
             self._parameters.update(parameters)
 
@@ -94,16 +96,6 @@ class NibeEntity(Entity):
             return 1.0
         else:
             return float(data["rawValue"]) / float(data["value"])
-
-    @property
-    def device_info(self):
-        """Return device identifier."""
-        return {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
-
-    @property
-    def should_poll(self):
-        """Indicate that we need to poll data."""
-        return False
 
     def parse_data(self):
         """Parse data to update internal variables."""
@@ -190,19 +182,20 @@ class NibeParameterEntity(NibeEntity):
 
     def __init__(
         self,
-        uplink,
-        system_id,
-        parameter_id,
-        data=None,
-        entity_id_format=None,
+        uplink: Uplink,
+        system_id: int,
+        parameter_id: ParameterId,
+        data: ParameterType | None = None,
+        entity_id_format: str | None = None,
     ):
         """Initialize base class for parameters."""
         super().__init__(uplink, system_id, parameters={parameter_id: data})
         self._parameter_id = parameter_id
-        self._name = None
-        self._unit = None
-        self._icon = None
         self._value = None
+        self._attr_unique_id = "{}_{}".format(system_id, parameter_id)
+        self._attr_name = None
+        self._attr_icon = None
+
         if data:
             self.parse_data()
 
@@ -210,16 +203,6 @@ class NibeParameterEntity(NibeEntity):
             self.entity_id = entity_id_format.format(
                 "{}_{}_{}".format(DOMAIN_NIBE, system_id, str(parameter_id))
             )
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique identifier for a this parameter."""
-        return "{}_{}".format(self._system_id, self._parameter_id)
 
     @property
     def device_state_attributes(self):
@@ -244,24 +227,13 @@ class NibeParameterEntity(NibeEntity):
         else:
             return True
 
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit
-
-    @property
-    def icon(self):
-        """Return a calculated icon for this data if known."""
-        return self._icon
-
     def parse_data(self):
         """Parse data to update internal variables."""
         data = self._parameters[self._parameter_id]
         if data:
-            if self._name is None:
-                self._name = data["title"]
-            self._icon = UNIT_ICON.get(data["unit"], None)
-            self._unit = data["unit"]
+            if self._attr_name is None:
+                self._attr_name = data["title"]
+            self._attr_icon = UNIT_ICON.get(data["unit"], None)
             self._value = data["value"]
         else:
             self._value = None

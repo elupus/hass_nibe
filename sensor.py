@@ -19,7 +19,8 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
-from nibeuplink.typing import CategoryType, SystemUnit
+from nibeuplink import Uplink
+from nibeuplink.typing import CategoryType, ParameterId, ParameterType, SystemUnit
 
 from . import NibeData, NibeSystem
 from .const import CONF_SENSORS, DATA_NIBE_ENTRIES
@@ -85,6 +86,7 @@ async def async_setup_entry(
                     uplink,
                     system.system_id,
                     sensor_id,
+                    data=None,
                     device_info=system.device_info,
                 )
                 for sensor_id in system.config[CONF_SENSORS]
@@ -117,30 +119,38 @@ async def async_setup_entry(
 class NibeSensor(NibeParameterEntity, SensorEntity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink, system_id, parameter_id, data, device_info):
+    def __init__(
+        self,
+        uplink: Uplink,
+        system_id: int,
+        parameter_id: ParameterId,
+        data: ParameterType | None,
+        device_info: dict,
+    ):
         """Init."""
         super(NibeSensor, self).__init__(
             uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT
         )
-        self._device_info = device_info
+        self._attr_device_info = device_info
 
     @property
     def state_class(self):
         """Return state class of unit."""
-        if self._unit:
+        if self.unit_of_measurement:
             return STATE_CLASS_MEASUREMENT
         else:
             return None
 
     @property
-    def device_info(self):
-        """Return device identifier."""
-        if self._device_info:
-            return self._device_info
-        return super().device_info
+    def native_unit_of_measurement(self):
+        """Return the unit of the sensor."""
+        if data := self._parameters[self._parameter_id]:
+            return data["unit"]
+        else:
+            return None
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         return self._value
 
@@ -152,7 +162,7 @@ class NibeSystemSensorEntityDescription(SensorEntityDescription):
     state_fn: Callable[[NibeSystem], StateType] = lambda x: None
 
 
-SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription] = (
+SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
     NibeSystemSensorEntityDescription(
         key="lastActivityDate",
         name="Last Activity",

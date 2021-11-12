@@ -56,6 +56,10 @@ class NibeFan(NibeEntity, FanEntity):
         self.entity_id = ENTITY_ID_FORMAT.format(
             "{}_{}_{}".format(DOMAIN_NIBE, system_id, str(ventilation.name).lower())
         )
+        self._attr_name = ventilation.name
+        self._attr_unique_id = "{}_{}".format(
+            self._system_id, self._ventilation.fan_speed
+        )
 
         self.get_parameters(
             [
@@ -70,11 +74,6 @@ class NibeFan(NibeEntity, FanEntity):
                 ventilation.exhaust_speed_4,
             ]
         )
-
-    @property
-    def name(self):
-        """Return name of entity."""
-        return self._ventilation.name
 
     @property
     def is_on(self):

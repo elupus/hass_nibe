@@ -17,7 +17,8 @@ from homeassistant.components.water_heater import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_OFF
 from homeassistant.core import HomeAssistant
-from nibeuplink import get_active_hotwater
+from nibeuplink import Uplink, get_active_hotwater
+from nibeuplink.types import HotWaterSystem
 
 from . import NibeData, NibeSystem
 from .const import DATA_NIBE_ENTRIES
@@ -87,17 +88,26 @@ async def async_setup_entry(
 class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     """Water heater entity."""
 
-    def __init__(self, uplink, system_id: int, statuses: set[str], hwsys):
+    def __init__(
+        self, uplink: Uplink, system_id: int, statuses: set[str], hwsys: HotWaterSystem
+    ):
         """Init."""
         super().__init__(uplink, system_id)
 
-        self._name = hwsys.name
-        self._current_operation = STATE_OFF
+        self._attr_name = hwsys.name
+        self._attr_current_operation = STATE_OFF
+        self._attr_unique_id = "{}_{}_{}".format(
+            system_id,
+            hwsys.hot_water_charging,
+            hwsys.hot_water_production,
+        )
+        self._attr_supported_features = SUPPORT_OPERATION_MODE
+        self._attr_operation_list = list(NIBE_BOOST_TO_OPERATION.values())
         self._current_state = STATE_OFF
         self._hwsys = hwsys
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}".format(DOMAIN_NIBE, self.unique_id)
+            "{}_{}".format(DOMAIN_NIBE, hwsys.name)
         )
 
         self.get_parameters(
@@ -115,11 +125,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
             ]
         )
         self.parse_statuses(statuses)
-
-    @property
-    def name(self):
-        """Return name of entity."""
-        return self._name
 
     @property
     def temperature_unit(self):
@@ -151,22 +156,12 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
         return self._is_on
 
     @property
-    def supported_features(self):
-        """Return supported operation modes."""
-        return SUPPORT_OPERATION_MODE
-
-    @property
     def state(self):
         """Return the current state."""
         if self._is_on:
             return self._current_state
         else:
             return STATE_OFF
-
-    @property
-    def current_operation(self):
-        """Return current operation ie. heat, cool, idle."""
-        return self._current_operation
 
     @property
     def current_temperature(self):
@@ -180,7 +175,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
 
     def get_float_operation(self, name):
         """Return a float based on operation mode."""
-        if self._current_operation == OPERATION_AUTO:
+        if self._attr_current_operation == OPERATION_AUTO:
             mode = self.get_value(self._hwsys.hot_water_comfort_mode)
         else:
             mode = "luxuary"
@@ -198,11 +193,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     def target_temperature_low(self):
         """Return the target low temperature."""
         return self.get_float_operation("start")
-
-    @property
-    def operation_list(self):
-        """Return the list of available operation modes."""
-        return list(NIBE_BOOST_TO_OPERATION.values())
 
     async def async_set_operation_mode(self, operation_mode):
         """Set new target operation mode."""
@@ -223,15 +213,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
             )
         except aiohttp.client_exceptions.ClientResponseError as e:
             raise Exception(f"Failed to set hot water boost to {boost}") from e
-
-    @property
-    def unique_id(self):
-        """Return the unique id."""
-        return "{}_{}_{}".format(
-            self._system_id,
-            self._hwsys.hot_water_charging,
-            self._hwsys.hot_water_production,
-        )
 
     async def async_statuses_updated(self, system_id: int, statuses: set[str]):
         """React to statuses updated."""
@@ -260,6 +241,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
 
         boost = self.get_raw(self._hwsys.hot_water_boost)
         if boost in NIBE_BOOST_TO_OPERATION:
-            self._current_operation = NIBE_BOOST_TO_OPERATION[boost]
+            self._attr_current_operation = NIBE_BOOST_TO_OPERATION[boost]
         else:
-            self._current_operation = None
+            self._attr_current_operation = None
