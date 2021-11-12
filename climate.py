@@ -119,17 +119,6 @@ class NibeClimate(NibeEntity, ClimateEntity):
         self.parse_statuses(statuses)
 
     @property
-    def device_info(self):
-        """Return device info."""
-        return {
-            "identifiers": {(DOMAIN_NIBE, self._system_id, self._climate.supply_temp)},
-            "via_device": (DOMAIN_NIBE, self._system_id),
-            "name": f"Climate System {self._climate.name}",
-            "model": "Climate System",
-            "manufacturer": "NIBE Energy Systems",
-        }
-
-    @property
     def name(self):
         """Return entity name."""
         return self._climate.name
@@ -538,11 +527,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
     def device_info(self):
         """Return device info."""
         return {
-            "identifiers": {(DOMAIN_NIBE, self._system_id, self._external_id)},
-            "via_device": (DOMAIN_NIBE, self._system_id),
-            "name": f"Thermostat: {self._name}",
-            "model": "Smart Thermostat",
-            "manufacturer": "NIBE Energy Systems",
+            "identifiers": {(DOMAIN_NIBE, self._system_id)},
         }
 
     @property
