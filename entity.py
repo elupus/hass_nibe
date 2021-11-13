@@ -4,16 +4,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import OrderedDict
-from datetime import datetime, timedelta
-from typing import Dict, Optional, cast
+from typing import Dict, Optional
 
-from homeassistant.helpers.entity import Entity
+from homeassistant.core import callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from nibeuplink.typing import ParameterId, ParameterType
 
 from . import NibeSystem
 from .const import DOMAIN as DOMAIN_NIBE
-from .const import SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED
-from .services import async_track_delta_time
 
 ParameterSet = Dict[ParameterId, Optional[ParameterType]]
 
@@ -22,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 UNIT_ICON = {"A": "mdi:power-plug", "Hz": "mdi:update", "h": "mdi:clock"}
 
 
-class NibeEntity(Entity):
+class NibeEntity(CoordinatorEntity[None]):
     """Base class for all nibe sytem entities."""
 
     def __init__(
@@ -31,10 +29,12 @@ class NibeEntity(Entity):
         parameters: ParameterSet | None = None,
     ):
         """Initialize base class."""
-        super().__init__()
+        super().__init__(system.coordinator)
+        self._system = system
         self._uplink = system.uplink
         self._system_id = system.system_id
         self._parameters: ParameterSet = OrderedDict()
+        self._update_from_cache = True
         self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
         self._attr_should_poll = False
         if parameters:
@@ -100,75 +100,29 @@ class NibeEntity(Entity):
         """Parse data to update internal variables."""
         pass
 
-    async def async_parameters_updated(self, system_id: int, data: ParameterSet):
-        """Handle updated parameter."""
-        if system_id != self._system_id:
-            return
-
-        changed = False
-        for key, value in data.items():
-            if key in self._parameters:
-                value2 = dict(value) if value else {}
-                value2["timeout"] = datetime.now() + timedelta(
-                    seconds=(SCAN_INTERVAL * 2)
-                )
-                _LOGGER.debug("Data changed for %s %s", self.entity_id, key)
-                changed = True
-                self._parameters[key] = cast(ParameterType, value2)
-
-        if changed:
-            self.parse_data()
-            self.async_schedule_update_ha_state()
-
-    async def async_statuses_updated(self, system_id, data):
-        """Handle update of status."""
-        pass
-
-    async def async_added_to_hass(self):
-        """Handle when entity is added to home assistant."""
-        self.async_on_remove(
-            self.hass.helpers.dispatcher.async_dispatcher_connect(
-                SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated
-            )
-        )
-
-        self.async_on_remove(
-            self.hass.helpers.dispatcher.async_dispatcher_connect(
-                SIGNAL_STATUSES_UPDATED, self.async_statuses_updated
-            )
-        )
-
-        async def update():
-            await self.async_update()
-            await self.async_update_ha_state()
-
-        self.async_on_remove(async_track_delta_time(self.hass, SCAN_INTERVAL, update))
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._update_from_cache = True
+        self.async_schedule_update_ha_state(True)
 
     async def async_update(self):
-        """Update of entity."""
+        """Handle request to update this entity."""
+        if not self.enabled:
+            return
+
         _LOGGER.debug("Update %s", self.entity_id)
 
-        def timedout(data):
-            if data:
-                timeout = data.get("timeout")
-                if timeout and datetime.now() < timeout:
-                    _LOGGER.debug(
-                        "Skipping update for %s %s", self.entity_id, data["parameterId"]
-                    )
-                    return False
-            return True
+        update_from_cache = self._update_from_cache
+        self._update_from_cache = False
 
         async def get(parameter_id):
-            self._parameters[parameter_id] = await self._uplink.get_parameter(
-                self._system_id, parameter_id
+            self._parameters[parameter_id] = await self._system.get_parameter(
+                parameter_id, update_from_cache
             )
 
         await asyncio.gather(
-            *[
-                get(parameter_id)
-                for parameter_id, data in self._parameters.items()
-                if timedout(data)
-            ]
+            *[get(parameter_id) for parameter_id in self._parameters.keys()]
         )
 
         self.parse_data()
@@ -218,10 +172,7 @@ class NibeParameterEntity(NibeEntity):
     @property
     def available(self):
         """Return True if entity is available."""
-        if self._value is None:
-            return False
-        else:
-            return True
+        return self._system.coordinator.last_update_success and self._value is not None
 
     def parse_data(self):
         """Parse data to update internal variables."""

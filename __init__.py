@@ -4,7 +4,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from datetime import timedelta
+from typing import Callable, Dict, Optional, TypeVar
 
 import homeassistant.helpers.config_validation as cv
 import nibeuplink
@@ -14,7 +15,7 @@ from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
-from nibeuplink.typing import System
+from nibeuplink.typing import ParameterId, ParameterType, System
 
 from .config_flow import NibeConfigFlow  # noqa
 from .const import (
@@ -40,13 +41,13 @@ from .const import (
     DATA_NIBE_ENTRIES,
     DOMAIN,
     SCAN_INTERVAL,
-    SIGNAL_PARAMETERS_UPDATED,
-    SIGNAL_STATUSES_UPDATED,
 )
 from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
+
+ParameterSet = Dict[ParameterId, Optional[ParameterType]]
 
 
 def ensure_system_dict(value: dict[int, T] | list[T] | None) -> dict[int, T]:
@@ -264,6 +265,8 @@ class NibeSystem:
         self._device_info: dict = {}
         self._unsub: list[Callable] = []
         self.config = config
+        self.parameters: ParameterSet = {}
+        self.parameters_active: set[ParameterId] = set()
 
     @property
     def device_info(self):
@@ -298,14 +301,30 @@ class NibeSystem:
         )
 
         async def _update():
+            self.parameters.clear()
             await self.update_notifications()
             await self.update_statuses()
+
+            """Pre-populate previously active parameters"""
+
+            async def _get(parameter_id: ParameterId):
+                self.parameters[parameter_id] = await self.uplink.get_parameter(
+                    self.system_id, parameter_id
+                )
+
+            tasks = [
+                _get(parameter_id)
+                for parameter_id in (self.parameters_active - set(self.parameters))
+            ]
+            self.parameters_active = set()
+            if tasks:
+                await asyncio.gather(*tasks)
 
         self.coordinator = DataUpdateCoordinator(
             self.hass,
             _LOGGER,
             name=f"Nibe Uplink: {self.system_id}",
-            update_interval=None,
+            update_interval=timedelta(minutes=10),
             update_method=_update,
         )
         await self.coordinator.async_config_entry_first_refresh()
@@ -313,22 +332,13 @@ class NibeSystem:
     async def update_statuses(self):
         """Update status list."""
         status_icons = await self.uplink.get_status(self.system_id)
-        parameters = {}
         statuses = set()
         for status_icon in status_icons:
             statuses.add(status_icon["title"])
             for parameter in status_icon["parameters"]:
-                parameters[parameter["parameterId"]] = parameter
+                self.parameters[parameter["parameterId"]] = parameter
         self.statuses = statuses
         _LOGGER.debug("Statuses: %s", statuses)
-
-        self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_PARAMETERS_UPDATED, self.system_id, parameters
-        )
-
-        self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_STATUSES_UPDATED, self.system_id, statuses
-        )
 
     async def update_notifications(self):
         """Update notification list."""
@@ -348,3 +358,18 @@ class NibeSystem:
             persistent_notification.async_dismiss(
                 self.hass, "nibe:{}".format(x["notificationId"])
             )
+
+    async def get_parameter(
+        self, parameter_id: ParameterId, cached=True
+    ) -> ParameterType | None:
+        """Get a cached parameter."""
+        self.parameters_active |= {parameter_id}
+        if cached:
+            if parameter := self.parameters.get(parameter_id):
+                _LOGGER.debug(f"Parameter {parameter_id} found in cache")
+                return parameter
+
+        parameter = await self.uplink.get_parameter(self.system_id, parameter_id)
+        _LOGGER.debug(f"Parameter {parameter_id} retrieved")
+        self.parameters[parameter_id] = parameter
+        return parameter

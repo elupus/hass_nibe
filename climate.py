@@ -115,7 +115,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
             SUPPORT_TARGET_TEMPERATURE_RANGE | SUPPORT_TARGET_TEMPERATURE
         )
         self._attr_unique_id = "{}_{}".format(self._system_id, self._climate.name)
-        self.parse_statuses(system.statuses)
+        self.parse_data()
 
     @property
     def device_state_attributes(self):
@@ -151,21 +151,15 @@ class NibeClimate(NibeEntity, ClimateEntity):
         finally:
             _LOGGER.debug("Put parameter response {}".format(self._status))
 
-    async def async_statuses_updated(self, system_id: int, statuses: set[str]):
-        """Statuses have been updated."""
-        if system_id != self._system_id:
-            return
-        self.parse_statuses(statuses)
-        self.parse_data()
-        self.async_schedule_update_ha_state()
+    def parse_data(self):
+        """Parse current data."""
+        super().parse_data()
 
-    def parse_statuses(self, statuses: set[str]):
-        """Parse status list."""
-        if "Cooling (Passive)" in statuses:
+        if "Cooling (Passive)" in self._system.statuses:
             self._attr_hvac_action = CURRENT_HVAC_COOL
-        elif "Heating" in statuses:
+        elif "Heating" in self._system.statuses:
             self._attr_hvac_action = CURRENT_HVAC_HEAT
-        elif "Cooling" in statuses:
+        elif "Cooling" in self._system.statuses:
             self._attr_hvac_action = CURRENT_HVAC_COOL
         else:
             self._attr_hvac_action = CURRENT_HVAC_IDLE
@@ -205,7 +199,7 @@ class NibeClimateRoom(NibeClimate):
     def temperature_unit(self):
         """Return temperature unit used."""
         data = self._parameters[self._climate.room_temp]
-        if data:
+        if data and data["unit"]:
             return data["unit"]
         else:
             return TEMP_CELSIUS
@@ -295,10 +289,10 @@ class NibeClimateSupply(NibeClimate):
     def temperature_unit(self):
         """Return used temperature unit."""
         data = self._parameters[self._climate.supply_temp]
-        if data:
+        if data and data["unit"]:
             return data["unit"]
         else:
-            return None
+            return TEMP_CELSIUS
 
     @property
     def current_temperature(self):

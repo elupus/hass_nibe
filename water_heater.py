@@ -120,7 +120,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
                 self._hwsys.hot_water_boost,
             ]
         )
-        self.parse_statuses(system.statuses)
+        self.parse_data()
 
     @property
     def temperature_unit(self):
@@ -210,24 +210,14 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
         except aiohttp.client_exceptions.ClientResponseError as e:
             raise Exception(f"Failed to set hot water boost to {boost}") from e
 
-    async def async_statuses_updated(self, system_id: int, statuses: set[str]):
-        """React to statuses updated."""
-        if system_id != self._system_id:
-            return
-        self.parse_statuses(statuses)
-        self.parse_data()
-        self.async_schedule_update_ha_state()
-
-    def parse_statuses(self, statuses: set[str]):
-        """Parse status values."""
-        if "Hot Water" in statuses:
-            self._is_on = True
-        else:
-            self._is_on = False
-
     def parse_data(self):
         """Parse data values."""
         super().parse_data()
+
+        if "Hot Water" in self._system.statuses:
+            self._is_on = True
+        else:
+            self._is_on = False
 
         mode = self.get_value(self._hwsys.hot_water_comfort_mode)
         if mode in NIBE_STATE_TO_HA:
