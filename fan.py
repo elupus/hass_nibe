@@ -50,7 +50,18 @@ class NibeFan(NibeEntity, FanEntity):
 
     def __init__(self, system: NibeSystem, ventilation: VentilationSystem):
         """Init."""
-        super().__init__(system)
+        parameters = {
+            ventilation.fan_speed,
+            ventilation.ventilation_boost,
+            ventilation.extract_air,
+            ventilation.exhaust_speed_normal,
+            ventilation.exhaust_air,
+            ventilation.exhaust_speed_1,
+            ventilation.exhaust_speed_2,
+            ventilation.exhaust_speed_3,
+            ventilation.exhaust_speed_4,
+        }
+        super().__init__(system, parameters)
 
         self._ventilation = ventilation
         self.entity_id = ENTITY_ID_FORMAT.format(
@@ -60,20 +71,6 @@ class NibeFan(NibeEntity, FanEntity):
         )
         self._attr_name = ventilation.name
         self._attr_unique_id = "{}_{}".format(system.system_id, ventilation.fan_speed)
-
-        self.get_parameters(
-            [
-                ventilation.fan_speed,
-                ventilation.ventilation_boost,
-                ventilation.extract_air,
-                ventilation.exhaust_speed_normal,
-                ventilation.exhaust_air,
-                ventilation.exhaust_speed_1,
-                ventilation.exhaust_speed_2,
-                ventilation.exhaust_speed_3,
-                ventilation.exhaust_speed_4,
-            ]
-        )
 
     @property
     def is_on(self):
@@ -86,7 +83,9 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def percentage(self) -> int | None:
         """Return the current percentage."""
-        return self.get_float(self._ventilation.fan_speed)
+        if (value := self.get_value(self._ventilation.fan_speed)) is not None:
+            return int(value)
+        return None
 
     @property
     def preset_mode(self) -> str | None:

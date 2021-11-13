@@ -118,7 +118,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
         device_info: dict,
     ):
         """Init."""
-        super(NibeSensor, self).__init__(system, parameter_id, data, ENTITY_ID_FORMAT)
+        super().__init__(system, parameter_id, data, ENTITY_ID_FORMAT)
         self._attr_device_info = device_info
 
     @property
@@ -132,10 +132,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
     @property
     def native_unit_of_measurement(self):
         """Return the unit of the sensor."""
-        if data := self._parameters[self._parameter_id]:
-            return data["unit"]
-        else:
-            return None
+        return self.get_unit(self._parameter_id)
 
     @property
     def native_value(self):

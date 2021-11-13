@@ -88,7 +88,19 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
 
     def __init__(self, system: NibeSystem, hwsys: HotWaterSystem):
         """Init."""
-        super().__init__(system)
+        parameters = {
+            hwsys.hot_water_charging,
+            hwsys.hot_water_comfort_mode,
+            hwsys.hot_water_top,
+            hwsys.start_temperature_water_economy,
+            hwsys.start_temperature_water_normal,
+            hwsys.start_temperature_water_luxary,
+            hwsys.stop_temperature_water_economy,
+            hwsys.stop_temperature_water_normal,
+            hwsys.stop_temperature_water_luxary,
+            hwsys.hot_water_boost,
+        }
+        super().__init__(system, parameters)
 
         self._attr_name = hwsys.name
         self._attr_current_operation = STATE_OFF
@@ -106,20 +118,6 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
             "{}_{}".format(DOMAIN_NIBE, hwsys.name)
         )
 
-        self.get_parameters(
-            [
-                self._hwsys.hot_water_charging,
-                self._hwsys.hot_water_comfort_mode,
-                self._hwsys.hot_water_top,
-                self._hwsys.start_temperature_water_economy,
-                self._hwsys.start_temperature_water_normal,
-                self._hwsys.start_temperature_water_luxary,
-                self._hwsys.stop_temperature_water_economy,
-                self._hwsys.stop_temperature_water_normal,
-                self._hwsys.stop_temperature_water_luxary,
-                self._hwsys.hot_water_boost,
-            ]
-        )
         self.parse_data()
 
     @property

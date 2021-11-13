@@ -34,7 +34,7 @@ class NibeSwitch(NibeParameterEntity, SwitchEntity):
 
     def __init__(self, system: NibeSystem, parameter_id, entry):
         """Init."""
-        super(NibeSwitch, self).__init__(system, parameter_id, None, ENTITY_ID_FORMAT)
+        super().__init__(system, parameter_id, None, ENTITY_ID_FORMAT)
 
     @property
     def is_on(self):

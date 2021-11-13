@@ -42,6 +42,7 @@ from nibeuplink import (
     SetThermostatModel,
     get_active_climate,
 )
+from nibeuplink.typing import ParameterId
 
 from . import NibeData, NibeSystem
 from .const import (
@@ -99,11 +100,17 @@ async def async_setup_entry(
 class NibeClimate(NibeEntity, ClimateEntity):
     """Base class for nibe climate entities."""
 
-    def __init__(self, system: NibeSystem, climate: ClimateSystem):
+    def __init__(
+        self,
+        system: NibeSystem,
+        climate: ClimateSystem,
+        parameters: set[ParameterId | None],
+    ):
         """Init."""
-        super().__init__(system)
 
-        self.get_parameters([PARAM_PUMP_SPEED_HEATING_MEDIUM])
+        parameters |= {PARAM_PUMP_SPEED_HEATING_MEDIUM}
+
+        super().__init__(system, parameters)
 
         self._climate = climate
         self._status = "DONE"
@@ -170,7 +177,14 @@ class NibeClimateRoom(NibeClimate):
 
     def __init__(self, system: NibeSystem, climate: ClimateSystem):
         """Init."""
-        super().__init__(system, climate)
+
+        parameters = {
+            climate.room_temp,
+            climate.room_setpoint_heat,
+            climate.room_setpoint_cool,
+        }
+
+        super().__init__(system, climate, parameters)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             "{}_{}_{}_room".format(DOMAIN_NIBE, system.system_id, str(climate.name))
@@ -181,14 +195,6 @@ class NibeClimateRoom(NibeClimate):
         self._attr_max_temp = 35.0
         self._attr_min_temp = 5.0
         self._attr_target_temperature_step = 0.5
-
-        self.get_parameters(
-            [
-                self._climate.room_temp,
-                self._climate.room_setpoint_heat,
-                self._climate.room_setpoint_cool,
-            ]
-        )
 
     @property
     def available(self):
@@ -258,7 +264,17 @@ class NibeClimateSupply(NibeClimate):
 
     def __init__(self, system: NibeSystem, climate: ClimateSystem):
         """Init."""
-        super().__init__(system, climate)
+
+        parameters = {
+            climate.supply_temp,
+            climate.calc_supply_temp_heat,
+            climate.calc_supply_temp_cool,
+            climate.offset_heat,
+            climate.offset_cool,
+            climate.external_adjustment_active,
+        }
+
+        super().__init__(system, climate, parameters)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
             "{}_{}_{}_supply".format(DOMAIN_NIBE, system.system_id, str(climate.name))
@@ -268,17 +284,6 @@ class NibeClimateSupply(NibeClimate):
         self._attr_max_temp = 50.0
         self._attr_min_temp = 5.0
         self._attr_target_temperature_step = 1.0
-
-        self.get_parameters(
-            [
-                self._climate.supply_temp,
-                self._climate.calc_supply_temp_heat,
-                self._climate.calc_supply_temp_cool,
-                self._climate.offset_heat,
-                self._climate.offset_cool,
-                self._climate.external_adjustment_active,
-            ]
-        )
 
     @property
     def available(self):

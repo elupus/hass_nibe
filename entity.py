@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections import OrderedDict
 from typing import Dict, Optional
 
 from homeassistant.core import callback
@@ -26,27 +25,23 @@ class NibeEntity(CoordinatorEntity[None]):
     def __init__(
         self,
         system: NibeSystem,
-        parameters: ParameterSet | None = None,
+        parameters: set[ParameterId | None],
     ):
         """Initialize base class."""
         super().__init__(system.coordinator)
         self._system = system
         self._uplink = system.uplink
         self._system_id = system.system_id
-        self._parameters: ParameterSet = OrderedDict()
         self._update_from_cache = True
         self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
         self._attr_should_poll = False
-        if parameters:
-            self._parameters.update(parameters)
+        self._parameters = {
+            parameter_id: None
+            for parameter_id in list(parameters)
+            if parameter_id is not None
+        }
 
-    def get_parameters(self, parameter_ids: list[ParameterId | None]):
-        """Register a parameter for retrieval."""
-        for parameter_id in parameter_ids:
-            if parameter_id and parameter_id not in self._parameters:
-                self._parameters[parameter_id] = None
-
-    def get_bool(self, parameter_id: ParameterId | None):
+    def get_bool(self, parameter_id: ParameterId | None) -> bool | None:
         """Get bool parameter."""
         if not parameter_id:
             return None
@@ -56,7 +51,9 @@ class NibeEntity(CoordinatorEntity[None]):
         else:
             return bool(data["value"])
 
-    def get_float(self, parameter_id: ParameterId | None, default=None):
+    def get_float(
+        self, parameter_id: ParameterId | None, default: float | None = None
+    ) -> float | None:
         """Get float parameter."""
         if not parameter_id:
             return None
@@ -76,6 +73,18 @@ class NibeEntity(CoordinatorEntity[None]):
         else:
             return data["value"]
 
+    def get_unit(
+        self, parameter_id: ParameterId | None, default: str | None = None
+    ) -> str | None:
+        """Get value in display format."""
+        if not parameter_id:
+            return None
+        data = self._parameters[parameter_id]
+        if data is None or data["unit"] is None:
+            return default
+        else:
+            return data["unit"]
+
     def get_raw(self, parameter_id: ParameterId | None, default=None):
         """Get value in display format."""
         if not parameter_id:
@@ -86,7 +95,7 @@ class NibeEntity(CoordinatorEntity[None]):
         else:
             return data["rawValue"]
 
-    def get_scale(self, parameter_id: ParameterId | None):
+    def get_scale(self, parameter_id: ParameterId | None) -> float | None:
         """Calculate scale of parameter."""
         if not parameter_id:
             return None
@@ -139,15 +148,15 @@ class NibeParameterEntity(NibeEntity):
         entity_id_format: str | None = None,
     ):
         """Initialize base class for parameters."""
-        super().__init__(system, parameters={parameter_id: data})
+        super().__init__(system, parameters={parameter_id})
         self._parameter_id = parameter_id
+        self._parameters[parameter_id] = data
         self._value = None
         self._attr_unique_id = "{}_{}".format(system.system_id, parameter_id)
         self._attr_name = None
         self._attr_icon = None
 
-        if data:
-            self.parse_data()
+        self.parse_data()
 
         if entity_id_format:
             self.entity_id = entity_id_format.format(
