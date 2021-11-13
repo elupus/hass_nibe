@@ -539,7 +539,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
 
         data: SetThermostatModel = {
             "externalId": self._external_id,
-            "name": self._name,
+            "name": self._attr_name,
             "actualTemp": actual,
             "targetTemp": target,
             "valvePosition": valve,
