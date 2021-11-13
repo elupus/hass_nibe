@@ -5,7 +5,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, Optional, TypeVar, cast
 
 import homeassistant.helpers.config_validation as cv
 import nibeuplink
@@ -13,6 +13,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
+from homeassistant.core import CALLBACK_TYPE, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
 from nibeuplink.typing import ParameterId, ParameterType, System
@@ -265,8 +266,9 @@ class NibeSystem:
         self._device_info: dict = {}
         self._unsub: list[Callable] = []
         self.config = config
-        self.parameters: ParameterSet = {}
-        self.parameters_active: set[ParameterId] = set()
+        self._parameters: ParameterSet = {}
+        self._parameter_subscribers: dict[object, set[ParameterId]] = {}
+        self._parameter_preload: set[ParameterId] = set()
 
     @property
     def device_info(self):
@@ -301,22 +303,21 @@ class NibeSystem:
         )
 
         async def _update():
-            self.parameters.clear()
+            self._parameter_preload = set()
             await self.update_notifications()
             await self.update_statuses()
 
-            """Pre-populate previously active parameters"""
+            parameters = set()
+            for subscriber_parameters in self._parameter_subscribers.values():
+                parameters |= subscriber_parameters
+            parameters -= self._parameter_preload
 
             async def _get(parameter_id: ParameterId):
-                self.parameters[parameter_id] = await self.uplink.get_parameter(
+                self._parameters[parameter_id] = await self.uplink.get_parameter(
                     self.system_id, parameter_id
                 )
 
-            tasks = [
-                _get(parameter_id)
-                for parameter_id in (self.parameters_active - set(self.parameters))
-            ]
-            self.parameters_active = set()
+            tasks = [_get(parameter_id) for parameter_id in parameters]
             if tasks:
                 await asyncio.gather(*tasks)
 
@@ -336,7 +337,8 @@ class NibeSystem:
         for status_icon in status_icons:
             statuses.add(status_icon["title"])
             for parameter in status_icon["parameters"]:
-                self.parameters[parameter["parameterId"]] = parameter
+                self._parameters[parameter["parameterId"]] = parameter
+                self._parameter_preload |= {parameter["parameterId"]}
         self.statuses = statuses
         _LOGGER.debug("Statuses: %s", statuses)
 
@@ -363,13 +365,30 @@ class NibeSystem:
         self, parameter_id: ParameterId, cached=True
     ) -> ParameterType | None:
         """Get a cached parameter."""
-        self.parameters_active |= {parameter_id}
         if cached:
-            if parameter := self.parameters.get(parameter_id):
+            if parameter := self._parameters.get(parameter_id):
                 _LOGGER.debug(f"Parameter {parameter_id} found in cache")
                 return parameter
 
         parameter = await self.uplink.get_parameter(self.system_id, parameter_id)
         _LOGGER.debug(f"Parameter {parameter_id} retrieved")
-        self.parameters[parameter_id] = parameter
+        self._parameters[parameter_id] = parameter
         return parameter
+
+    def add_parameter_subscriber(
+        self, parameters: set[ParameterId | None]
+    ) -> CALLBACK_TYPE:
+        """Add a subscriber for parameters."""
+        sentinel = object()
+
+        @callback
+        def _remove():
+            del self._parameter_subscribers[sentinel]
+
+        parameters_clean = cast(set[ParameterId], (parameters - {None}))
+
+        self._parameter_subscribers[sentinel] = parameters_clean
+        for parameter in parameters_clean - set(self._parameters.keys()):
+            self._parameters[parameter] = None
+
+        return _remove
