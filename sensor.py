@@ -16,7 +16,7 @@ from homeassistant.const import DEVICE_CLASS_TIMESTAMP, ENTITY_CATEGORY_DIAGNOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from nibeuplink.typing import CategoryType, ParameterId, ParameterType, SystemUnit
+from nibeuplink.typing import CategoryType, ParameterId, SystemUnit
 
 from . import NibeData, NibeSystem
 from .const import CONF_SENSORS, DATA_NIBE_ENTRIES
@@ -60,19 +60,21 @@ async def async_setup_entry(
             "model": f"{unit['product']} : {category['name']}",
             "manufacturer": system.device_info["manufacturer"],
         }
+        entities = []
+        for parameter in category["parameters"]:
+            if not once(system.system_id, parameter["parameterId"]):
+                continue
 
-        async_add_entities(
-            [
+            system.set_parameter(parameter["parameterId"], parameter)
+            entities.append(
                 NibeSensor(
                     system,
                     parameter["parameterId"],
-                    data=parameter,
                     device_info=device_info,
                 )
-                for parameter in category["parameters"]
-                if once(system.system_id, parameter["parameterId"])
-            ]
-        )
+            )
+
+        async_add_entities(entities)
 
     def add_sensors(system: NibeSystem):
         async_add_entities(
@@ -80,7 +82,6 @@ async def async_setup_entry(
                 NibeSensor(
                     system,
                     sensor_id,
-                    data=None,
                     device_info=system.device_info,
                 )
                 for sensor_id in system.config[CONF_SENSORS]
@@ -114,11 +115,10 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
         self,
         system: NibeSystem,
         parameter_id: ParameterId,
-        data: ParameterType | None,
         device_info: dict,
     ):
         """Init."""
-        super().__init__(system, parameter_id, data, ENTITY_ID_FORMAT)
+        super().__init__(system, parameter_id, ENTITY_ID_FORMAT)
         self._attr_device_info = device_info
 
     @property

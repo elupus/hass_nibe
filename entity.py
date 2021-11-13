@@ -1,7 +1,6 @@
 """Base entites for nibe."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Dict, Optional
 
@@ -32,20 +31,20 @@ class NibeEntity(CoordinatorEntity[None]):
         self._system = system
         self._uplink = system.uplink
         self._system_id = system.system_id
-        self._update_from_cache = True
         self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
-        self._attr_should_poll = False
-        self._parameters = {
-            parameter_id: None
-            for parameter_id in list(parameters)
-            if parameter_id is not None
-        }
+        self._parameters = parameters
+
+    def get_parameter(self, parameter_id: ParameterId | None) -> ParameterType | None:
+        """Get the full parameter dict."""
+        if not parameter_id:
+            return None
+        return self._system.get_parameter(parameter_id)
 
     def get_bool(self, parameter_id: ParameterId | None) -> bool | None:
         """Get bool parameter."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return False
         else:
@@ -57,7 +56,7 @@ class NibeEntity(CoordinatorEntity[None]):
         """Get float parameter."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return default
         else:
@@ -67,7 +66,7 @@ class NibeEntity(CoordinatorEntity[None]):
         """Get value in display format."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return default
         else:
@@ -79,7 +78,7 @@ class NibeEntity(CoordinatorEntity[None]):
         """Get value in display format."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["unit"] is None:
             return default
         else:
@@ -89,7 +88,7 @@ class NibeEntity(CoordinatorEntity[None]):
         """Get value in display format."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["rawValue"] is None:
             return default
         else:
@@ -99,7 +98,7 @@ class NibeEntity(CoordinatorEntity[None]):
         """Calculate scale of parameter."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return 1.0
         else:
@@ -112,15 +111,12 @@ class NibeEntity(CoordinatorEntity[None]):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._update_from_cache = True
-        self.async_schedule_update_ha_state(True)
+        self.parse_data()
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        self.async_on_remove(
-            self._system.add_parameter_subscriber(set(self._parameters.keys()))
-        )
+        self.async_on_remove(self._system.add_parameter_subscriber(self._parameters))
 
     async def async_update(self):
         """Handle request to update this entity."""
@@ -128,19 +124,7 @@ class NibeEntity(CoordinatorEntity[None]):
             return
 
         _LOGGER.debug("Update %s", self.entity_id)
-
-        update_from_cache = self._update_from_cache
-        self._update_from_cache = False
-
-        async def get(parameter_id):
-            self._parameters[parameter_id] = await self._system.get_parameter(
-                parameter_id, update_from_cache
-            )
-
-        await asyncio.gather(
-            *[get(parameter_id) for parameter_id in self._parameters.keys()]
-        )
-
+        await self._system.update_parameters(self._parameters)
         self.parse_data()
 
 
@@ -151,13 +135,11 @@ class NibeParameterEntity(NibeEntity):
         self,
         system: NibeSystem,
         parameter_id: ParameterId,
-        data: ParameterType | None = None,
         entity_id_format: str | None = None,
     ):
         """Initialize base class for parameters."""
         super().__init__(system, parameters={parameter_id})
         self._parameter_id = parameter_id
-        self._parameters[parameter_id] = data
         self._value = None
         self._attr_unique_id = "{}_{}".format(system.system_id, parameter_id)
         self._attr_name = None
@@ -173,7 +155,7 @@ class NibeParameterEntity(NibeEntity):
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        data = self._parameters[self._parameter_id]
+        data = self.get_parameter(self._parameter_id)
         if data:
             return {
                 "designation": data["designation"],
@@ -192,7 +174,7 @@ class NibeParameterEntity(NibeEntity):
 
     def parse_data(self):
         """Parse data to update internal variables."""
-        data = self._parameters[self._parameter_id]
+        data = self.get_parameter(self._parameter_id)
         if data:
             if self._attr_name is None:
                 self._attr_name = data["title"]

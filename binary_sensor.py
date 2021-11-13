@@ -40,7 +40,7 @@ class NibeBinarySensor(NibeParameterEntity, BinarySensorEntity):
     @property
     def is_on(self):
         """Return if sensor is on."""
-        data = self._parameters[self._parameter_id]
+        data = self.get_parameter[self._parameter_id]
         if data:
             return data["rawValue"] == "1"
         else:

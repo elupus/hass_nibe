@@ -24,7 +24,7 @@ async def async_setup_entry(
     entities = []
     for system in data.systems.values():
         for parameter_id in system.config[CONF_SWITCHES]:
-            entities.append(NibeSwitch(system, parameter_id, entry))
+            entities.append(NibeSwitch(system, parameter_id))
 
     async_add_entities(entities, True)
 
@@ -32,16 +32,15 @@ async def async_setup_entry(
 class NibeSwitch(NibeParameterEntity, SwitchEntity):
     """Nibe Switch Entity."""
 
-    def __init__(self, system: NibeSystem, parameter_id, entry):
+    def __init__(self, system: NibeSystem, parameter_id):
         """Init."""
-        super().__init__(system, parameter_id, None, ENTITY_ID_FORMAT)
+        super().__init__(system, parameter_id, ENTITY_ID_FORMAT)
 
     @property
     def is_on(self):
         """Return if entity is on."""
-        data = self._parameters[self._parameter_id]
-        if data:
-            return data["rawValue"] == "1"
+        if (data := self.get_raw(self._parameter_id)) is not None:
+            return data == "1"
         else:
             return None
 

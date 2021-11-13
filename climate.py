@@ -204,11 +204,7 @@ class NibeClimateRoom(NibeClimate):
     @property
     def temperature_unit(self):
         """Return temperature unit used."""
-        data = self._parameters[self._climate.room_temp]
-        if data and data["unit"]:
-            return data["unit"]
-        else:
-            return TEMP_CELSIUS
+        return self.get_unit(self._climate.room_temp, TEMP_CELSIUS)
 
     @property
     def current_temperature(self):
@@ -293,11 +289,7 @@ class NibeClimateSupply(NibeClimate):
     @property
     def temperature_unit(self):
         """Return used temperature unit."""
-        data = self._parameters[self._climate.supply_temp]
-        if data and data["unit"]:
-            return data["unit"]
-        else:
-            return TEMP_CELSIUS
+        return self.get_unit(self._climate.supply_temp, TEMP_CELSIUS)
 
     @property
     def current_temperature(self):

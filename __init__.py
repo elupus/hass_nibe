@@ -303,7 +303,6 @@ class NibeSystem:
         )
 
         async def _update():
-            self._parameter_preload = set()
             await self.update_notifications()
             await self.update_statuses()
 
@@ -311,15 +310,9 @@ class NibeSystem:
             for subscriber_parameters in self._parameter_subscribers.values():
                 parameters |= subscriber_parameters
             parameters -= self._parameter_preload
+            self._parameter_preload = set()
 
-            async def _get(parameter_id: ParameterId):
-                self._parameters[parameter_id] = await self.uplink.get_parameter(
-                    self.system_id, parameter_id
-                )
-
-            tasks = [_get(parameter_id) for parameter_id in parameters]
-            if tasks:
-                await asyncio.gather(*tasks)
+            await self.update_parameters(parameters)
 
         self.coordinator = DataUpdateCoordinator(
             self.hass,
@@ -337,8 +330,7 @@ class NibeSystem:
         for status_icon in status_icons:
             statuses.add(status_icon["title"])
             for parameter in status_icon["parameters"]:
-                self._parameters[parameter["parameterId"]] = parameter
-                self._parameter_preload |= {parameter["parameterId"]}
+                self.set_parameter(parameter["parameterId"], parameter)
         self.statuses = statuses
         _LOGGER.debug("Statuses: %s", statuses)
 
@@ -361,19 +353,28 @@ class NibeSystem:
                 self.hass, "nibe:{}".format(x["notificationId"])
             )
 
-    async def get_parameter(
-        self, parameter_id: ParameterId, cached=True
+    def get_parameter(
+        self, parameter_id: ParameterId | None, cached=True
     ) -> ParameterType | None:
         """Get a cached parameter."""
-        if cached:
-            if parameter := self._parameters.get(parameter_id):
-                _LOGGER.debug(f"Parameter {parameter_id} found in cache")
-                return parameter
+        return self._parameters.get(parameter_id)
 
-        parameter = await self.uplink.get_parameter(self.system_id, parameter_id)
-        _LOGGER.debug(f"Parameter {parameter_id} retrieved")
-        self._parameters[parameter_id] = parameter
-        return parameter
+    async def update_parameters(self, parameters: set[ParameterId | None]):
+        """Update parameter cache."""
+
+        async def _get(parameter_id: ParameterId):
+            self._parameters[parameter_id] = await self.uplink.get_parameter(
+                self.system_id, parameter_id
+            )
+
+        tasks = [_get(parameter_id) for parameter_id in parameters if parameter_id]
+        if tasks:
+            await asyncio.gather(*tasks)
+
+    def set_parameter(self, parameter_id: ParameterId, data: ParameterType | None):
+        """Store a parameter in cache."""
+        self._parameters[parameter_id] = data
+        self._parameter_preload |= {parameter_id}
 
     def add_parameter_subscriber(
         self, parameters: set[ParameterId | None]
