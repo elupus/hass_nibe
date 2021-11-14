@@ -279,14 +279,14 @@ class NibeSystemSensorEntityDescription(SensorEntityDescription):
 SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
     NibeSystemSensorEntityDescription(
         key="lastActivityDate",
-        name="Last Activity",
+        name="last activity",
         device_class=DEVICE_CLASS_TIMESTAMP,
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         state_fn=lambda x: x.system["lastActivityDate"],
     ),
     NibeSystemSensorEntityDescription(
         key="connectionStatus",
-        name="Connection Status",
+        name="connection status",
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         state_fn=lambda x: x.system["connectionStatus"],
     ),
