@@ -12,7 +12,7 @@ from homeassistant.components.fan import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from nibeuplink import Uplink, VentilationSystem, get_active_ventilations
+from nibeuplink import VentilationSystem, get_active_ventilations
 
 from . import NibeData, NibeSystem
 from .const import DATA_NIBE_ENTRIES
@@ -38,7 +38,7 @@ async def async_setup_entry(
     async def add_active(system: NibeSystem):
         ventilations = await get_active_ventilations(uplink, system.system_id)
         for ventilation in ventilations.values():
-            entities.append(NibeFan(uplink, system.system_id, ventilation))
+            entities.append(NibeFan(system, ventilation))
 
     await asyncio.gather(*[add_active(system) for system in systems.values()])
 
@@ -48,33 +48,29 @@ async def async_setup_entry(
 class NibeFan(NibeEntity, FanEntity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink: Uplink, system_id: int, ventilation: VentilationSystem):
+    def __init__(self, system: NibeSystem, ventilation: VentilationSystem):
         """Init."""
-        super().__init__(uplink, system_id)
+        parameters = {
+            ventilation.fan_speed,
+            ventilation.ventilation_boost,
+            ventilation.extract_air,
+            ventilation.exhaust_speed_normal,
+            ventilation.exhaust_air,
+            ventilation.exhaust_speed_1,
+            ventilation.exhaust_speed_2,
+            ventilation.exhaust_speed_3,
+            ventilation.exhaust_speed_4,
+        }
+        super().__init__(system, parameters)
 
         self._ventilation = ventilation
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}_{}".format(DOMAIN_NIBE, system_id, str(ventilation.name).lower())
+            "{}_{}_{}".format(
+                DOMAIN_NIBE, system.system_id, str(ventilation.name).lower()
+            )
         )
-
-        self.get_parameters(
-            [
-                ventilation.fan_speed,
-                ventilation.ventilation_boost,
-                ventilation.extract_air,
-                ventilation.exhaust_speed_normal,
-                ventilation.exhaust_air,
-                ventilation.exhaust_speed_1,
-                ventilation.exhaust_speed_2,
-                ventilation.exhaust_speed_3,
-                ventilation.exhaust_speed_4,
-            ]
-        )
-
-    @property
-    def name(self):
-        """Return name of entity."""
-        return self._ventilation.name
+        self._attr_name = ventilation.name
+        self._attr_unique_id = "{}_{}".format(system.system_id, ventilation.fan_speed)
 
     @property
     def is_on(self):
@@ -87,7 +83,9 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def percentage(self) -> int | None:
         """Return the current percentage."""
-        return self.get_float(self._ventilation.fan_speed)
+        if (value := self.get_value(self._ventilation.fan_speed)) is not None:
+            return int(value)
+        return None
 
     @property
     def preset_mode(self) -> str | None:

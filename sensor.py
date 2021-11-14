@@ -2,17 +2,43 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
+from dataclasses import dataclass
+from typing import Callable
 
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL_INCREASING,
     SensorEntity,
+    SensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    DEVICE_CLASS_CURRENT,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_TEMPERATURE,
+    DEVICE_CLASS_TIMESTAMP,
+    DEVICE_CLASS_VOLTAGE,
+    ELECTRIC_CURRENT_AMPERE,
+    ELECTRIC_CURRENT_MILLIAMPERE,
+    ELECTRIC_POTENTIAL_MILLIVOLT,
+    ELECTRIC_POTENTIAL_VOLT,
+    ENERGY_KILO_WATT_HOUR,
+    ENERGY_MEGA_WATT_HOUR,
+    ENERGY_WATT_HOUR,
+    ENTITY_CATEGORY_CONFIG,
+    ENTITY_CATEGORY_DIAGNOSTIC,
+    TEMP_CELSIUS,
+    TEMP_FAHRENHEIT,
+    TEMP_KELVIN,
+    TIME_HOURS,
+)
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from nibeuplink.typing import CategoryType, ParameterId, SystemUnit
 
-from . import NibeData
+from . import NibeData, NibeSystem
 from .const import CONF_SENSORS, DATA_NIBE_ENTRIES
 from .const import DOMAIN as DOMAIN_NIBE
 from .entity import NibeParameterEntity
@@ -21,111 +47,272 @@ PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
-def gen_dict():
-    """Generate a default dict."""
-    return {"device_info": None, "data": None}
-
-
-async def async_load(data: NibeData):
-    """Load the sensors."""
-    uplink = data.uplink
-    systems = data.systems
-
-    sensors: dict[tuple[int, int], dict] = defaultdict(gen_dict)
-
-    async def load_sensor(system_id, sensor_id):
-        sensors.setdefault((system_id, sensor_id), gen_dict())
-
-    async def load_categories(system_id, unit_id):
-        data = await uplink.get_categories(system_id, True, unit_id)
-
-        for category in data:
-            device_info = {
-                "identifiers": {
-                    (
-                        DOMAIN_NIBE,
-                        system_id,
-                        "categories",
-                        unit_id,
-                        category["categoryId"],
-                    )
-                },
-                "via_device": (DOMAIN_NIBE, system_id),
-                "name": f"Category: {category['name']}",
-                "model": "System Category",
-                "manufacturer": "NIBE Energy Systems",
-            }
-            for x in category["parameters"]:
-                entry = sensors[(system_id, x["parameterId"])]
-                entry["data"] = x
-                entry["device_info"] = device_info
-
-    for system in systems.values():
-        for sensor_id in system.config[CONF_SENSORS]:
-            await load_sensor(system.system_id, sensor_id)
-
-        for unit_id in system.units.keys():
-            await load_categories(system.system_id, unit_id)
-
-    return sensors
-
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
 ):
     """Set up the device based on a config entry."""
     data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
     uplink = data.uplink
-    sensors = await async_load(data)
-    entites_update = []
-    entites_done = []
 
-    for (system_id, parameter_id), config in sensors.items():
-        if parameter_id == 0:
-            continue
+    done: set[tuple[int, int]] = set()
 
-        entity = NibeSensor(
-            uplink,
-            system_id,
-            parameter_id,
-            data=config["data"],
-            device_info=config["device_info"],
+    def once(system_id: int, parameter_id: int):
+        nonlocal done
+        key = (system_id, parameter_id)
+        if key in done:
+            return False
+        done.add(key)
+        return True
+
+    def add_category(system: NibeSystem, category: CategoryType, unit: SystemUnit):
+        device_info = {
+            "identifiers": {
+                (
+                    DOMAIN_NIBE,
+                    system.system_id,
+                    "categories",
+                    unit["systemUnitId"],
+                    category["categoryId"],
+                )
+            },
+            "via_device": (DOMAIN_NIBE, system.system_id),
+            "name": f"{system.device_info['name']} : {unit['name']} : {category['name']}",
+            "model": f"{unit['product']} : {category['name']}",
+            "manufacturer": system.device_info["manufacturer"],
+        }
+        entities = []
+        for parameter in category["parameters"]:
+            if not once(system.system_id, parameter["parameterId"]):
+                continue
+
+            system.set_parameter(parameter["parameterId"], parameter)
+            entities.append(
+                NibeSensor(
+                    system,
+                    parameter["parameterId"],
+                    device_info,
+                    PARAMETER_SENSORS_LOOKUP.get(str(parameter["parameterId"])),
+                )
+            )
+
+        async_add_entities(entities)
+
+    def add_sensors(system: NibeSystem):
+        async_add_entities(
+            [
+                NibeSensor(
+                    system,
+                    sensor_id,
+                    system.device_info,
+                    PARAMETER_SENSORS_LOOKUP.get(str(sensor_id)),
+                )
+                for sensor_id in system.config[CONF_SENSORS]
+                if once(system.system_id, sensor_id)
+            ],
+            True,
         )
-        if config["data"]:
-            entites_done.append(entity)
-        else:
-            entites_update.append(entity)
 
-    async_add_entities(entites_update, True)
-    async_add_entities(entites_done, False)
+        async_add_entities(
+            [NibeSystemSensor(system, description) for description in SYSTEM_SENSORS]
+        )
+
+    async def load_system(system: NibeSystem):
+        units = await uplink.get_units(system.system_id)
+        for unit in units:
+            categories = await uplink.get_categories(
+                system.system_id, True, unit["systemUnitId"]
+            )
+            for category in categories:
+                add_category(system, category, unit)
+        add_sensors(system)
+
+    for system in data.systems.values():
+        await load_system(system)
+
+
+@dataclass
+class NibeSensorEntityDescription(SensorEntityDescription):
+    """Description of a nibe system sensor."""
+
+
+PARAMETER_SENSORS = (
+    NibeSensorEntityDescription(
+        key="43424",
+        device_class="timedelta",
+        name="compressor operating time hot water",
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+        native_unit_of_measurement=TIME_HOURS,
+        icon="mdi:clock",
+    ),
+    NibeSensorEntityDescription(
+        key="43420",
+        device_class="timedelta",
+        name="compressor operating time",
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+        native_unit_of_measurement=TIME_HOURS,
+        icon="mdi:clock",
+    ),
+    NibeSensorEntityDescription(
+        key="43416",
+        name="compressor starts",
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+    ),
+    NibeSensorEntityDescription(
+        key="47407",
+        name="AUX5",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47408",
+        name="AUX4",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47409",
+        name="AUX3",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47410",
+        name="AUX2",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47411",
+        name="AUX1",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47412",
+        name="X7",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="48745",
+        name="country",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47212",
+        name="set max electrical add.",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47214",
+        name="fuse size",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="43122",
+        name="allowed compr. freq. min",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+)
+PARAMETER_SENSORS_LOOKUP = {x.key: x for x in PARAMETER_SENSORS}
 
 
 class NibeSensor(NibeParameterEntity, SensorEntity):
     """Nibe Sensor."""
 
-    def __init__(self, uplink, system_id, parameter_id, data, device_info):
+    entity_description: NibeSystemSensorEntityDescription
+
+    def __init__(
+        self,
+        system: NibeSystem,
+        parameter_id: ParameterId,
+        device_info: dict,
+        entity_description: NibeSensorEntityDescription | None,
+    ):
         """Init."""
-        super(NibeSensor, self).__init__(
-            uplink, system_id, parameter_id, data, ENTITY_ID_FORMAT
-        )
-        self._device_info = device_info
+        super().__init__(system, parameter_id, ENTITY_ID_FORMAT)
+        self._attr_device_info = device_info
+        if entity_description:
+            self.entity_description = entity_description
+
+    @property
+    def device_class(self) -> str | None:
+        """Try to deduce a device class."""
+        if data := super().device_class:
+            return data
+
+        unit = self.unit_of_measurement
+        if unit in {TEMP_CELSIUS, TEMP_FAHRENHEIT, TEMP_KELVIN}:
+            return DEVICE_CLASS_TEMPERATURE
+        elif unit in {ELECTRIC_CURRENT_AMPERE, ELECTRIC_CURRENT_MILLIAMPERE}:
+            return DEVICE_CLASS_CURRENT
+        elif unit in {ELECTRIC_POTENTIAL_VOLT, ELECTRIC_POTENTIAL_MILLIVOLT}:
+            return DEVICE_CLASS_VOLTAGE
+        elif unit in {ENERGY_WATT_HOUR, ENERGY_KILO_WATT_HOUR, ENERGY_MEGA_WATT_HOUR}:
+            return DEVICE_CLASS_ENERGY
+
+        return None
 
     @property
     def state_class(self):
         """Return state class of unit."""
-        if self._unit:
+        if data := super().state_class:
+            return data
+
+        if self.unit_of_measurement:
             return STATE_CLASS_MEASUREMENT
         else:
             return None
 
     @property
-    def device_info(self):
-        """Return device identifier."""
-        if self._device_info:
-            return self._device_info
-        return super().device_info
+    def native_unit_of_measurement(self):
+        """Return the unit of the sensor."""
+        return self.get_unit(self._parameter_id)
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         return self._value
+
+
+@dataclass
+class NibeSystemSensorEntityDescription(SensorEntityDescription):
+    """Description of a nibe system sensor."""
+
+    state_fn: Callable[[NibeSystem], StateType] = lambda x: None
+
+
+SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
+    NibeSystemSensorEntityDescription(
+        key="lastActivityDate",
+        name="last activity",
+        device_class=DEVICE_CLASS_TIMESTAMP,
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        state_fn=lambda x: x.system["lastActivityDate"],
+    ),
+    NibeSystemSensorEntityDescription(
+        key="connectionStatus",
+        name="connection status",
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        state_fn=lambda x: x.system["connectionStatus"],
+    ),
+)
+
+
+class NibeSystemSensor(CoordinatorEntity[None], SensorEntity):
+    """Generic system sensor."""
+
+    entity_description: NibeSystemSensorEntityDescription
+
+    def __init__(
+        self,
+        system: NibeSystem,
+        description: NibeSystemSensorEntityDescription,
+    ):
+        """Initialize sensor."""
+        super().__init__(system.coordinator)
+        self.entity_description = description
+        self._system = system
+        self._attr_device_info = self._system.device_info
+        self._attr_unique_id = "{}_system_{}".format(
+            self._system.system_id, self.entity_description.key.lower()
+        )
+
+    @property
+    def state(self) -> StateType:
+        """Get the state data from system class."""
+        return self.entity_description.state_fn(self._system)

@@ -4,16 +4,19 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from datetime import timedelta
+from typing import Callable, Dict, Optional, TypeVar, cast
 
-import attr
 import homeassistant.helpers.config_validation as cv
 import nibeuplink
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
+from homeassistant.core import CALLBACK_TYPE, callback
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
+from nibeuplink.typing import ParameterId, ParameterType, System
 
 from .config_flow import NibeConfigFlow  # noqa
 from .const import (
@@ -39,13 +42,13 @@ from .const import (
     DATA_NIBE_ENTRIES,
     DOMAIN,
     SCAN_INTERVAL,
-    SIGNAL_PARAMETERS_UPDATED,
-    SIGNAL_STATUSES_UPDATED,
 )
 from .services import async_register_services, async_track_delta_time
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
+
+ParameterSet = Dict[ParameterId, Optional[ParameterType]]
 
 
 def ensure_system_dict(value: dict[int, T] | list[T] | None) -> dict[int, T]:
@@ -135,7 +138,8 @@ class NibeData:
 
     session: UplinkSession
     uplink: Uplink
-    systems: dict[int, NibeSystem] = attr.ib(default=[])
+    systems: dict[int, NibeSystem]
+    coordinator: DataUpdateCoordinator | None = None
 
 
 async def async_setup(hass, config):
@@ -155,27 +159,6 @@ def _get_system_config(hass, system_id: int):
     if system:
         return system
     return SYSTEM_SCHEMA({})
-
-
-async def async_load_systems(hass, uplink: Uplink, entry: config_entries.ConfigEntry):
-    """Load all systems."""
-    systems_raw = await uplink.get_systems()
-
-    systems = {
-        int(system["systemId"]): NibeSystem(
-            hass,
-            uplink,
-            system,
-            entry.entry_id,
-            _get_system_config(hass, int(system["systemId"])),
-        )
-        for system in systems_raw
-    }
-
-    tasks = [system.load() for system in systems.values()]
-    await asyncio.gather(*tasks)
-
-    return systems
 
 
 async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
@@ -204,9 +187,34 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     await session.open()
 
     uplink = Uplink(session)
-    systems = await async_load_systems(hass, uplink, entry)
 
-    hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = NibeData(session, uplink, systems)
+    data = NibeData(session, uplink, {})
+    hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = data
+
+    async def _async_add_system(system_raw: System, config: dict):
+        system = NibeSystem(
+            hass,
+            uplink,
+            system_raw,
+            entry.entry_id,
+            config,
+        )
+        await system.load()
+
+        data.systems[system.system_id] = system
+
+    async def _async_refresh():
+        systems_raw = await uplink.get_systems()
+        for system_raw in systems_raw:
+            system_id = int(system_raw["systemId"])
+            if system := data.systems.get(system_id):
+                await system.async_refresh(system_raw)
+            else:
+                await _async_add_system(system_raw, _get_system_config(hass, system_id))
+
+    await _async_refresh()
+
+    entry.async_on_unload(async_track_delta_time(hass, SCAN_INTERVAL, _async_refresh))
 
     for platform in FORWARD_PLATFORMS:
         hass.async_add_job(
@@ -237,6 +245,8 @@ async def async_unload_entry(hass, entry):
 class NibeSystem:
     """Object representing a system."""
 
+    coordinator: DataUpdateCoordinator
+
     def __init__(
         self,
         hass,
@@ -256,7 +266,9 @@ class NibeSystem:
         self._device_info: dict = {}
         self._unsub: list[Callable] = []
         self.config = config
-        self.units: dict[int, nibeuplink.typing.SystemUnit] = {}
+        self._parameters: ParameterSet = {}
+        self._parameter_subscribers: dict[object, set[ParameterId]] = {}
+        self._parameter_preload: set[ParameterId] = set()
 
     @property
     def device_info(self):
@@ -268,6 +280,12 @@ class NibeSystem:
         for unsub in reversed(self._unsub):
             unsub()
         self._unsub = []
+
+    async def async_refresh(self, system: nibeuplink.typing.System):
+        """Update the system."""
+        if system != self.system:
+            self.system = system
+            await self.coordinator.async_refresh()
 
     async def load(self):
         """Load system."""
@@ -284,38 +302,37 @@ class NibeSystem:
             config_entry_id=self.entry_id, **self._device_info
         )
 
-        await self.update_notifications()
-        await self.update_statuses()
+        async def _update():
+            await self.update_notifications()
+            await self.update_statuses()
 
-        units = await self.uplink.get_units(self.system_id)
-        self.units = {int(unit["systemUnitId"]): unit for unit in units}
+            parameters = set()
+            for subscriber_parameters in self._parameter_subscribers.values():
+                parameters |= subscriber_parameters
+            parameters -= self._parameter_preload
+            self._parameter_preload = set()
 
-        self._unsub.append(
-            async_track_delta_time(self.hass, SCAN_INTERVAL, self.update_notifications)
+            await self.update_parameters(parameters)
+
+        self.coordinator = DataUpdateCoordinator(
+            self.hass,
+            _LOGGER,
+            name=f"Nibe Uplink: {self.system_id}",
+            update_interval=timedelta(minutes=10),
+            update_method=_update,
         )
-        self._unsub.append(
-            async_track_delta_time(self.hass, SCAN_INTERVAL, self.update_statuses)
-        )
+        await self.coordinator.async_config_entry_first_refresh()
 
     async def update_statuses(self):
         """Update status list."""
         status_icons = await self.uplink.get_status(self.system_id)
-        parameters = {}
         statuses = set()
         for status_icon in status_icons:
             statuses.add(status_icon["title"])
             for parameter in status_icon["parameters"]:
-                parameters[parameter["parameterId"]] = parameter
+                self.set_parameter(parameter["parameterId"], parameter)
         self.statuses = statuses
         _LOGGER.debug("Statuses: %s", statuses)
-
-        self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_PARAMETERS_UPDATED, self.system_id, parameters
-        )
-
-        self.hass.helpers.dispatcher.async_dispatcher_send(
-            SIGNAL_STATUSES_UPDATED, self.system_id, statuses
-        )
 
     async def update_notifications(self):
         """Update notification list."""
@@ -335,3 +352,44 @@ class NibeSystem:
             persistent_notification.async_dismiss(
                 self.hass, "nibe:{}".format(x["notificationId"])
             )
+
+    def get_parameter(
+        self, parameter_id: ParameterId | None, cached=True
+    ) -> ParameterType | None:
+        """Get a cached parameter."""
+        return self._parameters.get(parameter_id)
+
+    async def update_parameters(self, parameters: set[ParameterId | None]):
+        """Update parameter cache."""
+
+        async def _get(parameter_id: ParameterId):
+            self._parameters[parameter_id] = await self.uplink.get_parameter(
+                self.system_id, parameter_id
+            )
+
+        tasks = [_get(parameter_id) for parameter_id in parameters if parameter_id]
+        if tasks:
+            await asyncio.gather(*tasks)
+
+    def set_parameter(self, parameter_id: ParameterId, data: ParameterType | None):
+        """Store a parameter in cache."""
+        self._parameters[parameter_id] = data
+        self._parameter_preload |= {parameter_id}
+
+    def add_parameter_subscriber(
+        self, parameters: set[ParameterId | None]
+    ) -> CALLBACK_TYPE:
+        """Add a subscriber for parameters."""
+        sentinel = object()
+
+        @callback
+        def _remove():
+            del self._parameter_subscribers[sentinel]
+
+        parameters_clean = cast(set[ParameterId], (parameters - {None}))
+
+        self._parameter_subscribers[sentinel] = parameters_clean
+        for parameter in parameters_clean - set(self._parameters.keys()):
+            self._parameters[parameter] = None
+
+        return _remove

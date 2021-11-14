@@ -1,65 +1,62 @@
 """Base entites for nibe."""
 from __future__ import annotations
 
-import asyncio
 import logging
-from collections import OrderedDict
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
-from homeassistant.helpers.entity import Entity
-from nibeuplink import Uplink
-from nibeuplink.typing import Parameter, ParameterId
+from homeassistant.core import callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from nibeuplink.typing import ParameterId, ParameterType
 
+from . import NibeSystem
 from .const import DOMAIN as DOMAIN_NIBE
-from .const import SCAN_INTERVAL, SIGNAL_PARAMETERS_UPDATED, SIGNAL_STATUSES_UPDATED
-from .services import async_track_delta_time
 
-ParameterSet = Dict[ParameterId, Optional[Parameter]]
+ParameterSet = Dict[ParameterId, Optional[ParameterType]]
 
 _LOGGER = logging.getLogger(__name__)
 
 UNIT_ICON = {"A": "mdi:power-plug", "Hz": "mdi:update", "h": "mdi:clock"}
 
 
-class NibeEntity(Entity):
+class NibeEntity(CoordinatorEntity[None]):
     """Base class for all nibe sytem entities."""
 
     def __init__(
         self,
-        uplink: Uplink,
-        system_id: int,
-        parameters: ParameterSet | None = None,
+        system: NibeSystem,
+        parameters: set[ParameterId | None],
     ):
         """Initialize base class."""
-        super().__init__()
-        self._uplink = uplink
-        self._system_id = system_id
-        self._parameters: ParameterSet = OrderedDict()
-        if parameters:
-            self._parameters.update(parameters)
+        super().__init__(system.coordinator)
+        self._system = system
+        self._uplink = system.uplink
+        self._system_id = system.system_id
+        self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
+        self._parameters = parameters
 
-    def get_parameters(self, parameter_ids: list[ParameterId | None]):
-        """Register a parameter for retrieval."""
-        for parameter_id in parameter_ids:
-            if parameter_id and parameter_id not in self._parameters:
-                self._parameters[parameter_id] = None
+    def get_parameter(self, parameter_id: ParameterId | None) -> ParameterType | None:
+        """Get the full parameter dict."""
+        if not parameter_id:
+            return None
+        return self._system.get_parameter(parameter_id)
 
-    def get_bool(self, parameter_id: ParameterId | None):
+    def get_bool(self, parameter_id: ParameterId | None) -> bool | None:
         """Get bool parameter."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return False
         else:
             return bool(data["value"])
 
-    def get_float(self, parameter_id: ParameterId | None, default=None):
+    def get_float(
+        self, parameter_id: ParameterId | None, default: float | None = None
+    ) -> float | None:
         """Get float parameter."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return default
         else:
@@ -69,119 +66,65 @@ class NibeEntity(Entity):
         """Get value in display format."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return default
         else:
             return data["value"]
 
+    def get_unit(
+        self, parameter_id: ParameterId | None, default: str | None = None
+    ) -> str | None:
+        """Get value in display format."""
+        if not parameter_id:
+            return None
+        data = self._system.get_parameter(parameter_id)
+        if data is None or data["unit"] is None:
+            return default
+        else:
+            return data["unit"]
+
     def get_raw(self, parameter_id: ParameterId | None, default=None):
         """Get value in display format."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["rawValue"] is None:
             return default
         else:
             return data["rawValue"]
 
-    def get_scale(self, parameter_id: ParameterId | None):
+    def get_scale(self, parameter_id: ParameterId | None) -> float | None:
         """Calculate scale of parameter."""
         if not parameter_id:
             return None
-        data = self._parameters[parameter_id]
+        data = self._system.get_parameter(parameter_id)
         if data is None or data["value"] is None:
             return 1.0
         else:
             return float(data["rawValue"]) / float(data["value"])
 
-    @property
-    def device_info(self):
-        """Return device identifier."""
-        return {"identifiers": {(DOMAIN_NIBE, self._system_id)}}
-
-    @property
-    def should_poll(self):
-        """Indicate that we need to poll data."""
-        return False
-
     def parse_data(self):
         """Parse data to update internal variables."""
         pass
 
-    async def async_parameters_updated(
-        self, system_id: int, data: dict[str, dict[str, Any]]
-    ):
-        """Handle updated parameter."""
-        if system_id != self._system_id:
-            return
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.parse_data()
 
-        changed = False
-        for key, value in data.items():
-            if key in self._parameters:
-                value2 = dict(value)
-                value2["timeout"] = datetime.now() + timedelta(
-                    seconds=(SCAN_INTERVAL * 2)
-                )
-                _LOGGER.debug("Data changed for %s %s", self.entity_id, key)
-                changed = True
-                self._parameters[key] = value2
-
-        if changed:
-            self.parse_data()
-            self.async_schedule_update_ha_state()
-
-    async def async_statuses_updated(self, system_id, data):
-        """Handle update of status."""
-        pass
-
-    async def async_added_to_hass(self):
-        """Handle when entity is added to home assistant."""
-        self.async_on_remove(
-            self.hass.helpers.dispatcher.async_dispatcher_connect(
-                SIGNAL_PARAMETERS_UPDATED, self.async_parameters_updated
-            )
-        )
-
-        self.async_on_remove(
-            self.hass.helpers.dispatcher.async_dispatcher_connect(
-                SIGNAL_STATUSES_UPDATED, self.async_statuses_updated
-            )
-        )
-
-        async def update():
-            await self.async_update()
-            await self.async_update_ha_state()
-
-        self.async_on_remove(async_track_delta_time(self.hass, SCAN_INTERVAL, update))
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        self.async_on_remove(self._system.add_parameter_subscriber(self._parameters))
 
     async def async_update(self):
-        """Update of entity."""
+        """Handle request to update this entity."""
+        if not self.enabled:
+            return
+
         _LOGGER.debug("Update %s", self.entity_id)
-
-        def timedout(data):
-            if data:
-                timeout = data.get("timeout")
-                if timeout and datetime.now() < timeout:
-                    _LOGGER.debug(
-                        "Skipping update for %s %s", self.entity_id, data["parameterId"]
-                    )
-                    return False
-            return True
-
-        async def get(parameter_id):
-            self._parameters[parameter_id] = await self._uplink.get_parameter(
-                self._system_id, parameter_id
-            )
-
-        await asyncio.gather(
-            *[
-                get(parameter_id)
-                for parameter_id, data in self._parameters.items()
-                if timedout(data)
-            ]
-        )
-
+        await self._system.update_parameters(self._parameters)
         self.parse_data()
 
 
@@ -190,41 +133,29 @@ class NibeParameterEntity(NibeEntity):
 
     def __init__(
         self,
-        uplink,
-        system_id,
-        parameter_id,
-        data=None,
-        entity_id_format=None,
+        system: NibeSystem,
+        parameter_id: ParameterId,
+        entity_id_format: str | None = None,
     ):
         """Initialize base class for parameters."""
-        super().__init__(uplink, system_id, parameters={parameter_id: data})
+        super().__init__(system, parameters={parameter_id})
         self._parameter_id = parameter_id
-        self._name = None
-        self._unit = None
-        self._icon = None
         self._value = None
-        if data:
-            self.parse_data()
+        self._attr_unique_id = "{}_{}".format(system.system_id, parameter_id)
+        self._attr_name = None
+        self._attr_icon = None
+
+        self.parse_data()
 
         if entity_id_format:
             self.entity_id = entity_id_format.format(
-                "{}_{}_{}".format(DOMAIN_NIBE, system_id, str(parameter_id))
+                "{}_{}_{}".format(DOMAIN_NIBE, system.system_id, str(parameter_id))
             )
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._name
-
-    @property
-    def unique_id(self):
-        """Return a unique identifier for a this parameter."""
-        return "{}_{}".format(self._system_id, self._parameter_id)
 
     @property
     def device_state_attributes(self):
         """Return the state attributes."""
-        data = self._parameters[self._parameter_id]
+        data = self.get_parameter(self._parameter_id)
         if data:
             return {
                 "designation": data["designation"],
@@ -239,29 +170,15 @@ class NibeParameterEntity(NibeEntity):
     @property
     def available(self):
         """Return True if entity is available."""
-        if self._value is None:
-            return False
-        else:
-            return True
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return self._unit
-
-    @property
-    def icon(self):
-        """Return a calculated icon for this data if known."""
-        return self._icon
+        return self._system.coordinator.last_update_success and self._value is not None
 
     def parse_data(self):
         """Parse data to update internal variables."""
-        data = self._parameters[self._parameter_id]
+        data = self.get_parameter(self._parameter_id)
         if data:
-            if self._name is None:
-                self._name = data["title"]
-            self._icon = UNIT_ICON.get(data["unit"], None)
-            self._unit = data["unit"]
+            if self._attr_name is None:
+                self._attr_name = data["title"]
+            self._attr_icon = UNIT_ICON.get(data["unit"], None)
             self._value = data["value"]
         else:
             self._value = None
