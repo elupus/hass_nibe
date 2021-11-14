@@ -8,11 +8,31 @@ from typing import Callable
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     STATE_CLASS_MEASUREMENT,
+    STATE_CLASS_TOTAL_INCREASING,
     SensorEntity,
     SensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import DEVICE_CLASS_TIMESTAMP, ENTITY_CATEGORY_DIAGNOSTIC
+from homeassistant.const import (
+    DEVICE_CLASS_CURRENT,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_TEMPERATURE,
+    DEVICE_CLASS_TIMESTAMP,
+    DEVICE_CLASS_VOLTAGE,
+    ELECTRIC_CURRENT_AMPERE,
+    ELECTRIC_CURRENT_MILLIAMPERE,
+    ELECTRIC_POTENTIAL_MILLIVOLT,
+    ELECTRIC_POTENTIAL_VOLT,
+    ENERGY_KILO_WATT_HOUR,
+    ENERGY_MEGA_WATT_HOUR,
+    ENERGY_WATT_HOUR,
+    ENTITY_CATEGORY_CONFIG,
+    ENTITY_CATEGORY_DIAGNOSTIC,
+    TEMP_CELSIUS,
+    TEMP_FAHRENHEIT,
+    TEMP_KELVIN,
+    TIME_HOURS,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -70,7 +90,8 @@ async def async_setup_entry(
                 NibeSensor(
                     system,
                     parameter["parameterId"],
-                    device_info=device_info,
+                    device_info,
+                    PARAMETER_SENSORS_LOOKUP.get(str(parameter["parameterId"])),
                 )
             )
 
@@ -82,7 +103,8 @@ async def async_setup_entry(
                 NibeSensor(
                     system,
                     sensor_id,
-                    device_info=system.device_info,
+                    system.device_info,
+                    PARAMETER_SENSORS_LOOKUP.get(str(sensor_id)),
                 )
                 for sensor_id in system.config[CONF_SENSORS]
                 if once(system.system_id, sensor_id)
@@ -108,22 +130,129 @@ async def async_setup_entry(
         await load_system(system)
 
 
+@dataclass
+class NibeSensorEntityDescription(SensorEntityDescription):
+    """Description of a nibe system sensor."""
+
+
+PARAMETER_SENSORS = (
+    NibeSensorEntityDescription(
+        key="43424",
+        device_class="timedelta",
+        name="compressor operating time hot water",
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+        native_unit_of_measurement=TIME_HOURS,
+        icon="mdi:clock",
+    ),
+    NibeSensorEntityDescription(
+        key="43420",
+        device_class="timedelta",
+        name="compressor operating time",
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+        native_unit_of_measurement=TIME_HOURS,
+        icon="mdi:clock",
+    ),
+    NibeSensorEntityDescription(
+        key="43416",
+        name="compressor starts",
+        state_class=STATE_CLASS_TOTAL_INCREASING,
+    ),
+    NibeSensorEntityDescription(
+        key="47407",
+        name="AUX5",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47408",
+        name="AUX4",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47409",
+        name="AUX3",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47410",
+        name="AUX2",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47411",
+        name="AUX1",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47412",
+        name="X7",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="48745",
+        name="country",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47212",
+        name="set max electrical add.",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="47214",
+        name="fuse size",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+    NibeSensorEntityDescription(
+        key="43122",
+        name="allowed compr. freq. min",
+        entity_category=ENTITY_CATEGORY_CONFIG,
+    ),
+)
+PARAMETER_SENSORS_LOOKUP = {x.key: x for x in PARAMETER_SENSORS}
+
+
 class NibeSensor(NibeParameterEntity, SensorEntity):
     """Nibe Sensor."""
+
+    entity_description: NibeSystemSensorEntityDescription
 
     def __init__(
         self,
         system: NibeSystem,
         parameter_id: ParameterId,
         device_info: dict,
+        entity_description: NibeSensorEntityDescription | None,
     ):
         """Init."""
         super().__init__(system, parameter_id, ENTITY_ID_FORMAT)
         self._attr_device_info = device_info
+        if entity_description:
+            self.entity_description = entity_description
+
+    @property
+    def device_class(self) -> str | None:
+        """Try to deduce a device class."""
+        if data := super().device_class:
+            return data
+
+        unit = self.unit_of_measurement
+        if unit in {TEMP_CELSIUS, TEMP_FAHRENHEIT, TEMP_KELVIN}:
+            return DEVICE_CLASS_TEMPERATURE
+        elif unit in {ELECTRIC_CURRENT_AMPERE, ELECTRIC_CURRENT_MILLIAMPERE}:
+            return DEVICE_CLASS_CURRENT
+        elif unit in {ELECTRIC_POTENTIAL_VOLT, ELECTRIC_POTENTIAL_MILLIVOLT}:
+            return DEVICE_CLASS_VOLTAGE
+        elif unit in {ENERGY_WATT_HOUR, ENERGY_KILO_WATT_HOUR, ENERGY_MEGA_WATT_HOUR}:
+            return DEVICE_CLASS_ENERGY
+
+        return None
 
     @property
     def state_class(self):
         """Return state class of unit."""
+        if data := super().state_class:
+            return data
+
         if self.unit_of_measurement:
             return STATE_CLASS_MEASUREMENT
         else:
