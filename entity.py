@@ -112,6 +112,7 @@ class NibeEntity(CoordinatorEntity[None]):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         self.parse_data()
+        self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
