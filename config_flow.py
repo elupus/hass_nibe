@@ -153,7 +153,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         systems = await data.uplink.get_systems()
 
         systems_dict = {
-            int(system["systemId"]): f"{system['name']} : {system['systemId']}"
+            str(system["systemId"]): f"{system['name']} : {system['systemId']}"
             for system in systems
         }
 

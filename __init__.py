@@ -209,12 +209,12 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
         if CONF_SYSTEMS in entry.data:
             systems_enabled = set(entry.data[CONF_SYSTEMS])
         else:
-            systems_enabled = {int(system["systemId"]) for system in systems_raw}
+            systems_enabled = {str(system["systemId"]) for system in systems_raw}
 
         for system_raw in systems_raw:
             system_id = int(system_raw["systemId"])
 
-            if system_id not in systems_enabled:
+            if str(system_id) not in systems_enabled:
                 continue
 
             if system := data.systems.get(system_id):
