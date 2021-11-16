@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import logging
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from aiohttp.web import HTTPBadRequest, Request, Response
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.core import callback
 from nibeuplink import Uplink, UplinkSession
 
+from . import NibeData
 from .const import (
     AUTH_CALLBACK_NAME,
     AUTH_CALLBACK_URL,
@@ -20,6 +23,7 @@ from .const import (
     CONF_UPLINK_APPLICATION_URL,
     CONF_WRITEACCESS,
     DATA_NIBE_CONFIG,
+    DATA_NIBE_ENTRIES,
     DOMAIN,
 )
 
@@ -27,8 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 _view = None
 
 
-@config_entries.HANDLERS.register(DOMAIN)
-class NibeConfigFlow(config_entries.ConfigFlow):
+class NibeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Conflig flow for nibe uplink."""
 
     VERSION = 1
@@ -38,6 +41,12 @@ class NibeConfigFlow(config_entries.ConfigFlow):
         """Init."""
         self.access_data = None
         self.user_data = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Return the Options Flow."""
+        return OptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -126,6 +135,42 @@ class NibeConfigFlow(config_entries.ConfigFlow):
 
         self._set_confirm_only()
         return self.async_show_form(step_id="confirm")
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle a option flow for a Konnected Panel."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry):
+        """Initialize options flow."""
+        self._entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Handle options flow."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        data: NibeData = self.hass.data[DATA_NIBE_ENTRIES][self._entry.entry_id]
+        systems = await data.uplink.get_systems()
+
+        systems_dict = {
+            int(system["systemId"]): f"{system['name']} : {system['systemId']}"
+            for system in systems
+        }
+
+        system_sel = self._entry.data.get(CONF_SYSTEMS, [])
+        if not system_sel:
+            system_sel = list(systems_dict.keys())
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SYSTEMS, default=system_sel): cv.multi_select(
+                        systems_dict
+                    )
+                }
+            ),
+        )
 
 
 class NibeAuthView(HomeAssistantView):

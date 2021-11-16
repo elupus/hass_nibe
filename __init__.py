@@ -18,7 +18,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
 from nibeuplink.typing import ParameterId, ParameterType, System
 
-from .config_flow import NibeConfigFlow  # noqa
 from .const import (
     CONF_ACCESS_DATA,
     CONF_BINARY_SENSORS,
@@ -192,6 +191,7 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = data
 
     async def _async_add_system(system_raw: System, config: dict):
+
         system = NibeSystem(
             hass,
             uplink,
@@ -205,8 +205,18 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
 
     async def _async_refresh():
         systems_raw = await uplink.get_systems()
+
+        if CONF_SYSTEMS in entry.data:
+            systems_enabled = set(entry.data[CONF_SYSTEMS])
+        else:
+            systems_enabled = {int(system["systemId"]) for system in systems_raw}
+
         for system_raw in systems_raw:
             system_id = int(system_raw["systemId"])
+
+            if system_id not in systems_enabled:
+                continue
+
             if system := data.systems.get(system_id):
                 await system.async_refresh(system_raw)
             else:

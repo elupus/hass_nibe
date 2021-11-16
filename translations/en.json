@@ -34,5 +34,15 @@
         "info": {
             "api_endpoint_reachable": "NibeUplink API endpoint reachable"
         }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "Configure Systems",
+                "data": {
+                    "systems": "Systems to load data from"
+                }
+            }
+        }
     }
 }
