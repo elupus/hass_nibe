@@ -157,8 +157,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             for system in systems
         }
 
-        system_sel = self._entry.data.get(CONF_SYSTEMS, [])
-        if not system_sel:
+        if system_conf := self._entry.data.get(CONF_SYSTEMS):
+            system_sel = [str(system_id) for system_id in system_conf]
+        else:
             system_sel = list(systems_dict.keys())
 
         return self.async_show_form(
