@@ -14,6 +14,7 @@ from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
 from homeassistant.core import CALLBACK_TYPE, callback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
 from nibeuplink.typing import ParameterId, ParameterType, System
@@ -273,7 +274,7 @@ class NibeSystem:
         self.uplink = uplink
         self.notice: list[dict] = []
         self.statuses: set[str] = set()
-        self._device_info: dict = {}
+        self._device_info: DeviceInfo = {}
         self._unsub: list[Callable] = []
         self.config = config
         self._parameters: ParameterSet = {}
@@ -301,6 +302,7 @@ class NibeSystem:
         """Load system."""
 
         self._device_info = {
+            "configuration_url": f"https://nibeuplink.com/System/{self.system_id}",
             "identifiers": {(DOMAIN, self.system_id)},
             "manufacturer": "NIBE Energy Systems",
             "model": self.system.get("productName"),

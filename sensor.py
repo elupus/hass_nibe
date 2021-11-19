@@ -66,6 +66,7 @@ async def async_setup_entry(
 
     def add_category(system: NibeSystem, category: CategoryType, unit: SystemUnit):
         device_info = {
+            "configuration_url": f"https://nibeuplink.com/System/{system.system_id}",
             "identifiers": {
                 (
                     DOMAIN_NIBE,
