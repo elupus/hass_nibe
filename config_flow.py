@@ -147,6 +147,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Handle options flow."""
         if user_input is not None:
+            user_input[CONF_SYSTEMS] = [int(x) for x in user_input[CONF_SYSTEMS]]
             return self.async_create_entry(title="", data=user_input)
 
         data: NibeData = self.hass.data[DATA_NIBE_ENTRIES][self._entry.entry_id]
@@ -157,7 +158,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             for system in systems
         }
 
-        if system_conf := self._entry.data.get(CONF_SYSTEMS):
+        if system_conf := self._entry.options.get(CONF_SYSTEMS):
             system_sel = [str(system_id) for system_id in system_conf]
         else:
             system_sel = list(systems_dict.keys())

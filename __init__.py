@@ -206,15 +206,15 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     async def _async_refresh():
         systems_raw = await uplink.get_systems()
 
-        if CONF_SYSTEMS in entry.data:
-            systems_enabled = set(entry.data[CONF_SYSTEMS])
+        if systems_conf := entry.options.get(CONF_SYSTEMS):
+            systems_enabled = {system_id for system_id in systems_conf}
         else:
-            systems_enabled = {str(system["systemId"]) for system in systems_raw}
+            systems_enabled = {system["systemId"] for system in systems_raw}
 
         for system_raw in systems_raw:
-            system_id = int(system_raw["systemId"])
+            system_id = system_raw["systemId"]
 
-            if str(system_id) not in systems_enabled:
+            if system_id not in systems_enabled:
                 continue
 
             if system := data.systems.get(system_id):
