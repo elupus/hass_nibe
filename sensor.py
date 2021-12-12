@@ -292,6 +292,12 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
         state_fn=lambda x: x.system["connectionStatus"],
     ),
+    NibeSystemSensorEntityDescription(
+        key="hasAlarmed",
+        name="has alarmed",
+        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        state_fn=lambda x: str(x.system["hasAlarmed"]),
+    ),
 )
 
 
@@ -315,6 +321,6 @@ class NibeSystemSensor(CoordinatorEntity[None], SensorEntity):
         )
 
     @property
-    def state(self) -> StateType:
+    def native_value(self) -> StateType:
         """Get the state data from system class."""
         return self.entity_description.state_fn(self._system)

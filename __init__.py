@@ -159,7 +159,7 @@ def _get_system_config(hass, system_id: int):
     return SYSTEM_SCHEMA({})
 
 
-class NibeSystemsCoordinator(DataUpdateCoordinator[dict[int, dict]]):
+class NibeSystemsCoordinator(DataUpdateCoordinator[dict[int, System]]):
     """Coordinator that keeps track of all systems."""
 
     def __init__(self, hass: HomeAssistant, uplink: Uplink):
@@ -172,7 +172,7 @@ class NibeSystemsCoordinator(DataUpdateCoordinator[dict[int, dict]]):
             update_interval=timedelta(seconds=SCAN_INTERVAL),
         )
 
-    async def _async_update_data(self) -> dict[int, dict]:
+    async def _async_update_data(self) -> dict[int, System]:
         """Update data via library."""
 
         systems_raw = await self.uplink.get_systems()
