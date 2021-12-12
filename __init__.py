@@ -5,7 +5,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Callable, Dict, Optional, TypeVar, cast
+from typing import Callable, Dict, Optional, Set, TypeVar, cast
 
 import homeassistant.helpers.config_validation as cv
 import nibeuplink
@@ -398,7 +398,7 @@ class NibeSystem:
         def _remove():
             del self._parameter_subscribers[sentinel]
 
-        parameters_clean = cast(set[ParameterId], (parameters - {None}))
+        parameters_clean = cast(Set[ParameterId], (parameters - {None}))
 
         self._parameter_subscribers[sentinel] = parameters_clean
         for parameter in parameters_clean - set(self._parameters.keys()):
