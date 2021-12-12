@@ -27,7 +27,7 @@ class NibeEntity(CoordinatorEntity[None]):
         parameters: set[ParameterId | None],
     ):
         """Initialize base class."""
-        super().__init__(system.coordinator)
+        super().__init__(system)
         self._system = system
         self._uplink = system.uplink
         self._system_id = system.system_id
@@ -171,7 +171,7 @@ class NibeParameterEntity(NibeEntity):
     @property
     def available(self):
         """Return True if entity is available."""
-        return self._system.coordinator.last_update_success and self._value is not None
+        return super().available and self._value is not None
 
     def parse_data(self):
         """Parse data to update internal variables."""

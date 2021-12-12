@@ -34,6 +34,7 @@ from homeassistant.const import (
     TIME_HOURS,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from nibeuplink.typing import CategoryType, ParameterId, SystemUnit
@@ -65,9 +66,9 @@ async def async_setup_entry(
         return True
 
     def add_category(system: NibeSystem, category: CategoryType, unit: SystemUnit):
-        device_info = {
-            "configuration_url": f"https://nibeuplink.com/System/{system.system_id}",
-            "identifiers": {
+        device_info = DeviceInfo(
+            configuration_url=f"https://nibeuplink.com/System/{system.system_id}",
+            identifiers={
                 (
                     DOMAIN_NIBE,
                     system.system_id,
@@ -76,11 +77,11 @@ async def async_setup_entry(
                     category["categoryId"],
                 )
             },
-            "via_device": (DOMAIN_NIBE, system.system_id),
-            "name": f"{system.device_info['name']} : {unit['name']} : {category['name']}",
-            "model": f"{unit['product']} : {category['name']}",
-            "manufacturer": system.device_info["manufacturer"],
-        }
+            via_device=(DOMAIN_NIBE, system.system_id),
+            name=f"{system.system['name']} - {system.system_id} : {unit['name']} : {category['name']}",
+            model=f"{unit['product']} : {category['name']}",
+            manufacturer="NIBE Energy Systems",
+        )
         entities = []
         for parameter in category["parameters"]:
             if not once(system.system_id, parameter["parameterId"]):
@@ -305,12 +306,12 @@ class NibeSystemSensor(CoordinatorEntity[None], SensorEntity):
         description: NibeSystemSensorEntityDescription,
     ):
         """Initialize sensor."""
-        super().__init__(system.coordinator)
+        super().__init__(system)
         self.entity_description = description
         self._system = system
-        self._attr_device_info = self._system.device_info
+        self._attr_device_info = {"identifiers": {(DOMAIN_NIBE, system.system_id)}}
         self._attr_unique_id = "{}_system_{}".format(
-            self._system.system_id, self.entity_description.key.lower()
+            system.system_id, description.key.lower()
         )
 
     @property

@@ -5,16 +5,15 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Callable, Dict, Optional, Set, TypeVar, cast
+from typing import Callable, Dict, Optional, Set, cast
 
 import homeassistant.helpers.config_validation as cv
-import nibeuplink
+import homeassistant.helpers.device_registry as device_registry
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
-from homeassistant.core import CALLBACK_TYPE, callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
 from nibeuplink.typing import ParameterId, ParameterType, System
@@ -43,15 +42,14 @@ from .const import (
     DOMAIN,
     SCAN_INTERVAL,
 )
-from .services import async_register_services, async_track_delta_time
+from .services import async_register_services
 
 _LOGGER = logging.getLogger(__name__)
-T = TypeVar("T")
 
 ParameterSet = Dict[ParameterId, Optional[ParameterType]]
 
 
-def ensure_system_dict(value: dict[int, T] | list[T] | None) -> dict[int, T]:
+def ensure_system_dict(value: dict[int, dict] | list[dict] | None) -> dict[int, dict]:
     """Wrap value in list if it is not one."""
     if value is None:
         return {}
@@ -161,7 +159,28 @@ def _get_system_config(hass, system_id: int):
     return SYSTEM_SCHEMA({})
 
 
-async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
+class NibeSystemsCoordinator(DataUpdateCoordinator[dict[int, dict]]):
+    """Coordinator that keeps track of all systems."""
+
+    def __init__(self, hass: HomeAssistant, uplink: Uplink):
+        """Initialize systems coordinator."""
+        self.uplink = uplink
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="Nibe Uplink",
+            update_interval=timedelta(seconds=SCAN_INTERVAL),
+        )
+
+    async def _async_update_data(self) -> dict[int, dict]:
+        """Update data via library."""
+
+        systems_raw = await self.uplink.get_systems()
+        systems = {system["systemId"]: system for system in systems_raw}
+        return systems
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: config_entries.ConfigEntry):
     """Set up an access point from a config entry."""
     _LOGGER.debug("Setup nibe entry")
 
@@ -187,104 +206,93 @@ async def async_setup_entry(hass, entry: config_entries.ConfigEntry):
     await session.open()
 
     uplink = Uplink(session)
+    coordinator = NibeSystemsCoordinator(hass, uplink)
 
-    data = NibeData(session, uplink, {})
+    data = NibeData(session, uplink, {}, coordinator)
     hass.data[DATA_NIBE_ENTRIES][entry.entry_id] = data
 
-    async def _async_add_system(system_raw: System, config: dict):
+    await coordinator.async_config_entry_first_refresh()
+
+    if systems_conf := entry.options.get(CONF_SYSTEMS):
+        systems_enabled = {system_id for system_id in systems_conf}
+    else:
+        systems_enabled = set(coordinator.data.keys())
+
+    for system_id, system_raw in coordinator.data.items():
+
+        if system_id not in systems_enabled:
+            continue
 
         system = NibeSystem(
-            hass,
-            uplink,
-            system_raw,
-            entry.entry_id,
-            config,
+            hass, system_raw, _get_system_config(hass, system_id), coordinator
         )
-        await system.load()
-
+        await system.async_config_entry_first_refresh()
         data.systems[system.system_id] = system
 
-    async def _async_refresh():
-        systems_raw = await uplink.get_systems()
-
-        if systems_conf := entry.options.get(CONF_SYSTEMS):
-            systems_enabled = {system_id for system_id in systems_conf}
-        else:
-            systems_enabled = {system["systemId"] for system in systems_raw}
-
-        for system_raw in systems_raw:
-            system_id = system_raw["systemId"]
-
-            if system_id not in systems_enabled:
-                continue
-
-            if system := data.systems.get(system_id):
-                await system.async_refresh(system_raw)
-            else:
-                await _async_add_system(system_raw, _get_system_config(hass, system_id))
-
-    await _async_refresh()
-
-    entry.async_on_unload(async_track_delta_time(hass, SCAN_INTERVAL, _async_refresh))
-
-    for platform in FORWARD_PLATFORMS:
-        hass.async_add_job(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
-        )
+    hass.config_entries.async_setup_platforms(entry, FORWARD_PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass, entry):
+async def async_unload_entry(hass: HomeAssistant, entry):
     """Unload a configuration entity."""
     data: NibeData = hass.data[DATA_NIBE_ENTRIES][entry.entry_id]
-    await asyncio.wait(
-        [
-            hass.config_entries.async_forward_entry_unload(entry, platform)
-            for platform in FORWARD_PLATFORMS
-        ]
+
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, FORWARD_PLATFORMS
     )
+    if unload_ok:
+        await asyncio.wait([system.unload() for system in data.systems.values()])
 
-    await asyncio.wait([system.unload() for system in data.systems.values()])
-
-    await data.session.close()
-    hass.data[DATA_NIBE_ENTRIES].pop(entry.entry_id)
+        await data.session.close()
+        hass.data[DATA_NIBE_ENTRIES].pop(entry.entry_id)
 
     return True
 
 
-class NibeSystem:
+class NibeSystem(DataUpdateCoordinator):
     """Object representing a system."""
 
-    coordinator: DataUpdateCoordinator
+    parent: NibeSystemsCoordinator
 
     def __init__(
         self,
-        hass,
-        uplink: Uplink,
-        system: nibeuplink.typing.System,
-        entry_id: str,
+        hass: HomeAssistant,
+        system: System,
         config: dict,
+        parent: NibeSystemsCoordinator,
     ):
         """Init."""
-        self.hass = hass
         self.system_id = system["systemId"]
-        self.entry_id = entry_id
         self.system = system
-        self.uplink = uplink
+        self.uplink = parent.uplink
+        self.parent = parent
         self.notice: list[dict] = []
         self.statuses: set[str] = set()
-        self._device_info: DeviceInfo = {}
         self._unsub: list[Callable] = []
         self.config = config
         self._parameters: ParameterSet = {}
         self._parameter_subscribers: dict[object, set[ParameterId]] = {}
         self._parameter_preload: set[ParameterId] = set()
 
-    @property
-    def device_info(self):
-        """Return a device description for device registry."""
-        return self._device_info
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"Nibe Uplink: {self.system_id}",
+            update_interval=timedelta(minutes=10),
+        )
+
+        reg = device_registry.async_get(self.hass)
+        reg.async_get_or_create(
+            config_entry_id=parent.config_entry.entry_id,
+            configuration_url=f"https://nibeuplink.com/System/{self.system_id}",
+            identifiers={(DOMAIN, self.system_id)},
+            manufacturer="NIBE Energy Systems",
+            model=system["productName"],
+            name=f"{system['name']} - {self.system_id}",
+        )
+
+        self._unsub.append(parent.async_add_listener(self._async_check_refresh))
 
     async def unload(self):
         """Unload system."""
@@ -292,48 +300,26 @@ class NibeSystem:
             unsub()
         self._unsub = []
 
-    async def async_refresh(self, system: nibeuplink.typing.System):
-        """Update the system."""
-        if system != self.system:
-            self.system = system
-            await self.coordinator.async_refresh()
+    @callback
+    def _async_check_refresh(self):
+        """Update the system if timestamps have changed."""
+        if system := self.parent.data.get(self.system_id):
+            if self.system != system:
+                self.system = system
+                self.hass.async_add_job(self.async_request_refresh)
 
-    async def load(self):
-        """Load system."""
+    async def _async_update_data(self) -> None:
+        """Update data via library."""
+        await self.update_notifications()
+        await self.update_statuses()
 
-        self._device_info = {
-            "configuration_url": f"https://nibeuplink.com/System/{self.system_id}",
-            "identifiers": {(DOMAIN, self.system_id)},
-            "manufacturer": "NIBE Energy Systems",
-            "model": self.system.get("productName"),
-            "name": f"{self.system.get('name')} - {self.system_id}",
-        }
+        parameters = set()
+        for subscriber_parameters in self._parameter_subscribers.values():
+            parameters |= subscriber_parameters
+        parameters -= self._parameter_preload
+        self._parameter_preload = set()
 
-        device_registry = await self.hass.helpers.device_registry.async_get_registry()
-        device_registry.async_get_or_create(
-            config_entry_id=self.entry_id, **self._device_info
-        )
-
-        async def _update():
-            await self.update_notifications()
-            await self.update_statuses()
-
-            parameters = set()
-            for subscriber_parameters in self._parameter_subscribers.values():
-                parameters |= subscriber_parameters
-            parameters -= self._parameter_preload
-            self._parameter_preload = set()
-
-            await self.update_parameters(parameters)
-
-        self.coordinator = DataUpdateCoordinator(
-            self.hass,
-            _LOGGER,
-            name=f"Nibe Uplink: {self.system_id}",
-            update_interval=timedelta(minutes=10),
-            update_method=_update,
-        )
-        await self.coordinator.async_config_entry_first_refresh()
+        await self.update_parameters(parameters)
 
     async def update_statuses(self):
         """Update status list."""
