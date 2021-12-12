@@ -105,7 +105,7 @@ async def async_setup_entry(
                 NibeSensor(
                     system,
                     sensor_id,
-                    system.device_info,
+                    DeviceInfo(identifiers={(DOMAIN_NIBE, system.system_id)}),
                     PARAMETER_SENSORS_LOOKUP.get(str(sensor_id)),
                 )
                 for sensor_id in system.config[CONF_SENSORS]
