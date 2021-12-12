@@ -125,7 +125,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
         self.parse_data()
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Extra state attributes."""
         data = OrderedDict()
         data["status"] = self._status
@@ -359,9 +359,9 @@ class NibeClimateSupply(NibeClimate):
                 )
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return extra state."""
-        data = super().device_state_attributes
+        data = super().extra_state_attributes
         data["offset_heat"] = self.get_float(self._climate.offset_heat)
         data["offset_cool"] = self.get_float(self._climate.offset_cool)
         data["external_adjustment_active"] = self.get_bool(
@@ -446,7 +446,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         )
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return extra state."""
         data = OrderedDict()
         data[ATTR_VALVE_POSITION] = self._valve_position

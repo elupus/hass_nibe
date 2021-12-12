@@ -126,7 +126,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
         return self.get_unit(self._hwsys.hot_water_charging, TEMP_CELSIUS)
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return extra state attributes."""
         data = OrderedDict()
         data["current_temperature"] = self.current_temperature

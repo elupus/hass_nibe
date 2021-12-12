@@ -154,7 +154,7 @@ class NibeParameterEntity(NibeEntity):
             )
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes."""
         data = self.get_parameter(self._parameter_id)
         if data:

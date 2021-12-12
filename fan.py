@@ -102,17 +102,7 @@ class NibeFan(NibeEntity, FanEntity):
         return [SPEED_AUTO, SPEED_BOOST]
 
     @property
-    def state_attributes(self) -> dict:
-        """Return optional state attributes.
-
-        Overide base class state_attibutes to support device specific.
-        """
-        data = super().state_attributes
-        data.update(self.device_state_attributes)
-        return data
-
-    @property
-    def device_state_attributes(self) -> dict[str, str | None]:
+    def extra_state_attributes(self) -> dict[str, str | None]:
         """Return extra state."""
         data = {}
         data["extract_air"] = self.get_value(self._ventilation.extract_air)
