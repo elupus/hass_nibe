@@ -249,9 +249,9 @@ class NibeClimateRoom(NibeClimate):
                 self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMP_LOW]
             )
 
-        if ATTR_TARGET_TEMPERATURE in kwargs:
+        if ATTR_TEMPERATURE in kwargs:
             await self.async_set_temperature_internal(
-                self._climate.room_setpoint_heat, kwargs[ATTR_TARGET_TEMPERATURE]
+                self._climate.room_setpoint_heat, kwargs[ATTR_TEMPERATURE]
             )
 
 
@@ -344,18 +344,18 @@ class NibeClimateSupply(NibeClimate):
                 kwargs[ATTR_TARGET_TEMP_LOW],
             )
 
-        if ATTR_TARGET_TEMPERATURE in kwargs:
+        if ATTR_TEMPERATURE in kwargs:
             if self._attr_hvac_mode == HVAC_MODE_HEAT:
                 await set_temperature(
                     self._climate.calc_supply_temp_heat,
                     self._climate.offset_heat,
-                    kwargs[ATTR_TARGET_TEMPERATURE],
+                    kwargs[ATTR_TEMPERATURE],
                 )
             elif self._attr_hvac_mode == HVAC_MODE_COOL:
                 await set_temperature(
                     self._climate.calc_supply_temp_cool,
                     self._climate.offset_cool,
-                    kwargs[ATTR_TARGET_TEMPERATURE],
+                    kwargs[ATTR_TEMPERATURE],
                 )
 
     @property
