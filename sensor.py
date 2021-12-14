@@ -37,6 +37,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util.dt import parse_datetime
 from nibeuplink.typing import CategoryType, ParameterId, SystemUnit
 
 from . import NibeData, NibeSystem
@@ -284,7 +285,7 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
         name="last activity",
         device_class=DEVICE_CLASS_TIMESTAMP,
         entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
-        state_fn=lambda x: x.system["lastActivityDate"],
+        state_fn=lambda x: parse_datetime(x.system["lastActivityDate"]),
     ),
     NibeSystemSensorEntityDescription(
         key="connectionStatus",
