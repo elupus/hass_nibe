@@ -3,9 +3,14 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchEntity
+from homeassistant.components.switch import (
+    ENTITY_ID_FORMAT,
+    SwitchEntity,
+    SwitchEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 
 from . import NibeData, NibeSystem
 from .const import CONF_SWITCHES, DATA_NIBE_ENTRIES
@@ -13,6 +18,14 @@ from .entity import NibeParameterEntity
 
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
+
+
+PARAMETER_SWITCHES = [
+    SwitchEntityDescription(
+        key="48043", name="Vacation Mode", entity_category=EntityCategory.CONFIG
+    )
+]
+PARAMETER_SWITCHES_IDS = {int(x.key) for x in PARAMETER_SWITCHES}
 
 
 async def async_setup_entry(
@@ -23,7 +36,13 @@ async def async_setup_entry(
 
     entities = []
     for system in data.systems.values():
-        for parameter_id in system.config[CONF_SWITCHES]:
+        for entity_description in PARAMETER_SWITCHES:
+            entities.append(
+                NibeSwitch(system, int(entity_description.key), entity_description)
+            )
+
+        parameters = set(system.config[CONF_SWITCHES]) - PARAMETER_SWITCHES_IDS
+        for parameter_id in parameters:
             entities.append(NibeSwitch(system, parameter_id))
 
     async_add_entities(entities, True)
@@ -32,9 +51,15 @@ async def async_setup_entry(
 class NibeSwitch(NibeParameterEntity, SwitchEntity):
     """Nibe Switch Entity."""
 
-    def __init__(self, system: NibeSystem, parameter_id):
+    def __init__(
+        self,
+        system: NibeSystem,
+        parameter_id,
+        entity_description: SwitchEntityDescription | None = None,
+    ):
         """Init."""
         super().__init__(system, parameter_id, ENTITY_ID_FORMAT)
+        self.entity_description = entity_description
 
     @property
     def is_on(self):
