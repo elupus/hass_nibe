@@ -26,8 +26,6 @@ from homeassistant.const import (
     ENERGY_KILO_WATT_HOUR,
     ENERGY_MEGA_WATT_HOUR,
     ENERGY_WATT_HOUR,
-    ENTITY_CATEGORY_CONFIG,
-    ENTITY_CATEGORY_DIAGNOSTIC,
     TEMP_CELSIUS,
     TEMP_FAHRENHEIT,
     TEMP_KELVIN,
@@ -35,6 +33,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.dt import parse_datetime
@@ -163,52 +162,52 @@ PARAMETER_SENSORS = (
     NibeSensorEntityDescription(
         key="47407",
         name="AUX5",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47408",
         name="AUX4",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47409",
         name="AUX3",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47410",
         name="AUX2",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47411",
         name="AUX1",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47412",
         name="X7",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="48745",
         name="country",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47212",
         name="set max electrical add.",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="47214",
         name="fuse size",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="43122",
         name="allowed compr. freq. min",
-        entity_category=ENTITY_CATEGORY_CONFIG,
+        entity_category=EntityCategory.CONFIG,
     ),
 )
 PARAMETER_SENSORS_LOOKUP = {x.key: x for x in PARAMETER_SENSORS}
@@ -284,19 +283,19 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
         key="lastActivityDate",
         name="last activity",
         device_class=DEVICE_CLASS_TIMESTAMP,
-        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        entity_category=EntityCategory.DIAGNOSTIC,
         state_fn=lambda x: parse_datetime(x.system["lastActivityDate"]),
     ),
     NibeSystemSensorEntityDescription(
         key="connectionStatus",
         name="connection status",
-        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        entity_category=EntityCategory.DIAGNOSTIC,
         state_fn=lambda x: x.system["connectionStatus"],
     ),
     NibeSystemSensorEntityDescription(
         key="hasAlarmed",
         name="has alarmed",
-        entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+        entity_category=EntityCategory.DIAGNOSTIC,
         state_fn=lambda x: str(x.system["hasAlarmed"]),
     ),
 )
