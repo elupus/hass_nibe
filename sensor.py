@@ -237,7 +237,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
         if data := super().device_class:
             return data
 
-        unit = self.unit_of_measurement
+        unit = self.native_unit_of_measurement
         if unit in {TEMP_CELSIUS, TEMP_FAHRENHEIT, TEMP_KELVIN}:
             return DEVICE_CLASS_TEMPERATURE
         elif unit in {ELECTRIC_CURRENT_AMPERE, ELECTRIC_CURRENT_MILLIAMPERE}:
@@ -255,7 +255,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
         if data := super().state_class:
             return data
 
-        if self.unit_of_measurement:
+        if self.native_unit_of_measurement:
             return STATE_CLASS_MEASUREMENT
         else:
             return None
