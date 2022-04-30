@@ -59,7 +59,8 @@ class NibeSwitch(NibeParameterEntity, SwitchEntity):
     ):
         """Init."""
         super().__init__(system, parameter_id, ENTITY_ID_FORMAT)
-        self.entity_description = entity_description
+        if entity_description:
+            self.entity_description = entity_description
 
     @property
     def is_on(self):
