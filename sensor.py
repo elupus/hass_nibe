@@ -9,16 +9,12 @@ from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     STATE_CLASS_MEASUREMENT,
     STATE_CLASS_TOTAL_INCREASING,
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    DEVICE_CLASS_CURRENT,
-    DEVICE_CLASS_ENERGY,
-    DEVICE_CLASS_TEMPERATURE,
-    DEVICE_CLASS_TIMESTAMP,
-    DEVICE_CLASS_VOLTAGE,
     ELECTRIC_CURRENT_AMPERE,
     ELECTRIC_CURRENT_MILLIAMPERE,
     ELECTRIC_POTENTIAL_MILLIVOLT,
@@ -32,8 +28,7 @@ from homeassistant.const import (
     TIME_HOURS,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.dt import parse_datetime
@@ -239,13 +234,13 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
 
         unit = self.native_unit_of_measurement
         if unit in {TEMP_CELSIUS, TEMP_FAHRENHEIT, TEMP_KELVIN}:
-            return DEVICE_CLASS_TEMPERATURE
+            return SensorDeviceClass.TEMPERATURE
         elif unit in {ELECTRIC_CURRENT_AMPERE, ELECTRIC_CURRENT_MILLIAMPERE}:
-            return DEVICE_CLASS_CURRENT
+            return SensorDeviceClass.CURRENT
         elif unit in {ELECTRIC_POTENTIAL_VOLT, ELECTRIC_POTENTIAL_MILLIVOLT}:
-            return DEVICE_CLASS_VOLTAGE
+            return SensorDeviceClass.VOLTAGE
         elif unit in {ENERGY_WATT_HOUR, ENERGY_KILO_WATT_HOUR, ENERGY_MEGA_WATT_HOUR}:
-            return DEVICE_CLASS_ENERGY
+            return SensorDeviceClass.ENERGY
 
         return None
 
@@ -282,7 +277,7 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
     NibeSystemSensorEntityDescription(
         key="lastActivityDate",
         name="last activity",
-        device_class=DEVICE_CLASS_TIMESTAMP,
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_fn=lambda x: parse_datetime(x.system["lastActivityDate"]),
     ),
