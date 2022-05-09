@@ -7,11 +7,10 @@ from typing import Callable
 
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
-    STATE_CLASS_MEASUREMENT,
-    STATE_CLASS_TOTAL_INCREASING,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -135,24 +134,24 @@ class NibeSensorEntityDescription(SensorEntityDescription):
 PARAMETER_SENSORS = (
     NibeSensorEntityDescription(
         key="43424",
-        device_class="timedelta",
+        device_class=SensorDeviceClass.DURATION,
         name="compressor operating time hot water",
-        state_class=STATE_CLASS_TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=TIME_HOURS,
         icon="mdi:clock",
     ),
     NibeSensorEntityDescription(
         key="43420",
-        device_class="timedelta",
+        device_class=SensorDeviceClass.DURATION,
         name="compressor operating time",
-        state_class=STATE_CLASS_TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=TIME_HOURS,
         icon="mdi:clock",
     ),
     NibeSensorEntityDescription(
         key="43416",
         name="compressor starts",
-        state_class=STATE_CLASS_TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     NibeSensorEntityDescription(
         key="47407",
@@ -196,11 +195,13 @@ PARAMETER_SENSORS = (
     ),
     NibeSensorEntityDescription(
         key="47214",
+        device_class=SensorDeviceClass.CURRENT,
         name="fuse size",
         entity_category=EntityCategory.CONFIG,
     ),
     NibeSensorEntityDescription(
         key="43122",
+        device_class=SensorDeviceClass.FREQUENCY,
         name="allowed compr. freq. min",
         entity_category=EntityCategory.CONFIG,
     ),
@@ -251,7 +252,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
             return data
 
         if self.native_unit_of_measurement:
-            return STATE_CLASS_MEASUREMENT
+            return SensorStateClass.MEASUREMENT
         else:
             return None
 
