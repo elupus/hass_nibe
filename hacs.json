@@ -2,7 +2,7 @@
   "name": "Nibe Uplink",
   "content_in_root": true,
   "iot_class": "Cloud Polling",
-  "homeassistant": "2022.4.2",
+  "homeassistant": "2022.5.0",
   "domains": [
     "binary_sensor",
     "climate",
