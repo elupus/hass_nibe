@@ -4,12 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from homeassistant.components.fan import (
-    ENTITY_ID_FORMAT,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_SET_SPEED,
-    FanEntity,
-)
+from homeassistant.components.fan import ENTITY_ID_FORMAT, FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from nibeuplink import VentilationSystem, get_active_ventilations
@@ -144,4 +139,4 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def supported_features(self) -> int | None:
         """Return supported features."""
-        return SUPPORT_PRESET_MODE | SUPPORT_SET_SPEED
+        return FanEntityFeature.PRESET_MODE | FanEntityFeature.SET_SPEED
