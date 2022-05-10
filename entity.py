@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 UNIT_ICON = {"A": "mdi:power-plug", "Hz": "mdi:update", "h": "mdi:clock"}
 
 
-class NibeEntity(CoordinatorEntity[None]):
+class NibeEntity(CoordinatorEntity[NibeSystem]):
     """Base class for all nibe system entities."""
 
     def __init__(

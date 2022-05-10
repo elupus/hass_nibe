@@ -297,7 +297,7 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
 )
 
 
-class NibeSystemSensor(CoordinatorEntity[None], SensorEntity):
+class NibeSystemSensor(CoordinatorEntity[NibeSystem], SensorEntity):
     """Generic system sensor."""
 
     entity_description: NibeSystemSensorEntityDescription
