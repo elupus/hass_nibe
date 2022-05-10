@@ -1,8 +1,8 @@
-"""Base entites for nibe."""
+"""Base entities for nibe."""
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -19,7 +19,7 @@ UNIT_ICON = {"A": "mdi:power-plug", "Hz": "mdi:update", "h": "mdi:clock"}
 
 
 class NibeEntity(CoordinatorEntity[None]):
-    """Base class for all nibe sytem entities."""
+    """Base class for all nibe system entities."""
 
     def __init__(
         self,

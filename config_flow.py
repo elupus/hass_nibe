@@ -139,7 +139,7 @@ class NibeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle a option flow for a Konnected Panel."""
+    """Handle a option flow."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry):
         """Initialize options flow."""
@@ -222,4 +222,4 @@ class NibeAuthView(HomeAssistantView):
                 text="<script>window.close()</script>",
             )
         except data_entry_flow.UnknownFlow:
-            raise HTTPBadRequest(text="Unkown flow")
+            raise HTTPBadRequest(text="Unknown flow")
