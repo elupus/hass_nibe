@@ -37,7 +37,13 @@ class NibeUpdateSensor(CoordinatorEntity[NibeSystem], UpdateEntity):
         if not self.coordinator.software:
             return
         self._attr_installed_version = self.coordinator.software["current"]["name"]
-        self._attr_latest_version = self.coordinator.software["upgrade"]["name"]
+        if self.coordinator.software["upgrade"]:
+            self._attr_latest_version = self.coordinator.software["upgrade"]["name"]
+            self._attr_release_summary = self.coordinator.software["upgrade"][
+                "releaseDate"
+            ]
+        else:
+            self._attr_latest_version = self._attr_installed_version
+            self._attr_release_summary = None
         self._attr_release_url = f"https://nibeuplink.com/System/{self.coordinator.system_id}/Support/Software"
-        self._attr_release_summary = self.coordinator.software["upgrade"]["releaseDate"]
         super()._handle_coordinator_update()
