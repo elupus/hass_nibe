@@ -9,6 +9,7 @@ from aiohttp.web import HTTPBadRequest, Request, Response
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import callback
+from homeassistant.helpers import network
 from nibeuplink import Uplink, UplinkSession
 
 from . import NibeData
@@ -32,7 +33,7 @@ _view = None
 
 
 class NibeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Conflig flow for nibe uplink."""
+    """Config flow for nibe uplink."""
 
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
@@ -71,7 +72,7 @@ class NibeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_auth()
 
         url = "{}{}".format(
-            self.hass.helpers.network.get_url(prefer_external=True), AUTH_CALLBACK_URL
+            network.get_url(self.hass, prefer_external=True), AUTH_CALLBACK_URL
         )
 
         if DATA_NIBE_CONFIG in self.hass.data:
