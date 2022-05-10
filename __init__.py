@@ -16,7 +16,7 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
-from nibeuplink.typing import ParameterId, ParameterType, System
+from nibeuplink.typing import ParameterId, ParameterType, System, SystemSoftwareInfo
 
 from .const import (
     CONF_ACCESS_DATA,
@@ -127,6 +127,7 @@ FORWARD_PLATFORMS = (
     "binary_sensor",
     "water_heater",
     "fan",
+    "update",
 )
 
 
@@ -269,6 +270,7 @@ class NibeSystem(DataUpdateCoordinator):
         self.parent = parent
         self.notice: list[dict] = []
         self.statuses: set[str] = set()
+        self.software: SystemSoftwareInfo | None = None
         self._unsub: list[Callable] = []
         self.config = config
         self._parameters: ParameterSet = {}
@@ -312,6 +314,7 @@ class NibeSystem(DataUpdateCoordinator):
         """Update data via library."""
         await self.update_notifications()
         await self.update_statuses()
+        await self.update_version()
 
         parameters = set()
         for subscriber_parameters in self._parameter_subscribers.values():
@@ -320,6 +323,11 @@ class NibeSystem(DataUpdateCoordinator):
         self._parameter_preload = set()
 
         await self.update_parameters(parameters)
+
+    async def update_version(self):
+        """Update software version."""
+        self.software = await self.uplink.get_system_software(self.system_id)
+        _LOGGER.debug("Version: %s", self.software)
 
     async def update_statuses(self):
         """Update status list."""
