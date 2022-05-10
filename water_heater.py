@@ -114,9 +114,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
         self._current_state = STATE_OFF
         self._hwsys = hwsys
 
-        self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}".format(DOMAIN_NIBE, hwsys.name)
-        )
+        self.entity_id = ENTITY_ID_FORMAT.format(f"{DOMAIN_NIBE}_{hwsys.name}")
 
         self.parse_data()
 

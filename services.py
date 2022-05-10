@@ -106,7 +106,7 @@ async def async_register_services(hass):
             climateSystems=call.data["systems"],
         )
 
-        _LOGGER.debug("Publish thermostat {}".format(data))
+        _LOGGER.debug(f"Publish thermostat {data}")
         await uplink.post_smarthome_thermostats(call.data["system"], data)
 
     SERVICE_SET_SMARTHOME_MODE_SCHEMA = vol.Schema(

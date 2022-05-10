@@ -11,7 +11,7 @@ from nibeuplink.typing import ParameterId, ParameterType
 from . import NibeSystem
 from .const import DOMAIN as DOMAIN_NIBE
 
-ParameterSet = Dict[ParameterId, Optional[ParameterType]]
+ParameterSet = dict[ParameterId, Optional[ParameterType]]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class NibeParameterEntity(NibeEntity):
         super().__init__(system, parameters={parameter_id})
         self._parameter_id = parameter_id
         self._value = None
-        self._attr_unique_id = "{}_{}".format(system.system_id, parameter_id)
+        self._attr_unique_id = f"{system.system_id}_{parameter_id}"
         self._attr_name = None
         self._attr_icon = None
 
@@ -150,7 +150,7 @@ class NibeParameterEntity(NibeEntity):
 
         if entity_id_format:
             self.entity_id = entity_id_format.format(
-                "{}_{}_{}".format(DOMAIN_NIBE, system.system_id, str(parameter_id))
+                f"{DOMAIN_NIBE}_{system.system_id}_{str(parameter_id)}"
             )
 
     @property

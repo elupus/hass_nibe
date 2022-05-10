@@ -5,7 +5,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Callable, Dict, Optional, Set, cast
+from typing import Callable, Optional, cast
 
 import homeassistant.helpers.config_validation as cv
 import homeassistant.helpers.device_registry as device_registry
@@ -46,7 +46,7 @@ from .services import async_register_services
 
 _LOGGER = logging.getLogger(__name__)
 
-ParameterSet = Dict[ParameterId, Optional[ParameterType]]
+ParameterSet = dict[ParameterId, Optional[ParameterType]]
 
 
 def ensure_system_dict(value: dict[int, dict] | list[dict] | None) -> dict[int, dict]:
@@ -384,7 +384,7 @@ class NibeSystem(DataUpdateCoordinator):
         def _remove():
             del self._parameter_subscribers[sentinel]
 
-        parameters_clean = cast(Set[ParameterId], (parameters - {None}))
+        parameters_clean = cast(set[ParameterId], (parameters - {None}))
 
         self._parameter_subscribers[sentinel] = parameters_clean
         for parameter in parameters_clean - set(self._parameters.keys()):

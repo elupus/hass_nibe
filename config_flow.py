@@ -200,7 +200,7 @@ class NibeAuthView(HomeAssistantView):
         def check_get(param):
             if param not in request.query:
                 _LOGGER.error("State missing in request.")
-                raise HTTPBadRequest(text="Parameter {} not found".format(param))
+                raise HTTPBadRequest(text=f"Parameter {param} not found")
             return request.query[param]
 
         state = check_get("state")

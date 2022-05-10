@@ -118,7 +118,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
             ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
             | ClimateEntityFeature.TARGET_TEMPERATURE
         )
-        self._attr_unique_id = "{}_{}".format(self._system_id, self._climate.name)
+        self._attr_unique_id = f"{self._system_id}_{self._climate.name}"
         self.parse_data()
 
     @property
@@ -143,7 +143,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
 
     async def async_set_temperature_internal(self, parameter, data):
         """Set temperature."""
-        _LOGGER.debug("Set temperature on parameter {} to {}".format(parameter, data))
+        _LOGGER.debug(f"Set temperature on parameter {parameter} to {data}")
 
         try:
             self._status = await self._uplink.put_parameter(
@@ -153,7 +153,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
             self._status = "ERROR"
             raise
         finally:
-            _LOGGER.debug("Put parameter response {}".format(self._status))
+            _LOGGER.debug(f"Put parameter response {self._status}")
 
     def parse_data(self):
         """Parse current data."""
@@ -184,10 +184,10 @@ class NibeClimateRoom(NibeClimate):
         super().__init__(system, climate, parameters)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}_{}_room".format(DOMAIN_NIBE, system.system_id, str(climate.name))
+            f"{DOMAIN_NIBE}_{system.system_id}_{str(climate.name)}_room"
         )
 
-        self._attr_name = "{} Room".format(self._climate.name)
+        self._attr_name = f"{self._climate.name} Room"
         self._attr_unique_id = "{}_{}".format(super().unique_id, "room")
         self._attr_max_temp = 35.0
         self._attr_min_temp = 5.0
@@ -270,9 +270,9 @@ class NibeClimateSupply(NibeClimate):
         super().__init__(system, climate, parameters)
 
         self.entity_id = ENTITY_ID_FORMAT.format(
-            "{}_{}_{}_supply".format(DOMAIN_NIBE, system.system_id, str(climate.name))
+            f"{DOMAIN_NIBE}_{system.system_id}_{str(climate.name)}_supply"
         )
-        self._attr_name = "{} Supply".format(self._climate.name)
+        self._attr_name = f"{self._climate.name} Supply"
         self._attr_unique_id = "{}_{}".format(super().unique_id, "supply")
         self._attr_max_temp = 50.0
         self._attr_min_temp = 5.0
@@ -540,9 +540,9 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
             "climateSystems": systems,
         }
 
-        _LOGGER.debug("Publish thermostat {}".format(data))
+        _LOGGER.debug(f"Publish thermostat {data}")
         await self._uplink.post_smarthome_thermostats(self._system_id, data)
 
     async def async_update(self):
         """Explicitly update thermostat state."""
-        _LOGGER.debug("Update thermostat {}".format(self.name))
+        _LOGGER.debug(f"Update thermostat {self.name}")
