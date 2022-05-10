@@ -4,10 +4,10 @@
   "config_flow": true,
   "documentation": "https://github.com/elupus/hass_nibe",
   "requirements": [
-    "nibeuplink==1.2.1"
+    "nibeuplink==1.3.0"
   ],
   "codeowners": [
     "@elupus"
   ],
-  "version": "1.4.0"
+  "version": "1.5.0"
 }
