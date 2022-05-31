@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Callable, Optional, cast
 
 import homeassistant.helpers.config_validation as cv
@@ -14,12 +14,13 @@ from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_NAME
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from nibeuplink import Uplink, UplinkSession
+from nibeuplink.session import raise_for_status
 from nibeuplink.typing import ParameterId, ParameterType, System, SystemSoftwareInfo
 
 from .const import (
-    CONF_ACCESS_DATA,
     CONF_BINARY_SENSORS,
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
@@ -160,6 +161,47 @@ def _get_system_config(hass, system_id: int):
     return SYSTEM_SCHEMA({})
 
 
+class UplinkSessionAdaptor:
+    """Adaptor to adapt to api from library."""
+
+    def __init__(self, session: config_entry_oauth2_flow.OAuth2Session):
+        """Initialize a uplink session."""
+        self._session = session
+
+    async def request(self, *args, **kw):
+        """Request from API with a token refresh if needed."""
+        response = await self._session.async_request(*args, **kw)
+        try:
+            await raise_for_status(response)
+
+            if "json" in response.headers.get("CONTENT-TYPE", ""):
+                data = await response.json()
+            else:
+                data = await response.text()
+
+            return data
+
+        finally:
+            response.close()
+
+
+async def _async_get_session(hass: HomeAssistant, entry: config_entries.ConfigEntries):
+    implementation = (
+        await config_entry_oauth2_flow.async_get_config_entry_implementation(
+            hass, entry
+        )
+    )
+    session = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
+
+    # We always refresh token on start
+    now = datetime.now()
+    session.token["expires_in"] = 0
+    session.token["expires_at"] = now.timestamp()
+    await session.async_ensure_token_valid()
+
+    return UplinkSessionAdaptor(session)
+
+
 class NibeSystemsCoordinator(DataUpdateCoordinator[dict[int, System]]):
     """Coordinator that keeps track of all systems."""
 
@@ -185,27 +227,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: config_entries.ConfigEnt
     """Set up an access point from a config entry."""
     _LOGGER.debug("Setup nibe entry")
 
-    scope = None
-    if entry.data.get(CONF_WRITEACCESS):
-        scope = ["READSYSTEM", "WRITESYSTEM"]
-    else:
-        scope = ["READSYSTEM"]
-
-    def access_data_write(data):
-        hass.config_entries.async_update_entry(
-            entry, data={**entry.data, CONF_ACCESS_DATA: data}
-        )
-
-    session = UplinkSession(
-        client_id=entry.data.get(CONF_CLIENT_ID),
-        client_secret=entry.data.get(CONF_CLIENT_SECRET),
-        redirect_uri=entry.data.get(CONF_REDIRECT_URI),
-        access_data=entry.data.get(CONF_ACCESS_DATA),
-        access_data_write=access_data_write,
-        scope=scope,
-    )
-    await session.open()
-
+    session = await _async_get_session(hass, entry)
     uplink = Uplink(session)
     coordinator = NibeSystemsCoordinator(hass, uplink)
 
@@ -245,7 +267,6 @@ async def async_unload_entry(hass: HomeAssistant, entry):
     if unload_ok:
         await asyncio.wait([system.unload() for system in data.systems.values()])
 
-        await data.session.close()
         hass.data[DATA_NIBE_ENTRIES].pop(entry.entry_id)
 
     return True
