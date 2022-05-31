@@ -12,7 +12,11 @@ import homeassistant.helpers.device_registry as device_registry
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
-from homeassistant.const import CONF_NAME
+from homeassistant.components.application_credentials import (
+    ClientCredential,
+    async_import_client_credential,
+)
+from homeassistant.const import CONF_NAME, CONF_TOKEN
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -21,6 +25,7 @@ from nibeuplink.session import raise_for_status
 from nibeuplink.typing import ParameterId, ParameterType, System, SystemSoftwareInfo
 
 from .const import (
+    CONF_ACCESS_DATA,
     CONF_BINARY_SENSORS,
     CONF_CLIENT_ID,
     CONF_CLIENT_SECRET,
@@ -268,6 +273,44 @@ async def async_unload_entry(hass: HomeAssistant, entry):
         await asyncio.wait([system.unload() for system in data.systems.values()])
 
         hass.data[DATA_NIBE_ENTRIES].pop(entry.entry_id)
+
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: config_entries.ConfigEntry
+) -> bool:
+    """Migrate an old config entry."""
+    entry.version
+
+    _LOGGER.debug("Migrating from version %s", entry.version)
+
+    if entry.version == 1:
+
+        auth_domain = f"{DOMAIN}_{entry.entry_id}"
+
+        await async_import_client_credential(
+            hass,
+            DOMAIN,
+            ClientCredential(
+                entry.data[CONF_CLIENT_ID],
+                entry.data[CONF_CLIENT_SECRET],
+                "Nibe Imported Credential",
+            ),
+            auth_domain,
+        )
+
+        token = dict(entry.data[CONF_ACCESS_DATA])
+        token["expires_at"] = datetime.fromisoformat(
+            token.pop("access_token_expires")
+        ).timestamp()
+
+        data = {"auth_implementation": auth_domain, CONF_TOKEN: token}
+
+        entry.version = 2
+        hass.config_entries.async_update_entry(entry, data=data)
+
+    _LOGGER.info("Migration to version %s successful", entry.version)
 
     return True
 
