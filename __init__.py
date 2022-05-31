@@ -113,15 +113,23 @@ SYSTEM_SCHEMA = vol.Schema(
 )
 
 NIBE_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_REDIRECT_URI): cv.string,
-        vol.Optional(CONF_CLIENT_ID): cv.string,
-        vol.Optional(CONF_CLIENT_SECRET): cv.string,
-        vol.Optional(CONF_WRITEACCESS): cv.boolean,
-        vol.Optional(CONF_SYSTEMS, default={}): vol.All(
-            ensure_system_dict, {vol.Coerce(int): SYSTEM_SCHEMA}
+    vol.All(
+        cv.deprecated(CONF_REDIRECT_URI),
+        cv.deprecated(CONF_CLIENT_ID),
+        cv.deprecated(CONF_CLIENT_SECRET),
+        cv.deprecated(CONF_WRITEACCESS),
+        vol.Schema(
+            {
+                vol.Optional(CONF_REDIRECT_URI): cv.string,
+                vol.Optional(CONF_CLIENT_ID): cv.string,
+                vol.Optional(CONF_CLIENT_SECRET): cv.string,
+                vol.Optional(CONF_WRITEACCESS): cv.boolean,
+                vol.Optional(CONF_SYSTEMS, default={}): vol.All(
+                    ensure_system_dict, {vol.Coerce(int): SYSTEM_SCHEMA}
+                ),
+            }
         ),
-    }
+    )
 )
 
 CONFIG_SCHEMA = vol.Schema({DOMAIN: NIBE_SCHEMA}, extra=vol.ALLOW_EXTRA)
