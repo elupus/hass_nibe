@@ -35,3 +35,8 @@ async def async_get_auth_implementation(
 ) -> config_entry_oauth2_flow.AbstractOAuth2Implementation:
     """Return auth implementation."""
     return NibeAuthImplementation(hass, auth_domain, credential, AUTHORIZATION_SERVER)
+
+
+async def async_get_description_placeholders(hass: HomeAssistant) -> dict[str, str]:
+    """Return description placeholders for the credentials dialog."""
+    return {"redirect_url": "https://my.home-assistant.io/redirect/oauth"}

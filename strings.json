@@ -44,5 +44,8 @@
                 }
             }
         }
+    },
+    "application_credentials": {
+        "description": "To create the credential needed for nibe uplink authentication.\n1. Go to [Applications](https://api.nibeuplink.com/Applications) and click **Create Credentials**.\n1. Enter a friendly name for example: `Home Assistant` and possible a description.\n1. Enter `{redirect_url}` as **Callback URL**\n1. Accept the nibe service agreement and press **Create application**\n1. Take note of the **Identifier** which is the OAuth Client ID and the **Secret** which is the OAuth Client Secret.\n"
     }
 }
