@@ -159,7 +159,10 @@ class NibeClimate(NibeEntity, ClimateEntity):
         """Parse current data."""
         super().parse_data()
 
-        if "Cooling (Passive)" in self._system.statuses:
+        if (
+            "Cooling (Passive)" in self._system.statuses
+            or "Cooling (Active)" in self._system.statuses
+        ):
             self._attr_hvac_action = HVACAction.COOLING
         elif "Heating" in self._system.statuses:
             self._attr_hvac_action = HVACAction.HEATING
