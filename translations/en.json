@@ -4,7 +4,7 @@
         "step": {
             "user": {
                 "title": "Configure Uplink parameters",
-                "description": "Please configure a application on Nibe Uplinks [Application]({application}) page. The redirect url must point to your Home Assistant instance, but does not need to be publically reachable, it need only be reachable from this computer. Ensure it points to the api endpoint ({suffix})",
+                "description": "Please configure an application on Nibe Uplinks [Application]({application}) page. The redirect url must point to your Home Assistant instance, but does not need to be publically reachable, it need only be reachable from this computer. Ensure it points to the api endpoint ({suffix})",
                 "data": {
                     "redirect_uri": "Callback URL",
                     "client_id": "Identifier",
@@ -20,7 +20,7 @@
                 }
             },
             "confirm": {
-                "description": "Authorization successfull, continue to add systems to your instance."
+                "description": "Authorization successful, continue to add systems to your instance."
             }
         },
         "error": {
