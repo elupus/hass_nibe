@@ -174,6 +174,11 @@ PARAMETER_SENSORS = (
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
     NibeSensorEntityDescription(
+        key="44302",
+        name="cooling, compr. only.",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    NibeSensorEntityDescription(
         key="44304",
         name="pool, compr. only.",
         state_class=SensorStateClass.TOTAL_INCREASING,
