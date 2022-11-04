@@ -290,7 +290,8 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
         """Return state class of unit."""
         if data := super().state_class:
             return data
-
+        if self.native_unit_of_measurement == ENERGY_KILO_WATT_HOUR:
+            return SensorStateClass.TOTAL_INCREASING
         if self.native_unit_of_measurement:
             return SensorStateClass.MEASUREMENT
         else:
