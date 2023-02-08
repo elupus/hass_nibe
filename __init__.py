@@ -230,7 +230,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: config_entries.ConfigEnt
         await system.async_config_entry_first_refresh()
         data.systems[system.system_id] = system
 
-    hass.config_entries.async_setup_platforms(entry, FORWARD_PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, FORWARD_PLATFORMS)
 
     return True
 
