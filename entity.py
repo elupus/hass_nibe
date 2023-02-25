@@ -79,7 +79,7 @@ class NibeEntity(CoordinatorEntity[NibeSystem]):
         if not parameter_id:
             return None
         data = self._system.get_parameter(parameter_id)
-        if data is None or data["unit"] is None:
+        if data is None or not data["unit"]:
             return default
         else:
             return data["unit"]
