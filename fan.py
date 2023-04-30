@@ -82,6 +82,13 @@ class NibeFan(NibeEntity, FanEntity):
         return False
 
     @property
+    def percentage(self) -> int | None:
+        """Return the current percentage."""
+        if (value := self.get_value(self._ventilation.fan_speed)) is not None:
+            return int(value)
+        return None
+
+    @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., auto, smart, interval, favorite."""
         return PRESET_NAMES[self.get_raw(self._ventilation.ventilation_boost)]
