@@ -16,8 +16,14 @@ from .entity import NibeEntity
 
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
-SPEED_AUTO = "auto"
-SPEED_BOOST = "boost"
+PRESET_VALUES = {
+    "Normal": 0,
+    "Speed 1": 1,
+    "Speed 2": 2,
+    "Speed 3": 3,
+    "Speed 4": 4
+}
+PRESET_NAMES = list(PRESET_VALUES.keys())
 
 
 async def async_setup_entry(
@@ -85,16 +91,12 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def preset_mode(self) -> str | None:
         """Return the current preset mode, e.g., auto, smart, interval, favorite."""
-        boost = self.get_raw(self._ventilation.ventilation_boost)
-        if boost:
-            return SPEED_BOOST
-        else:
-            return SPEED_AUTO
+        return PRESET_NAMES[self.get_raw(self._ventilation.ventilation_boost)]
 
     @property
     def preset_modes(self):
         """Return a list of available preset modes."""
-        return [SPEED_AUTO, SPEED_BOOST]
+        return PRESET_NAMES
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
@@ -102,6 +104,7 @@ class NibeFan(NibeEntity, FanEntity):
         data = {}
         data["extract_air"] = self.get_value(self._ventilation.extract_air)
         data["exhaust_air"] = self.get_value(self._ventilation.exhaust_air)
+        data["fan_speed"] = self.get_raw(self._ventilation.fan_speed)
         data["ventilation_boost"] = self.get_value(self._ventilation.ventilation_boost)
         data["ventilation_boost_raw"] = self.get_raw(
             self._ventilation.ventilation_boost
@@ -116,20 +119,12 @@ class NibeFan(NibeEntity, FanEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode of the fan."""
-        if preset_mode == SPEED_BOOST:
-            value = 1
-        else:
-            value = 0
         assert self._ventilation.ventilation_boost, "Ventilation boost not supported"
         await self._uplink.put_parameter(
             self._system_id,
             self._ventilation.ventilation_boost,
-            value,
+            PRESET_VALUES[preset_mode],
         )
-
-    async def async_set_percentage(self, percentage: int) -> None:
-        """Set an exact percentage."""
-        raise NotImplementedError("Can't set exact speed")
 
     @property
     def unique_id(self) -> str:
@@ -139,4 +134,4 @@ class NibeFan(NibeEntity, FanEntity):
     @property
     def supported_features(self) -> int | None:
         """Return supported features."""
-        return FanEntityFeature.PRESET_MODE | FanEntityFeature.SET_SPEED
+        return FanEntityFeature.PRESET_MODE
