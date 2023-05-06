@@ -82,6 +82,9 @@ class NibeEntity(CoordinatorEntity[NibeSystem]):
         if data is None or not data["unit"]:
             return default
         else:
+            # Work around strange degree unit
+            if data["unit"] == "ºC":
+                return "°C"
             return data["unit"]
 
     def get_raw(self, parameter_id: ParameterId | None, default=None):
