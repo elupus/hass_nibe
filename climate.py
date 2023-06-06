@@ -509,7 +509,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
 
     async def _async_publish_update(self):
         self.hass.add_job(self._async_publish())
-        await self.async_update_ha_state()
+        self.async_write_ha_state()
 
     async def _async_publish(self, time=None):
         def scaled(value, multi=10):
