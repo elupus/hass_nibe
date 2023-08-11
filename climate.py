@@ -139,7 +139,7 @@ class NibeClimate(NibeEntity, ClimateEntity):
         """
         if hvac_mode in self._attr_hvac_modes:
             self._attr_hvac_mode = hvac_mode
-            await self.async_update_ha_state()
+            self.async_write_ha_state()
 
     async def async_set_temperature_internal(self, parameter, data):
         """Set temperature."""
@@ -428,7 +428,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
                 async def changed(entity_id: str, old_state: State, new_state: State):
                     update_fun(new_state)
                     await self._async_publish()
-                    await self.async_update_ha_state()
+                    self.async_write_ha_state()
 
                 update_fun(self.hass.states.get(tracked_entity_id))
 
