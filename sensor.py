@@ -367,3 +367,10 @@ class NibeSystemSensor(CoordinatorEntity[NibeSystem], SensorEntity):
     def native_value(self) -> StateType:
         """Get the state data from system class."""
         return self.entity_description.state_fn(self._system)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Return extra state."""
+        data = {}
+        data["statuses"] = self._system.statuses
+        return data
