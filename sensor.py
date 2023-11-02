@@ -196,54 +196,54 @@ PARAMETER_SENSORS = (
     NibeSensorEntityDescription(
         key="47407",
         name="AUX5",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47408",
         name="AUX4",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47409",
         name="AUX3",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47410",
         name="AUX2",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47411",
         name="AUX1",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47412",
         name="X7",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="48745",
         name="country",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47212",
         name="set max electrical add.",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="47214",
         device_class=SensorDeviceClass.CURRENT,
         name="fuse size",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     NibeSensorEntityDescription(
         key="43122",
         device_class=SensorDeviceClass.FREQUENCY,
         name="allowed compr. freq. min",
-        entity_category=EntityCategory.CONFIG,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 PARAMETER_SENSORS_LOOKUP = {x.key: x for x in PARAMETER_SENSORS}
