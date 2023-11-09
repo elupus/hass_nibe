@@ -379,5 +379,4 @@ class NibeSystemSensor(CoordinatorEntity[NibeSystem], SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
         """Get the attributes (extra state) data from system class."""
-        if hasattr(self.entity_description, "attributes_fn") and callable(getattr(self.entity_description, "attributes_fn")):
-            return self.entity_description.attributes_fn(self._system)
+        return self.entity_description.attributes_fn(self._system)
