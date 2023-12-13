@@ -343,10 +343,10 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
         state_fn=lambda x: str(x.software["current"]["name"]) if x.software else None,
     ),
     NibeSystemSensorEntityDescription(
-        key="hasStatus",
-        name="has status",
+        key="statusCount",
+        name="status count",
         entity_category=EntityCategory.DIAGNOSTIC,
-        state_fn=lambda x: len(x.statuses) > 1,
+        state_fn=lambda x: len(x.statuses),
         attributes_fn = lambda x: {"statuses": x.statuses},
     ),
 )
