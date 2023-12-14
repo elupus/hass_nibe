@@ -313,6 +313,7 @@ class NibeSystemSensorEntityDescription(SensorEntityDescription):
     """Description of a nibe system sensor."""
 
     state_fn: Callable[[NibeSystem], StateType] = lambda x: None
+    attributes_fn: Callable[[NibeSystem], dict[str, str | None]] = lambda x: None
 
 
 SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
@@ -341,6 +342,13 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         state_fn=lambda x: str(x.software["current"]["name"]) if x.software else None,
     ),
+    NibeSystemSensorEntityDescription(
+        key="statusCount",
+        name="status count",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_fn=lambda x: len(x.statuses),
+        attributes_fn = lambda x: {"statuses": x.statuses},
+    ),
 )
 
 
@@ -367,3 +375,8 @@ class NibeSystemSensor(CoordinatorEntity[NibeSystem], SensorEntity):
     def native_value(self) -> StateType:
         """Get the state data from system class."""
         return self.entity_description.state_fn(self._system)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Get the attributes (extra state) data from system class."""
+        return self.entity_description.attributes_fn(self._system)
