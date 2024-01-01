@@ -15,7 +15,7 @@ from homeassistant.components.water_heater import (
     WaterHeaterEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_OFF, TEMP_CELSIUS
+from homeassistant.const import STATE_OFF, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from nibeuplink import get_active_hotwater
 from nibeuplink.types import HotWaterSystem
@@ -121,7 +121,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
     @property
     def temperature_unit(self):
         """Return temperature unit."""
-        return self.get_unit(self._hwsys.hot_water_charging, TEMP_CELSIUS)
+        return self.get_unit(self._hwsys.hot_water_charging, UnitOfTemperature.CELSIUS)
 
     @property
     def extra_state_attributes(self):
