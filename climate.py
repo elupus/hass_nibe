@@ -24,7 +24,7 @@ from homeassistant.const import (
     CONF_NAME,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
-    TEMP_CELSIUS,
+    UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.event import (
@@ -204,7 +204,7 @@ class NibeClimateRoom(NibeClimate):
     @property
     def temperature_unit(self):
         """Return temperature unit used."""
-        return self.get_unit(self._climate.room_temp, TEMP_CELSIUS)
+        return self.get_unit(self._climate.room_temp, UnitOfTemperature.CELSIUS)
 
     @property
     def current_temperature(self):
@@ -289,7 +289,7 @@ class NibeClimateSupply(NibeClimate):
     @property
     def temperature_unit(self):
         """Return used temperature unit."""
-        return self.get_unit(self._climate.supply_temp, TEMP_CELSIUS)
+        return self.get_unit(self._climate.supply_temp, UnitOfTemperature.CELSIUS)
 
     @property
     def current_temperature(self):
@@ -401,7 +401,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         self._attr_target_temperature_step = 0.5
         self._current_temperature_id = current_temperature_id
         self._current_temperature: float | None = None
-        self._attr_temperature_unit = TEMP_CELSIUS
+        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_should_poll = False
         self._valve_position_id = valve_position_id
         self._valve_position: float | None = None

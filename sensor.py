@@ -14,17 +14,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    ELECTRIC_CURRENT_AMPERE,
-    ELECTRIC_CURRENT_MILLIAMPERE,
-    ELECTRIC_POTENTIAL_MILLIVOLT,
-    ELECTRIC_POTENTIAL_VOLT,
-    ENERGY_KILO_WATT_HOUR,
-    ENERGY_MEGA_WATT_HOUR,
-    ENERGY_WATT_HOUR,
-    TEMP_CELSIUS,
-    TEMP_FAHRENHEIT,
-    TEMP_KELVIN,
-    TIME_HOURS,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
@@ -137,7 +131,7 @@ PARAMETER_SENSORS = (
         device_class=SensorDeviceClass.DURATION,
         name="compressor operating time hot water",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=TIME_HOURS,
+        native_unit_of_measurement=UnitOfTime.HOURS,
         icon="mdi:clock",
     ),
     NibeSensorEntityDescription(
@@ -145,7 +139,7 @@ PARAMETER_SENSORS = (
         device_class=SensorDeviceClass.DURATION,
         name="compressor operating time",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=TIME_HOURS,
+        native_unit_of_measurement=UnitOfTime.HOURS,
         icon="mdi:clock",
     ),
     NibeSensorEntityDescription(
@@ -274,13 +268,13 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
             return data
 
         unit = self.native_unit_of_measurement
-        if unit in {TEMP_CELSIUS, TEMP_FAHRENHEIT, TEMP_KELVIN}:
+        if unit in UnitOfTemperature._value2member_map_:
             return SensorDeviceClass.TEMPERATURE
-        elif unit in {ELECTRIC_CURRENT_AMPERE, ELECTRIC_CURRENT_MILLIAMPERE}:
+        elif unit in UnitOfElectricCurrent._value2member_map_:
             return SensorDeviceClass.CURRENT
-        elif unit in {ELECTRIC_POTENTIAL_VOLT, ELECTRIC_POTENTIAL_MILLIVOLT}:
+        elif unit in UnitOfElectricPotential._value2member_map_:
             return SensorDeviceClass.VOLTAGE
-        elif unit in {ENERGY_WATT_HOUR, ENERGY_KILO_WATT_HOUR, ENERGY_MEGA_WATT_HOUR}:
+        elif unit in UnitOfEnergy._value2member_map_:
             return SensorDeviceClass.ENERGY
 
         return None
@@ -290,7 +284,7 @@ class NibeSensor(NibeParameterEntity, SensorEntity):
         """Return state class of unit."""
         if data := super().state_class:
             return data
-        if self.native_unit_of_measurement == ENERGY_KILO_WATT_HOUR:
+        if self.native_unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
             return SensorStateClass.TOTAL_INCREASING
         if self.native_unit_of_measurement:
             return SensorStateClass.MEASUREMENT
@@ -347,7 +341,7 @@ SYSTEM_SENSORS: tuple[NibeSystemSensorEntityDescription, ...] = (
         name="status count",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_fn=lambda x: len(x.statuses),
-        attributes_fn = lambda x: {"statuses": x.statuses},
+        attributes_fn=lambda x: {"statuses": x.statuses},
     ),
 )
 
