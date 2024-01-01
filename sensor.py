@@ -14,11 +14,11 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    TIME_HOURS,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
@@ -131,7 +131,7 @@ PARAMETER_SENSORS = (
         device_class=SensorDeviceClass.DURATION,
         name="compressor operating time hot water",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=TIME_HOURS,
+        native_unit_of_measurement=UnitOfTime.HOURS,
         icon="mdi:clock",
     ),
     NibeSensorEntityDescription(
@@ -139,7 +139,7 @@ PARAMETER_SENSORS = (
         device_class=SensorDeviceClass.DURATION,
         name="compressor operating time",
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=TIME_HOURS,
+        native_unit_of_measurement=UnitOfTime.HOURS,
         icon="mdi:clock",
     ),
     NibeSensorEntityDescription(
