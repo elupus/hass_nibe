@@ -11,8 +11,8 @@ from homeassistant.components.water_heater import (
     STATE_ECO,
     STATE_HEAT_PUMP,
     STATE_HIGH_DEMAND,
-    SUPPORT_OPERATION_MODE,
     WaterHeaterEntity,
+    WaterHeaterEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_OFF, UnitOfTemperature
@@ -109,7 +109,7 @@ class NibeWaterHeater(NibeEntity, WaterHeaterEntity):
             hwsys.hot_water_charging,
             hwsys.hot_water_production,
         )
-        self._attr_supported_features = SUPPORT_OPERATION_MODE
+        self._attr_supported_features = WaterHeaterEntityFeature.OPERATION_MODE
         self._attr_operation_list = list(NIBE_BOOST_TO_OPERATION.values())
         self._current_state = STATE_OFF
         self._hwsys = hwsys
