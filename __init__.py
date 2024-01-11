@@ -220,7 +220,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: config_entries.ConfigEnt
         systems_enabled = set(coordinator.data.keys())
 
     for system_id, system_raw in coordinator.data.items():
-
         if system_id not in systems_enabled:
             continue
 
@@ -243,7 +242,7 @@ async def async_unload_entry(hass: HomeAssistant, entry):
         entry, FORWARD_PLATFORMS
     )
     if unload_ok:
-        await asyncio.wait([system.unload() for system in data.systems.values()])
+        await asyncio.gather(*[system.unload() for system in data.systems.values()])
 
         await data.session.close()
         hass.data[DATA_NIBE_ENTRIES].pop(entry.entry_id)
