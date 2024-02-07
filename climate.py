@@ -374,6 +374,8 @@ class NibeClimateSupply(NibeClimate):
 class NibeThermostat(ClimateEntity, RestoreEntity):
     """Nibe Smarthome Thermostat."""
 
+    _enable_turn_on_off_backwards_compatibility = False
+
     def __init__(
         self,
         system: NibeSystem,
@@ -394,7 +396,11 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
             DOMAIN_NIBE, self._system_id, self._external_id
         )
         self._attr_hvac_action = None
-        self._attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
+        self._attr_supported_features = (
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TURN_OFF
+            | ClimateEntityFeature.TURN_ON
+        )
         self._attr_device_info = {
             "identifiers": {(DOMAIN_NIBE, self._system_id)},
         }
@@ -545,6 +551,14 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
 
         _LOGGER.debug(f"Publish thermostat {data}")
         await self._uplink.post_smarthome_thermostats(self._system_id, data)
+
+    async def async_turn_off(self) -> None:
+        """Turn the entity off."""
+        await self.async_set_hvac_mode(HVACMode.OFF)
+
+    async def async_turn_on(self) -> None:
+        """Turn the entity on."""
+        await self.async_set_hvac_mode(HVACMode.AUTO)
 
     async def async_update(self):
         """Explicitly update thermostat state."""
