@@ -18,6 +18,7 @@ from .const import (
     SERVICE_GET_PARAMETER,
     SERVICE_SET_PARAMETER,
     SERVICE_SET_SMARTHOME_MODE,
+    SERVICE_GET_SMARTHOME_MODE,
     SERVICE_SET_THERMOSTAT,
 )
 
@@ -74,6 +75,15 @@ async def async_register_services(hass):
         uplink = _find_uplink(call.data["system"])
         await uplink.put_smarthome_mode(call.data["system"], call.data["mode"])
 
+    async def get_smarthome_mode(call):
+        """Set smarthome mode."""
+        uplink = hass.data[DATA_NIBE].uplink
+        data = await uplink.get_smarthome_mode(call.data["system"])
+
+        hass.components.persistent_notification.async_create(
+            json.dumps(data, indent=1), "Nibe get smarthome mode result"
+        )
+
     async def set_parameter(call):
         uplink = _find_uplink(call.data["system"])
         await uplink.put_parameter(
@@ -116,6 +126,12 @@ async def async_register_services(hass):
         }
     )
 
+    SERVICE_GET_SMARTHOME_MODE_SCHEMA = vol.Schema(
+        {
+            vol.Required("system"): cv.positive_int
+        }
+    )
+
     SERVICE_SET_PARAMETER_SCHEMA = vol.Schema(
         {
             vol.Required("system"): cv.positive_int,
@@ -151,6 +167,13 @@ async def async_register_services(hass):
         SERVICE_SET_SMARTHOME_MODE,
         set_smarthome_mode,
         SERVICE_SET_SMARTHOME_MODE_SCHEMA,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_SMARTHOME_MODE,
+        get_smarthome_mode,
+        SERVICE_GET_SMARTHOME_MODE_SCHEMA,
     )
 
     hass.services.async_register(
