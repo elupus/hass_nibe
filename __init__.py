@@ -307,7 +307,9 @@ class NibeSystem(DataUpdateCoordinator):
         if system := self.parent.data.get(self.system_id):
             if self.system != system:
                 self.system = system
-                self.hass.async_add_job(self.async_request_refresh)
+                self.config_entry.async_create_task(
+                    self.hass, self.async_request_refresh()
+                )
 
     async def _async_update_data(self) -> None:
         """Update data via library."""
