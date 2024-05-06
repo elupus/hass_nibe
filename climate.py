@@ -26,9 +26,15 @@ from homeassistant.const import (
     STATE_UNKNOWN,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant, State
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    State,
+    callback,
+)
 from homeassistant.helpers.event import (
-    async_track_state_change,
+    async_track_state_change_event,
     async_track_time_interval,
 )
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -431,15 +437,17 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         ):
             if tracked_entity_id:
 
-                async def changed(entity_id: str, old_state: State, new_state: State):
-                    update_fun(new_state)
-                    await self._async_publish()
-                    self.async_write_ha_state()
+                @callback
+                def changed(event: Event[EventStateChangedData]):
+                    update_fun(event.data["new_state"])
+                    self._async_publish_update()
 
                 update_fun(self.hass.states.get(tracked_entity_id))
 
                 self.async_on_remove(
-                    async_track_state_change(self.hass, tracked_entity_id, changed)
+                    async_track_state_change_event(
+                        self.hass, tracked_entity_id, changed
+                    )
                 )
 
         track_entity_id(self._current_temperature_id, self._update_current_temperature)
@@ -503,7 +511,7 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         else:
             _LOGGER.error("Unrecognized hvac mode: %s", hvac_mode)
             return
-        await self._async_publish_update()
+        self._async_publish_update()
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -511,10 +519,10 @@ class NibeThermostat(ClimateEntity, RestoreEntity):
         if temperature is None:
             return
         self._target_temperature = temperature
-        await self._async_publish_update()
+        self._async_publish_update()
 
-    async def _async_publish_update(self):
-        self.hass.add_job(self._async_publish())
+    def _async_publish_update(self):
+        self.hass.async_create_task(self._async_publish(), "Publish thermostat")
         self.async_write_ha_state()
 
     async def _async_publish(self, time=None):
