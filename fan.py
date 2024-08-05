@@ -16,13 +16,7 @@ from .entity import NibeEntity
 
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
-PRESET_VALUES = {
-    "Normal": 0,
-    "Speed 1": 1,
-    "Speed 2": 2,
-    "Speed 3": 3,
-    "Speed 4": 4
-}
+PRESET_VALUES = {"Normal": 0, "Speed 1": 1, "Speed 2": 2, "Speed 3": 3, "Speed 4": 4}
 PRESET_NAMES = list(PRESET_VALUES.keys())
 
 
@@ -48,6 +42,8 @@ async def async_setup_entry(
 
 class NibeFan(NibeEntity, FanEntity):
     """Nibe Sensor."""
+
+    _attr_supported_features = FanEntityFeature.PRESET_MODE | FanEntityFeature.TURN_ON
 
     def __init__(self, system: NibeSystem, ventilation: VentilationSystem):
         """Init."""
@@ -130,8 +126,3 @@ class NibeFan(NibeEntity, FanEntity):
     def unique_id(self) -> str:
         """Return a unique identifier for a this parameter."""
         return f"{self._system_id}_{self._ventilation.fan_speed}"
-
-    @property
-    def supported_features(self) -> int | None:
-        """Return supported features."""
-        return FanEntityFeature.PRESET_MODE
